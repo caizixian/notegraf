@@ -2,7 +2,7 @@ use crate::note::{NoteID, Tag};
 use std::convert::{TryFrom, TryInto};
 
 pub trait NoteType: TryFrom<String> + TryInto<String> {
-    fn get_children(&self) -> Vec<NoteID>;
+    fn get_references(&self) -> Vec<NoteID>;
     fn get_tags(&self) -> Vec<Tag>;
 }
 
@@ -17,10 +17,10 @@ impl PlainNote {
 }
 
 impl NoteType for PlainNote {
-    fn get_children(&self) -> Vec<String> {
+    fn get_references(&self) -> Vec<NoteID> {
         vec![]
     }
-    fn get_tags(&self) -> Vec<String> {
+    fn get_tags(&self) -> Vec<Tag> {
         vec![]
     }
 }
