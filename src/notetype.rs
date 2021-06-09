@@ -1,7 +1,6 @@
 use crate::note::{NoteID, Tag};
-use std::convert::{TryFrom, TryInto};
 
-pub trait NoteType: TryFrom<String> + TryInto<String> {
+pub trait NoteType {
     fn get_references(&self) -> Vec<NoteID>;
     fn get_tags(&self) -> Vec<Tag>;
 }
@@ -22,19 +21,5 @@ impl NoteType for PlainNote {
     }
     fn get_tags(&self) -> Vec<Tag> {
         vec![]
-    }
-}
-
-impl TryFrom<String> for PlainNote {
-    type Error = &'static str;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(PlainNote::new(value))
-    }
-}
-
-impl TryInto<String> for PlainNote {
-    type Error = &'static str;
-    fn try_into(self) -> Result<String, Self::Error> {
-        Ok(self.body)
     }
 }
