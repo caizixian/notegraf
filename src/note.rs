@@ -1,8 +1,8 @@
 use crate::notetype::NoteType;
 use std::time::SystemTime;
 
-pub(super) type NoteID = String;
-pub(super) type Tag = String;
+pub type NoteID = String;
+pub type Tag = String;
 
 #[derive(Debug)]
 pub struct Note<T: NoteType> {
