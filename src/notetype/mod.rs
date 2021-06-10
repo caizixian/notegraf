@@ -4,6 +4,8 @@ use serde::Serialize;
 
 mod plain;
 pub use plain::PlainNote;
+mod markdown;
+pub use markdown::MarkdownNote;
 
 pub trait NoteType: Serialize + DeserializeOwned + Clone + PartialEq + Eq {
     type Error;
