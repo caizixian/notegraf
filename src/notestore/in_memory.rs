@@ -1,5 +1,6 @@
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 
 use std::collections::HashMap;
 use std::fs;
@@ -76,56 +77,66 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Ok((id, revision))
     }
 
-    fn get_note(&self, id: NoteID, revision: Option<Revision>) -> Result<Note<T>, Self::Error> {
-        let r: Revision = match revision {
+    fn get_note(&self, id: &NoteID, revision: Option<&Revision>) -> Result<Note<T>, Self::Error> {
+        let r: &Revision = match revision {
             Some(v) => v,
             None => self
                 .current_revision
                 // Option<Revision>
                 .get(&id)
                 // Result<Revision, Error>
-                .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?
-                .clone(),
+                .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?,
         };
         Ok(self
             .notes
-            .get(&id)
+            .get(id)
             .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?
-            .get(&r)
+            .get(r)
             .ok_or_else(|| InMemoryStoreError::RevisionNotExist(id.clone(), r.clone()))?
             .clone())
     }
 
-    fn get_current_revision(&self, id: NoteID) -> Result<Revision, Self::Error> {
+    fn get_current_revision(&self, id: &NoteID) -> Result<Revision, Self::Error> {
         self.current_revision
-            .get(&id)
+            .get(id)
             .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
             .map(|x| x.clone())
     }
 
-    fn update_note(&mut self, mut note: Note<T>) -> Result<Revision, Self::Error> {
-        if !self.notes.contains_key(&note.id) {
-            return Err(InMemoryStoreError::NoteNotExist(note.id));
-        }
-        let old_revision = self.current_revision.get(&note.id).unwrap();
-        if old_revision != &note.revision {
+    fn update_note(
+        &mut self,
+        id: &NoteID,
+        base_revision: &Revision,
+        note_inner: T,
+    ) -> Result<Revision, Self::Error> {
+        let current_note = self.get_note(id, None)?;
+        if &current_note.revision != base_revision {
             return Err(InMemoryStoreError::UpdateOldRevision(
-                note.id.clone(),
-                note.revision.clone(),
+                id.clone(),
+                base_revision.clone(),
             ));
         }
+        // get new revision number
         let new_revision = self.get_revision();
-        note.revision = new_revision.clone();
-        *self.current_revision.get_mut(&note.id).unwrap() = new_revision.clone();
-        let revisions = self.notes.get_mut(&note.id).unwrap();
-        assert!(!revisions.contains_key(&new_revision));
-        revisions.insert(new_revision.clone(), note);
+        let note_revisions = self.notes.get_mut(id).unwrap();
+        // sanity check
+        assert!(!note_revisions.contains_key(&new_revision));
+        // update note
+        let updated_note = Note {
+            note_inner,
+            revision: new_revision.clone(),
+            modified_at: SystemTime::now(),
+            ..current_note
+        };
+        note_revisions.insert(new_revision.clone(), updated_note);
+        // update current revision number
+        *self.current_revision.get_mut(id).unwrap() = new_revision.clone();
         Ok(new_revision)
     }
 
-    fn get_revisions(&self, id: NoteID) -> Result<Vec<Revision>, Self::Error> {
+    fn get_revisions(&self, id: &NoteID) -> Result<Vec<Revision>, Self::Error> {
         self.notes
-            .get(&id)
+            .get(id)
             .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
             .map(|rs| rs.keys().cloned().collect())
     }
@@ -188,7 +199,7 @@ mod tests {
     fn new_note_revision() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let (id1, revision1) = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        assert_eq!(store.get_current_revision(id1).unwrap(), revision1);
+        assert_eq!(store.get_current_revision(&id1).unwrap(), revision1);
     }
 
     #[test]
@@ -196,12 +207,9 @@ mod tests {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let note_inner = PlainNote::new("Foo".into());
         let (id1, revision1) = store.new_note(note_inner.clone()).unwrap();
+        assert_eq!(store.get_note(&id1, None).unwrap().note_inner, note_inner);
         assert_eq!(
-            store.get_note(id1.clone(), None).unwrap().note_inner,
-            note_inner
-        );
-        assert_eq!(
-            store.get_note(id1, Some(revision1)).unwrap().note_inner,
+            store.get_note(&id1, Some(&revision1)).unwrap().note_inner,
             note_inner
         );
     }
@@ -216,9 +224,38 @@ mod tests {
         let store_restore: InMemoryStore<PlainNote> =
             InMemoryStore::restore(env::temp_dir()).unwrap();
         for id in vec![id1, id2].iter() {
-            let note = store.get_note(id.clone(), None).unwrap();
-            let note_restore = store_restore.get_note(id.clone(), None).unwrap();
+            let note = store.get_note(&id, None).unwrap();
+            let note_restore = store_restore.get_note(&id, None).unwrap();
             assert_eq!(note, note_restore);
         }
+    }
+
+    #[test]
+    fn update_note() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let (id1, rev1) = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let created1 = store.get_note(&id1, None).unwrap().created_at;
+        let modified1 = store.get_note(&id1, None).unwrap().modified_at;
+        let rev2 = store
+            .update_note(&id1, &rev1, PlainNote::new("Foo1".into()))
+            .unwrap();
+        assert_ne!(store.get_current_revision(&id1).unwrap(), rev1);
+        assert_eq!(store.get_current_revision(&id1).unwrap(), rev2);
+        assert_eq!(
+            store.get_note(&id1, None).unwrap().note_inner,
+            PlainNote::new("Foo1".into())
+        );
+        assert_eq!(
+            store.get_note(&id1, Some(&rev2)).unwrap().note_inner,
+            PlainNote::new("Foo1".into())
+        );
+        assert_ne!(
+            store.get_note(&id1, Some(&rev2)).unwrap().modified_at,
+            modified1
+        );
+        assert_eq!(
+            store.get_note(&id1, Some(&rev2)).unwrap().created_at,
+            created1
+        );
     }
 }
