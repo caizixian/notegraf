@@ -16,11 +16,18 @@ pub trait NoteStore<T: NoteType> {
     fn split_note<F>(&mut self, note: Note<T>, op: F) -> Result<NoteID, Self::Error>
     where
         F: FnOnce(T) -> (T, T);
-    fn merge_note<F>(&mut self, note1: Note<T>, note2: Note<T>, op: F) -> Result<NoteID, Self::Error>
+    fn merge_note<F>(
+        &mut self,
+        note1: Note<T>,
+        note2: Note<T>,
+        op: F,
+    ) -> Result<NoteID, Self::Error>
     where
         F: FnOnce(T, T) -> T;
     fn get_children(&self, id: NoteID) -> Result<Vec<NoteID>, Self::Error>;
     fn get_references(&self, id: NoteID) -> Result<Vec<NoteID>, Self::Error>;
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), Self::Error>;
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error> where Self: Sized;
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
 }

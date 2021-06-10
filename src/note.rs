@@ -1,7 +1,7 @@
 use crate::notetype::NoteType;
-use std::time::SystemTime;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
+use std::time::SystemTime;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
 pub struct NoteID {
