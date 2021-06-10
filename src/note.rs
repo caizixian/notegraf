@@ -1,6 +1,7 @@
 use crate::notetype::NoteType;
 use std::time::SystemTime;
 use serde::{Serialize, Deserialize};
+use std::fmt::{self, Display};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
 pub struct NoteID {
@@ -10,6 +11,12 @@ pub struct NoteID {
 impl NoteID {
     pub fn new(id: String) -> Self {
         NoteID { id }
+    }
+}
+
+impl Display for NoteID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.id)
     }
 }
 
@@ -24,6 +31,12 @@ impl Tag {
     }
 }
 
+impl Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.tag)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Revision {
     revision: String,
@@ -32,6 +45,12 @@ pub struct Revision {
 impl Revision {
     pub fn new(revision: String) -> Self {
         Revision { revision }
+    }
+}
+
+impl Display for Revision {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.revision)
     }
 }
 
