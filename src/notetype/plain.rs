@@ -1,6 +1,13 @@
 use crate::{NoteID, NoteType, Tag};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum PlainNoteError {
+    #[error("this note doesn't refer to `{0}`")]
+    ReferenceNotExist(NoteID),
+}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct PlainNote {
@@ -27,6 +34,8 @@ impl PlainNote {
 }
 
 impl NoteType for PlainNote {
+    type Error = PlainNoteError;
+
     fn get_references(&self) -> Vec<&NoteID> {
         self.references.iter().collect()
     }
@@ -35,9 +44,17 @@ impl NoteType for PlainNote {
         self.tags.iter().collect()
     }
 
-    fn update_reference(&mut self, old_referent: NoteID, new_referent: NoteID) {
+    fn update_reference(
+        &mut self,
+        old_referent: NoteID,
+        new_referent: NoteID,
+    ) -> Result<(), Self::Error> {
+        if !self.references.contains(&old_referent) {
+            return Err(Self::Error::ReferenceNotExist(old_referent));
+        }
         self.references.remove(&old_referent);
         self.references.insert(new_referent);
+        Ok(())
     }
 }
 
@@ -59,7 +76,8 @@ mod tests {
         let mut note = PlainNote::new("Foo".into());
         note.add_reference(NoteID::new("ID1".into()));
         note.add_reference(NoteID::new("ID2".into()));
-        note.update_reference(NoteID::new("ID1".into()), NoteID::new("ID3".into()));
+        note.update_reference(NoteID::new("ID1".into()), NoteID::new("ID3".into()))
+            .unwrap();
         assert!(note.get_references().contains(&&NoteID::new("ID3".into())));
         assert!(note.get_references().contains(&&NoteID::new("ID2".into())));
     }

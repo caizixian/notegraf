@@ -6,7 +6,12 @@ mod plain;
 pub use plain::PlainNote;
 
 pub trait NoteType: Serialize + DeserializeOwned + Clone + PartialEq + Eq {
+    type Error;
     fn get_references(&self) -> Vec<&NoteID>;
     fn get_tags(&self) -> Vec<&Tag>;
-    fn update_reference(&mut self, old_referent: NoteID, new_referent: NoteID);
+    fn update_reference(
+        &mut self,
+        old_referent: NoteID,
+        new_referent: NoteID,
+    ) -> Result<(), Self::Error>;
 }
