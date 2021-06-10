@@ -1,5 +1,9 @@
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
+use serde::Serialize;
+use serde_json;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use thiserror::Error;
 use uuid::Uuid;
@@ -12,9 +16,13 @@ pub enum InMemoryStoreError {
     NoteIDConflict(NoteID),
     #[error("revision`{1}` of note `{0}` doesn't exist")]
     RevisionNotExist(NoteID, Revision),
+    #[error("io error")]
+    IOError(#[from] std::io::Error),
+    #[error("serde error")]
+    SerdeError(#[from] serde_json::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct InMemoryStore<T: NoteType> {
     notes: HashMap<NoteID, HashMap<Revision, Note<T>>>,
     current_revision: HashMap<NoteID, Revision>,
@@ -118,8 +126,13 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn get_references(&self, _id: NoteID) -> Result<Vec<NoteID>, Self::Error> {
         todo!()
     }
-    fn backup<P: AsRef<Path>>(&self, _path: P) -> Result<(), Self::Error> {
-        todo!()
+    fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), Self::Error> {
+        let p = path.as_ref().join("notegraf_in_memory.json");
+
+        let mut f = File::create(p).map_err(|e| InMemoryStoreError::IOError(e))?;
+        f.write_all(&serde_json::to_vec(&self).map_err(|e| InMemoryStoreError::SerdeError(e))?)
+            .map_err(|e| InMemoryStoreError::IOError(e))?;
+        Ok(())
     }
     fn restore<P: AsRef<Path>>(_path: P) -> Result<Self, Self::Error>
     where

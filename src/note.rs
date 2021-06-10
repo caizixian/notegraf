@@ -49,7 +49,7 @@ impl AsRef<str> for Tag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
 pub struct Revision {
     revision: String,
 }
@@ -72,7 +72,7 @@ impl AsRef<str> for Revision {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Note<T: NoteType> {
     pub note_inner: T,
     pub id: NoteID,
