@@ -1,9 +1,11 @@
 use crate::{NoteID, NoteType, Tag};
-use pulldown_cmark::{Options, Parser};
+use pulldown_cmark::Tag as PTag;
+use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
+use url::Url;
 
 #[derive(Error, Debug)]
 pub enum MarkdownNoteError {
@@ -28,6 +30,34 @@ impl MarkdownNote {
     pub fn add_tag(&mut self, tag: Tag) {
         self.tags.insert(tag);
     }
+
+    fn change_note_url(link: &str, old: &NoteID, new: &NoteID) -> Option<String> {
+        let mut url = match Url::parse(link) {
+            Ok(u) => u,
+            _ => {
+                return None;
+            }
+        };
+        if url.scheme() != "notegraf" {
+            return None;
+        }
+        let parts = match url.path_segments().map(|c| c.collect::<Vec<_>>()) {
+            Some(p) => p,
+            _ => {
+                return None;
+            }
+        };
+        if parts.len() != 2 {
+            return None;
+        }
+        if parts[0] == "note" && parts[1] == old.as_ref() {
+            url.path_segments_mut().unwrap().pop();
+            url.path_segments_mut().unwrap().push(new.as_ref());
+            Some(url.into())
+        } else {
+            None
+        }
+    }
 }
 
 impl NoteType for MarkdownNote {
@@ -43,8 +73,8 @@ impl NoteType for MarkdownNote {
 
     fn update_reference(
         &mut self,
-        _old_referent: NoteID,
-        _new_referent: NoteID,
+        old_referent: NoteID,
+        new_referent: NoteID,
     ) -> Result<(), Self::Error> {
         let mut options = Options::empty();
         options.insert(Options::ENABLE_TABLES);
@@ -53,7 +83,52 @@ impl NoteType for MarkdownNote {
         options.insert(Options::ENABLE_TASKLISTS);
         options.insert(Options::ENABLE_SMART_PUNCTUATION);
         let mut buf = String::new();
+        let mut change_autolink_text = false;
+        let mut old_autolink = None;
+        let mut new_autolink = None;
         let parser = Parser::new_ext(&self.body, options).map(|event| match event {
+            Event::Start(PTag::Link(linktype, destination, title)) => {
+                let new_destination =
+                    MarkdownNote::change_note_url(&destination, &old_referent, &new_referent);
+                if let Some(l) = new_destination {
+                    if linktype == LinkType::Autolink {
+                        change_autolink_text = true;
+                        old_autolink = Some(destination.clone().into_string());
+                        new_autolink = Some(l.clone());
+                    }
+                    Event::Start(PTag::Link(linktype, l.into(), title))
+                } else {
+                    Event::Start(PTag::Link(linktype, destination, title))
+                }
+            }
+            Event::Text(text) => {
+                if change_autolink_text {
+                    Event::Text(
+                        text.replace(
+                            old_autolink.as_ref().unwrap(),
+                            new_autolink.as_ref().unwrap(),
+                        )
+                        .into(),
+                    )
+                } else {
+                    Event::Text(text)
+                }
+            }
+            Event::End(PTag::Link(linktype, destination, title)) => {
+                let new_destination =
+                    MarkdownNote::change_note_url(&destination, &old_referent, &new_referent);
+                if let Some(l) = new_destination {
+                    if linktype == LinkType::Autolink {
+                        change_autolink_text = true;
+                        old_autolink = Some(destination.clone().into_string());
+                        new_autolink = Some(l.clone());
+                    }
+                    Event::End(PTag::Link(linktype, l.into(), title))
+                } else {
+                    Event::End(PTag::Link(linktype, destination, title))
+                }
+            }
+
             _ => event,
         });
         match cmark(parser, &mut buf, None) {
@@ -63,5 +138,53 @@ impl NoteType for MarkdownNote {
             }
             Err(e) => Err(MarkdownNoteError::FormatError(e)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rewrite_url() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let old_url = "notegraf:/note/old";
+        let new_url = MarkdownNote::change_note_url(old_url, &id_old, &id_new);
+        assert_eq!(new_url.unwrap(), "notegraf:/note/new");
+        assert_eq!(
+            MarkdownNote::change_note_url("notegraf:/note/foo", &id_old, &id_new),
+            None
+        );
+        assert_eq!(
+            MarkdownNote::change_note_url("notegraf:/tag/old", &id_old, &id_new),
+            None
+        );
+        assert_eq!(
+            MarkdownNote::change_note_url("notegraf:/note/old/bar", &id_old, &id_new),
+            None
+        );
+        assert_eq!(
+            MarkdownNote::change_note_url("http://host/note/old", &id_old, &id_new),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_markdown_link() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let mut note = MarkdownNote::new(r#"[foo](notegraf:/note/old)"#.into());
+        note.update_reference(id_old, id_new).unwrap();
+        assert_eq!(note.body, r#"[foo](notegraf:/note/new)"#)
+    }
+
+    #[test]
+    fn rewrite_markdown_autolink() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let mut note = MarkdownNote::new(r#"<notegraf:/note/old>"#.into());
+        note.update_reference(id_old, id_new).unwrap();
+        assert_eq!(note.body, r#"[notegraf:/note/new](notegraf:/note/new)"#)
     }
 }
