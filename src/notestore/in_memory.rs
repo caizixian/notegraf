@@ -1,6 +1,8 @@
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::HashMap;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -136,11 +138,13 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .map_err(InMemoryStoreError::IOError)?;
         Ok(())
     }
-    fn restore<P: AsRef<Path>>(_path: P) -> Result<Self, Self::Error>
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
     where
         Self: Sized,
     {
-        todo!()
+        let p = path.as_ref().join("notegraf_in_memory.json");
+        let contents = fs::read_to_string(p).map_err(InMemoryStoreError::IOError)?;
+        serde_json::from_str(&contents).map_err(InMemoryStoreError::SerdeError)
     }
 }
 
@@ -176,5 +180,21 @@ mod tests {
             store.get_note(id1, Some(revision1)).unwrap().note_inner,
             note_inner
         );
+    }
+
+    #[test]
+    fn backup() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let (id1, _) = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let (id2, _) = store.new_note(PlainNote::new("Bar".into())).unwrap();
+
+        store.backup(env::temp_dir()).unwrap();
+        let store_restore: InMemoryStore<PlainNote> =
+            InMemoryStore::restore(env::temp_dir()).unwrap();
+        for id in vec![id1, id2].iter() {
+            let note = store.get_note(id.clone(), None).unwrap();
+            let note_restore = store_restore.get_note(id.clone(), None).unwrap();
+            assert_eq!(note, note_restore);
+        }
     }
 }

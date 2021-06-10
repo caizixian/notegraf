@@ -4,8 +4,21 @@ use std::fmt::{self, Display};
 use std::time::SystemTime;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
+#[serde(into = "String", from = "String")]
 pub struct NoteID {
     id: String,
+}
+
+impl Into<String> for NoteID {
+    fn into(self) -> String {
+        self.id
+    }
+}
+
+impl From<String> for NoteID {
+    fn from(id: String) -> NoteID {
+        NoteID::new(id)
+    }
 }
 
 impl NoteID {
@@ -50,6 +63,7 @@ impl AsRef<str> for Tag {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+#[serde(into = "String", from = "String")]
 pub struct Revision {
     revision: String,
 }
@@ -72,7 +86,19 @@ impl AsRef<str> for Revision {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Into<String> for Revision {
+    fn into(self) -> String {
+        self.revision
+    }
+}
+
+impl From<String> for Revision {
+    fn from(revision: String) -> Revision {
+        Revision::new(revision)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Note<T> {
     pub note_inner: T,
     pub id: NoteID,
