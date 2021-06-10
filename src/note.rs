@@ -49,7 +49,7 @@ impl AsRef<str> for Tag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct Revision {
     revision: String,
 }
@@ -72,8 +72,8 @@ impl AsRef<str> for Revision {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Note<T: NoteType> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Note<T> {
     pub note_inner: T,
     pub id: NoteID,
     pub revision: Revision,
@@ -81,7 +81,10 @@ pub struct Note<T: NoteType> {
     pub modified_at: SystemTime,
 }
 
-impl<T: NoteType> Note<T> {
+impl<T> Note<T>
+where
+    T: NoteType,
+{
     pub fn new(note_inner: T, id: NoteID, revision: Revision) -> Self {
         Note {
             note_inner,
