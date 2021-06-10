@@ -42,11 +42,11 @@ where
         }
     }
 
-    fn get_noteid(&self) -> NoteID {
+    fn get_new_noteid(&self) -> NoteID {
         NoteID::new(Uuid::new_v4().to_hyphenated().to_string())
     }
 
-    fn get_revision(&self) -> Revision {
+    fn get_new_revision(&self) -> Revision {
         Revision::new(Uuid::new_v4().to_hyphenated().to_string())
     }
 }
@@ -61,8 +61,8 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     type Error = InMemoryStoreError;
 
     fn new_note(&mut self, note_inner: T) -> Result<(NoteID, Revision), Self::Error> {
-        let id = self.get_noteid();
-        let revision = self.get_revision();
+        let id = self.get_new_noteid();
+        let revision = self.get_new_revision();
         let note = Note::new(note_inner, id.clone(), revision.clone());
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
@@ -116,7 +116,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             ));
         }
         // get new revision number
-        let new_revision = self.get_revision();
+        let new_revision = self.get_new_revision();
         let note_revisions = self.notes.get_mut(id).unwrap();
         // sanity check
         assert!(!note_revisions.contains_key(&new_revision));
