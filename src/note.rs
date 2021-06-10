@@ -1,22 +1,55 @@
 use crate::notetype::NoteType;
 use std::time::SystemTime;
+use serde::{Serialize, Deserialize};
 
-pub type NoteID = String;
-pub type Tag = String;
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
+pub struct NoteID {
+    id: String,
+}
 
-#[derive(Debug)]
+impl NoteID {
+    pub fn new(id: String) -> Self {
+        NoteID { id }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+pub struct Tag {
+    tag: String,
+}
+
+impl Tag {
+    pub fn new(tag: String) -> Self {
+        Tag { tag }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Revision {
+    revision: String,
+}
+
+impl Revision {
+    pub fn new(revision: String) -> Self {
+        Revision { revision }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Note<T: NoteType> {
-    note: T,
-    id: NoteID,
-    created_at: SystemTime,
-    modified_at: SystemTime,
+    pub note_inner: T,
+    pub id: NoteID,
+    pub revision: Revision,
+    pub created_at: SystemTime,
+    pub modified_at: SystemTime,
 }
 
 impl<T: NoteType> Note<T> {
-    pub fn new(note: T, id: NoteID) -> Self {
+    pub fn new(note_inner: T, id: NoteID, revision: Revision) -> Self {
         Note {
-            note,
+            note_inner,
             id,
+            revision,
             created_at: SystemTime::now(),
             modified_at: SystemTime::now(),
         }

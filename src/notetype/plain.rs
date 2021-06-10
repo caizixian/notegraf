@@ -1,7 +1,7 @@
 use crate::{NoteID, NoteType, Tag};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct PlainNote {
     body: String,
     references: Vec<NoteID>,
