@@ -119,9 +119,9 @@ impl NoteType for MarkdownNote {
                     MarkdownNote::change_note_url(&destination, &old_referent, &new_referent);
                 if let Some(l) = new_destination {
                     if linktype == LinkType::Autolink {
-                        change_autolink_text = true;
-                        old_autolink = Some(destination.clone().into_string());
-                        new_autolink = Some(l.clone());
+                        change_autolink_text = false;
+                        old_autolink = None;
+                        new_autolink = None;
                     }
                     Event::End(PTag::Link(linktype, l.into(), title))
                 } else {
