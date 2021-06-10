@@ -9,9 +9,9 @@ pub struct NoteID {
     id: String,
 }
 
-impl Into<String> for NoteID {
-    fn into(self) -> String {
-        self.id
+impl From<NoteID> for String {
+    fn from(id: NoteID) -> String {
+        id.id
     }
 }
 
@@ -86,9 +86,9 @@ impl AsRef<str> for Revision {
     }
 }
 
-impl Into<String> for Revision {
-    fn into(self) -> String {
-        self.revision
+impl From<Revision> for String {
+    fn from(revision: Revision) -> String {
+        revision.revision
     }
 }
 

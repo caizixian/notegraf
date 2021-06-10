@@ -1,6 +1,6 @@
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
-use serde_json;
+
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -21,6 +21,8 @@ pub enum InMemoryStoreError {
     IOError(#[from] std::io::Error),
     #[error("serde error")]
     SerdeError(#[from] serde_json::Error),
+    #[error("attempt to update non-current revision `{1}` of note `{0}`")]
+    UpdateOldRevision(NoteID, Revision),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,12 +103,33 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .map(|x| x.clone())
     }
 
-    fn update_note(&mut self, _note: Note<T>) -> Result<Revision, Self::Error> {
-        todo!()
+    fn update_note(&mut self, mut note: Note<T>) -> Result<Revision, Self::Error> {
+        if !self.notes.contains_key(&note.id) {
+            return Err(InMemoryStoreError::NoteNotExist(note.id));
+        }
+        let old_revision = self.current_revision.get(&note.id).unwrap();
+        if old_revision != &note.revision {
+            return Err(InMemoryStoreError::UpdateOldRevision(
+                note.id.clone(),
+                note.revision.clone(),
+            ));
+        }
+        let new_revision = self.get_revision();
+        note.revision = new_revision.clone();
+        *self.current_revision.get_mut(&note.id).unwrap() = new_revision.clone();
+        let revisions = self.notes.get_mut(&note.id).unwrap();
+        assert!(!revisions.contains_key(&new_revision));
+        revisions.insert(new_revision.clone(), note);
+        Ok(new_revision)
     }
-    fn get_revisions(&self, _id: NoteID) -> Result<Vec<Revision>, Self::Error> {
-        todo!()
+
+    fn get_revisions(&self, id: NoteID) -> Result<Vec<Revision>, Self::Error> {
+        self.notes
+            .get(&id)
+            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
+            .map(|rs| rs.keys().cloned().collect())
     }
+
     fn split_note<F>(&mut self, _note: Note<T>, _op: F) -> Result<NoteID, Self::Error>
     where
         F: FnOnce(T) -> (T, T),
@@ -152,6 +175,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 mod tests {
     use super::*;
     use crate::notetype::PlainNote;
+    use std::env;
     #[test]
     fn unique_id() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
