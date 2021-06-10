@@ -1,12 +1,11 @@
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
-
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::time::SystemTime;
 use thiserror::Error;
 use uuid::Uuid;
 
