@@ -20,7 +20,13 @@ impl Display for NoteID {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+impl AsRef<str> for NoteID {
+    fn as_ref(&self) -> &str {
+        &self.id
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
 pub struct Tag {
     tag: String,
 }
@@ -34,6 +40,12 @@ impl Tag {
 impl Display for Tag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.tag)
+    }
+}
+
+impl AsRef<str> for Tag {
+    fn as_ref(&self) -> &str {
+        &self.tag
     }
 }
 
@@ -51,6 +63,12 @@ impl Revision {
 impl Display for Revision {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.revision)
+    }
+}
+
+impl AsRef<str> for Revision {
+    fn as_ref(&self) -> &str {
+        &self.revision
     }
 }
 
