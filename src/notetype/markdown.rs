@@ -1,3 +1,4 @@
+use crate::url::NotegrafURL;
 use crate::{NoteID, NoteType, Tag};
 use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
@@ -5,7 +6,6 @@ use pulldown_cmark_to_cmark::cmark;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
-use url::Url;
 
 #[derive(Error, Debug)]
 pub enum MarkdownNoteError {
@@ -32,28 +32,13 @@ impl MarkdownNote {
     }
 
     fn change_note_url(link: &str, old: &NoteID, new: &NoteID) -> Option<String> {
-        let mut url = match Url::parse(link) {
-            Ok(u) => u,
-            _ => {
-                return None;
+        let url = NotegrafURL::parse(link);
+        if let Ok(NotegrafURL::Note(ref id)) = url {
+            if id == old {
+                Some(format!("{}", NotegrafURL::Note(new.clone())))
+            } else {
+                None
             }
-        };
-        if url.scheme() != "notegraf" {
-            return None;
-        }
-        let parts = match url.path_segments().map(|c| c.collect::<Vec<_>>()) {
-            Some(p) => p,
-            _ => {
-                return None;
-            }
-        };
-        if parts.len() != 2 {
-            return None;
-        }
-        if parts[0] == "note" && parts[1] == old.as_ref() {
-            url.path_segments_mut().unwrap().pop();
-            url.path_segments_mut().unwrap().push(new.as_ref());
-            Some(url.into())
         } else {
             None
         }
