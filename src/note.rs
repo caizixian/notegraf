@@ -1,8 +1,14 @@
+//! Core types of Notegraf
 use crate::notetype::NoteType;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use std::time::SystemTime;
 
+/// ID of notes
+///
+/// In a given note store ([`crate::notestore`]),
+/// [`NoteID`] should uniquely identify a note,
+/// which can have different revisions ([`Revision`]).
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
 #[serde(into = "String", from = "String")]
 pub struct NoteID {
@@ -39,6 +45,7 @@ impl AsRef<str> for NoteID {
     }
 }
 
+/// Tags of notes
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
 pub struct Tag {
     tag: String,

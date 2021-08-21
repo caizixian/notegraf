@@ -1,3 +1,4 @@
+//! In-memory storage of notes
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

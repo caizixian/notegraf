@@ -1,3 +1,4 @@
+//! Storage backends of notes
 use crate::note::{Note, NoteID, Revision};
 use crate::notetype::NoteType;
 use std::path::Path;
@@ -5,6 +6,7 @@ use std::path::Path;
 mod in_memory;
 pub use in_memory::InMemoryStore;
 
+/// An abstraction for storage backends
 pub trait NoteStore<T: NoteType> {
     type Error: Sized;
 
