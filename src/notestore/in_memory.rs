@@ -82,7 +82,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             None => self
                 .current_revision
                 // Option<Revision>
-                .get(&id)
+                .get(id)
                 // Result<Revision, Error>
                 .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?,
         };
