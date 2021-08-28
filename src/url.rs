@@ -1,10 +1,10 @@
-//! URL utilities
+//! URL utilities.
 use crate::{NoteID, Tag};
 use std::fmt;
 use thiserror::Error;
 use url::{ParseError, Url};
 
-/// Error type for Notegraf URL parsing
+/// Error type for Notegraf URL parsing.
 #[derive(Error, Debug)]
 pub enum NotegrafURLParseError {
     /// Not a valid URL.
@@ -25,7 +25,7 @@ pub enum NotegrafURLParseError {
     SyntaxError(String),
 }
 
-/// URL type for Notegraf
+/// URL type for Notegraf.
 #[derive(Debug)]
 pub enum NotegrafURL {
     Note(NoteID),
@@ -33,7 +33,7 @@ pub enum NotegrafURL {
 }
 
 impl NotegrafURL {
-    /// Parse a string into a Notegraf URL
+    /// Parse a string into a Notegraf URL.
     pub fn parse(link: &str) -> Result<Self, NotegrafURLParseError> {
         let url = match Url::parse(link) {
             Ok(u) => u,

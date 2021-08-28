@@ -1,4 +1,5 @@
 //! In-memory storage of notes
+use crate::note::NoteLocator;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -26,6 +27,9 @@ pub enum InMemoryStoreError {
     UpdateOldRevision(NoteID, Revision),
 }
 
+/// In-memory storage.
+///
+/// This is mostly designed for development use, because there is no persistence layer.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InMemoryStore<T> {
     notes: HashMap<NoteID, HashMap<Revision, Note<T>>>,
@@ -43,10 +47,16 @@ where
         }
     }
 
+    /// Generate a new [`NoteID`].
+    ///
+    /// We use the UUID V4 scheme.
     fn get_new_noteid(&self) -> NoteID {
         NoteID::new(Uuid::new_v4().to_hyphenated().to_string())
     }
 
+    /// Generate a new [`Revision`].
+    ///
+    /// We use the UUID V4 scheme.
     fn get_new_revision(&self) -> Revision {
         Revision::new(Uuid::new_v4().to_hyphenated().to_string())
     }
@@ -61,10 +71,10 @@ impl<T: NoteType> Default for InMemoryStore<T> {
 impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     type Error = InMemoryStoreError;
 
-    fn new_note(&mut self, note_inner: T) -> Result<(NoteID, Revision), Self::Error> {
+    fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, Self::Error> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision();
-        let note = Note::new(note_inner, id.clone(), revision.clone());
+        let note = Note::new(note_inner, id.clone(), revision.clone(), None);
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
         // unwrap won't fail because we just inserted an entry
@@ -74,47 +84,36 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .insert(revision.clone(), note);
         assert!(!self.current_revision.contains_key(&id));
         self.current_revision.insert(id.clone(), revision.clone());
-        Ok((id, revision))
+        Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note(&self, id: &NoteID, revision: Option<&Revision>) -> Result<Note<T>, Self::Error> {
-        let r: &Revision = match revision {
-            Some(v) => v,
-            None => self
-                .current_revision
-                // Option<Revision>
-                .get(id)
-                // Result<Revision, Error>
-                .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?,
+    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, Self::Error> {
+        let (id, rev) = loc.unpack();
+        let rev = if let Some(r) = rev {
+            r
+        } else {
+            self.get_current_revision(loc)?
         };
         Ok(self
             .notes
             .get(id)
             .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?
-            .get(r)
-            .ok_or_else(|| InMemoryStoreError::RevisionNotExist(id.clone(), r.clone()))?
+            .get(rev)
+            .ok_or_else(|| InMemoryStoreError::RevisionNotExist(id.clone(), rev.clone()))?
             .clone())
-    }
-
-    fn get_current_revision(&self, id: &NoteID) -> Result<Revision, Self::Error> {
-        self.current_revision
-            .get(id)
-            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
-            .map(|x| x.clone())
     }
 
     fn update_note(
         &mut self,
-        id: &NoteID,
-        base_revision: &Revision,
+        loc: &NoteLocator,
         note_inner: T,
-    ) -> Result<Revision, Self::Error> {
-        let current_note = self.get_note(id, None)?;
-        if &current_note.revision != base_revision {
-            return Err(InMemoryStoreError::UpdateOldRevision(
-                id.clone(),
-                base_revision.clone(),
-            ));
+    ) -> Result<NoteLocator, Self::Error> {
+        let (id, rev) = loc.unpack();
+        let current_note = self.get_note(&loc.current())?;
+        if let Some(r) = rev {
+            if r != &current_note.revision {
+                return Err(InMemoryStoreError::UpdateOldRevision(id.clone(), r.clone()));
+            }
         }
         // get new revision number
         let new_revision = self.get_new_revision();
@@ -130,40 +129,49 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         };
         note_revisions.insert(new_revision.clone(), updated_note);
         // update current revision number
+        // FIXME support resurrecting deleted notes
         *self.current_revision.get_mut(id).unwrap() = new_revision.clone();
-        Ok(new_revision)
+        Ok(NoteLocator::Specific(id.clone(), new_revision))
     }
 
-    fn get_revisions(&self, id: &NoteID) -> Result<Vec<Revision>, Self::Error> {
+    fn delete_note(&mut self, _loc: &NoteLocator) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    fn get_current_revision(&self, loc: &NoteLocator) -> Result<&Revision, Self::Error> {
+        let id = loc.get_id();
+        self.current_revision
+            .get(id)
+            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
+    }
+
+    fn get_revisions(&self, loc: &NoteLocator) -> Result<Vec<Revision>, Self::Error> {
+        let id = loc.get_id();
         self.notes
             .get(id)
             .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
             .map(|rs| rs.keys().cloned().collect())
     }
 
-    fn split_note<F>(&mut self, _note: Note<T>, _op: F) -> Result<NoteID, Self::Error>
+    fn split_note<F>(&mut self, _note: &NoteLocator, _op: F) -> Result<NoteLocator, Self::Error>
     where
         F: FnOnce(T) -> (T, T),
     {
         todo!()
     }
+
     fn merge_note<F>(
         &mut self,
-        _note1: Note<T>,
-        _note2: Note<T>,
+        _note1: &NoteLocator,
+        _note2: &NoteLocator,
         _op: F,
-    ) -> Result<NoteID, Self::Error>
+    ) -> Result<NoteLocator, Self::Error>
     where
         F: FnOnce(T, T) -> T,
     {
         todo!()
     }
-    fn get_children(&self, _id: NoteID) -> Result<Vec<NoteID>, Self::Error> {
-        todo!()
-    }
-    fn get_references(&self, _id: NoteID) -> Result<Vec<NoteID>, Self::Error> {
-        todo!()
-    }
+
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), Self::Error> {
         let p = path.as_ref().join("notegraf_in_memory.json");
 
@@ -172,6 +180,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .map_err(InMemoryStoreError::IOError)?;
         Ok(())
     }
+
     fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
     where
         Self: Sized,
@@ -187,45 +196,47 @@ mod tests {
     use super::*;
     use crate::notetype::PlainNote;
     use std::env;
+
     #[test]
     fn unique_id() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let (id1, _) = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        let (id2, _) = store.new_note(PlainNote::new("Bar".into())).unwrap();
-        assert_ne!(id1, id2);
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
+        assert_ne!(loc1.get_id(), loc2.get_id());
     }
 
     #[test]
     fn new_note_revision() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let (id1, revision1) = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        assert_eq!(store.get_current_revision(&id1).unwrap(), revision1);
+        let loc = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let rev = loc.get_revision().unwrap();
+        assert_eq!(store.get_current_revision(&loc.current()).unwrap(), rev);
     }
 
     #[test]
     fn new_note_retrieve() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let note_inner = PlainNote::new("Foo".into());
-        let (id1, revision1) = store.new_note(note_inner.clone()).unwrap();
-        assert_eq!(store.get_note(&id1, None).unwrap().note_inner, note_inner);
+        let loc = store.new_note(note_inner.clone()).unwrap();
         assert_eq!(
-            store.get_note(&id1, Some(&revision1)).unwrap().note_inner,
+            store.get_note(&loc.current()).unwrap().note_inner,
             note_inner
         );
+        assert_eq!(store.get_note(&loc).unwrap().note_inner, note_inner);
     }
 
     #[test]
     fn backup() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let (id1, _) = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        let (id2, _) = store.new_note(PlainNote::new("Bar".into())).unwrap();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
 
         store.backup(env::temp_dir()).unwrap();
         let store_restore: InMemoryStore<PlainNote> =
             InMemoryStore::restore(env::temp_dir()).unwrap();
-        for id in vec![id1, id2].iter() {
-            let note = store.get_note(&id, None).unwrap();
-            let note_restore = store_restore.get_note(&id, None).unwrap();
+        for loc in vec![loc1, loc2].iter() {
+            let note = store.get_note(loc).unwrap();
+            let note_restore = store_restore.get_note(loc).unwrap();
             assert_eq!(note, note_restore);
         }
     }
@@ -233,28 +244,30 @@ mod tests {
     #[test]
     fn update_note() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let (id1, rev1) = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        let created1 = store.get_note(&id1, None).unwrap().created_at;
-        let modified1 = store.get_note(&id1, None).unwrap().modified_at;
-        let rev2 = store
-            .update_note(&id1, &rev1, PlainNote::new("Foo1".into()))
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let rev1 = loc1.get_revision().unwrap();
+        let created1 = store.get_note(&loc1.current()).unwrap().created_at;
+        let modified1 = store.get_note(&loc1.current()).unwrap().modified_at;
+        let loc2 = store
+            .update_note(&loc1, PlainNote::new("Foo1".into()))
             .unwrap();
-        assert_ne!(store.get_current_revision(&id1).unwrap(), rev1);
-        assert_eq!(store.get_current_revision(&id1).unwrap(), rev2);
+        let rev2 = loc2.get_revision().unwrap();
+        assert_ne!(rev1, rev2);
+        assert_eq!(store.get_current_revision(&loc1).unwrap(), rev2);
         assert_eq!(
-            store.get_note(&id1, None).unwrap().note_inner,
+            store.get_note(&loc1.current()).unwrap().note_inner,
             PlainNote::new("Foo1".into())
         );
         assert_eq!(
-            store.get_note(&id1, Some(&rev2)).unwrap().note_inner,
+            store.get_note(&loc1.at_revision(rev2)).unwrap().note_inner,
             PlainNote::new("Foo1".into())
         );
         assert_ne!(
-            store.get_note(&id1, Some(&rev2)).unwrap().modified_at,
+            store.get_note(&loc1.at_revision(rev2)).unwrap().modified_at,
             modified1
         );
         assert_eq!(
-            store.get_note(&id1, Some(&rev2)).unwrap().created_at,
+            store.get_note(&loc1.at_revision(rev2)).unwrap().created_at,
             created1
         );
     }
