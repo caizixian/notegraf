@@ -1,5 +1,5 @@
 //! Storage backends of notes.
-use crate::note::{Note, NoteLocator, Revision};
+use crate::note::*;
 use crate::notetype::NoteType;
 use std::path::Path;
 

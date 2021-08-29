@@ -1,4 +1,4 @@
-//! `Notegraf`: a graph-oriented notebook.
+//! Notegraf: a graph-oriented notebook.
 pub mod note;
 pub mod notestore;
 pub mod notetype;
