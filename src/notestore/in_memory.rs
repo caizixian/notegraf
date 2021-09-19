@@ -15,6 +15,8 @@ use uuid::Uuid;
 pub enum InMemoryStoreError {
     #[error("note `{0}` doesn't exist")]
     NoteNotExist(NoteID),
+    #[error("note `{0}` is deleted, revision needed if resurrecting a deleted note")]
+    NoteDeleted(NoteID),
     #[error("note `{0}` already exists")]
     NoteIDConflict(NoteID),
     #[error("revision`{1}` of note `{0}` doesn't exist")]
@@ -25,6 +27,8 @@ pub enum InMemoryStoreError {
     SerdeError(#[from] serde_json::Error),
     #[error("attempt to update non-current revision `{1}` of note `{0}`")]
     UpdateOldRevision(NoteID, Revision),
+    #[error("attempt to delete non-current revision `{1}` of note `{0}`")]
+    DeleteOldRevision(NoteID, Revision),
 }
 
 /// In-memory storage.
@@ -59,6 +63,69 @@ where
     /// We use the UUID V4 scheme.
     fn get_new_revision(&self) -> Revision {
         Revision::new(Uuid::new_v4().to_hyphenated().to_string())
+    }
+
+    /// Does the locator points to a current revision
+    fn is_current(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
+        if let Some(r) = loc.get_revision() {
+            // If the argument is a specific revision, then compare it with the current revision
+            let current_rev = self.get_current_revision(loc)?;
+            Ok(current_rev == r)
+        } else {
+            // Otherwise, it's current as long as the note is not deleted
+            Ok(!self.is_deleted(loc)?)
+        }
+    }
+
+    /// Does the locator points to a revision of deleted note
+    fn is_deleted(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
+        // A note is deleted if it has revisions but not a current revision
+        let id = loc.get_id();
+        if self.notes.contains_key(id) {
+            if self.current_revision.contains_key(id) {
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        } else {
+            Err(InMemoryStoreError::NoteNotExist(id.clone()))
+        }
+    }
+
+    /// Update a note, whose content is possibly updated in the process
+    ///
+    /// Might resurrect a deleted note, as long as the locator points to a valid revision
+    ///
+    /// The set of children doesn't need to be explicitly changed.
+    /// Instead, this set will be maintained to be consistent when the parent is changed.
+    fn update_note<F>(
+        &mut self,
+        loc: &NoteLocator,
+        op: F
+    ) -> Result<NoteLocator, InMemoryStoreError>
+    where F: FnOnce(&Note<T>) -> Note<T>
+    {
+        let (id, rev) = loc.unpack();
+        let old_note = if self.is_deleted(loc)? || self.is_current(loc)? {
+            self.get_note(loc)?
+        } else {
+            return Err(InMemoryStoreError::UpdateOldRevision(id.clone(), rev.unwrap().clone()));
+        };
+        // get new revision number
+        let new_revision = self.get_new_revision();
+        let note_revisions = self.notes.get_mut(id).ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?;
+        assert!(!note_revisions.contains_key(&new_revision)); // sanity check
+        // update note
+        let mut updated_note = op(&old_note);
+        updated_note.revision = new_revision.clone();
+        updated_note.modified_at = SystemTime::now();
+        updated_note.created_at = old_note.created_at;
+        if updated_note.parent != old_note.parent {
+            // FIXME do something
+        }
+        note_revisions.insert(new_revision.clone(), updated_note);
+        self.current_revision.insert(id.clone(), new_revision.clone());
+        Ok(NoteLocator::Specific(id.clone(), new_revision))
     }
 }
 
@@ -103,11 +170,12 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .clone())
     }
 
-    fn update_note(
+    fn update_note_content(
         &mut self,
         loc: &NoteLocator,
         note_inner: T,
     ) -> Result<NoteLocator, Self::Error> {
+        // FIXME use update_note
         let (id, rev) = loc.unpack();
         let current_note = self.get_note(&loc.current())?;
         if let Some(r) = rev {
@@ -134,15 +202,31 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Ok(NoteLocator::Specific(id.clone(), new_revision))
     }
 
-    fn delete_note(&mut self, _loc: &NoteLocator) -> Result<(), Self::Error> {
-        todo!()
+    fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), Self::Error> {
+        let (id, rev) = loc.unpack();
+        if self.is_current(loc)? {
+            // FIXME handle change the chidlren set of the parent note
+            self.current_revision.remove(id).unwrap();
+            Ok(())
+        } else {
+            Err(InMemoryStoreError::DeleteOldRevision(
+                id.clone(),
+                rev.unwrap().clone(),
+            ))
+        }
     }
 
     fn get_current_revision(&self, loc: &NoteLocator) -> Result<&Revision, Self::Error> {
         let id = loc.get_id();
-        self.current_revision
-            .get(id)
-            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
+        if let Some(r) = self.current_revision.get(id) {
+            Ok(r)
+        } else {
+            if self.notes.contains_key(id) {
+                Err(InMemoryStoreError::NoteDeleted(id.clone()))
+            } else {
+                Err(InMemoryStoreError::NoteNotExist(id.clone()))
+            }
+        }
     }
 
     fn get_revisions(&self, loc: &NoteLocator) -> Result<Vec<Revision>, Self::Error> {
@@ -249,7 +333,7 @@ mod tests {
         let created1 = store.get_note(&loc1.current()).unwrap().created_at;
         let modified1 = store.get_note(&loc1.current()).unwrap().modified_at;
         let loc2 = store
-            .update_note(&loc1, PlainNote::new("Foo1".into()))
+            .update_note_content(&loc1, PlainNote::new("Foo1".into()))
             .unwrap();
         let rev2 = loc2.get_revision().unwrap();
         assert_ne!(rev1, rev2);

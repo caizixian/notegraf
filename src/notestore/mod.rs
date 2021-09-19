@@ -22,7 +22,7 @@ pub trait NoteStore<T: NoteType> {
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or
     /// the current revision.
     fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, Self::Error>;
-    /// Update a note.
+    /// Update the content of a note.
     ///
     /// The new content will set to be the current revision.
     ///
@@ -37,8 +37,11 @@ pub trait NoteStore<T: NoteType> {
     /// If a [`NoteStore`] caches the parent-children or reference relationships,
     /// it should check the whether any of the relevant fields of note_inner is changed,
     /// and update the the cache accordingly.
-    fn update_note(&mut self, loc: &NoteLocator, note_inner: T)
-        -> Result<NoteLocator, Self::Error>;
+    fn update_note_content(
+        &mut self,
+        loc: &NoteLocator,
+        note_inner: T,
+    ) -> Result<NoteLocator, Self::Error>;
     /// Delete a note.
     ///
     /// If a revision is specified, that revision should be the current revision.
