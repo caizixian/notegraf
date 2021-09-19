@@ -29,6 +29,8 @@ pub enum InMemoryStoreError {
     UpdateOldRevision(NoteID, Revision),
     #[error("attempt to delete non-current revision `{1}` of note `{0}`")]
     DeleteOldRevision(NoteID, Revision),
+    #[error("inconsistency detected: note `{1}` is not a child of note `{0}`")]
+    NotAChild(NoteID, NoteID),
 }
 
 /// In-memory storage.
@@ -101,31 +103,82 @@ where
     fn update_note<F>(
         &mut self,
         loc: &NoteLocator,
-        op: F
+        op: F,
     ) -> Result<NoteLocator, InMemoryStoreError>
-    where F: FnOnce(&Note<T>) -> Note<T>
+    where
+        F: FnOnce(&Note<T>) -> Result<Note<T>, InMemoryStoreError>,
     {
         let (id, rev) = loc.unpack();
         let old_note = if self.is_deleted(loc)? || self.is_current(loc)? {
             self.get_note(loc)?
         } else {
-            return Err(InMemoryStoreError::UpdateOldRevision(id.clone(), rev.unwrap().clone()));
+            return Err(InMemoryStoreError::UpdateOldRevision(
+                id.clone(),
+                rev.unwrap().clone(),
+            ));
         };
         // get new revision number
         let new_revision = self.get_new_revision();
-        let note_revisions = self.notes.get_mut(id).ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?;
+        let note_revisions = self
+            .notes
+            .get_mut(id)
+            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))?;
         assert!(!note_revisions.contains_key(&new_revision)); // sanity check
-        // update note
-        let mut updated_note = op(&old_note);
+                                                              // update note
+        let mut updated_note = op(&old_note)?;
         updated_note.revision = new_revision.clone();
         updated_note.modified_at = SystemTime::now();
         updated_note.created_at = old_note.created_at;
-        if updated_note.parent != old_note.parent {
-            // FIXME do something
-        }
+        // don't need to borrow updated_note for the below change
+        let new_parent = updated_note.parent.clone();
         note_revisions.insert(new_revision.clone(), updated_note);
-        self.current_revision.insert(id.clone(), new_revision.clone());
+        self.current_revision
+            .insert(id.clone(), new_revision.clone());
+        // propagate changes in parent-children relationships
+        if new_parent != old_note.parent {
+            if let Some(ref p) = old_note.parent {
+                self.remove_children(&NoteLocator::Current(p.clone()), id)
+                    .unwrap();
+            }
+            if let Some(ref p) = new_parent {
+                self.add_children(&NoteLocator::Current(p.clone()), id)
+                    .unwrap();
+            }
+        }
         Ok(NoteLocator::Specific(id.clone(), new_revision))
+    }
+
+    /// Add a child from a note
+    fn add_children(
+        &mut self,
+        loc: &NoteLocator,
+        child: &NoteID,
+    ) -> Result<NoteLocator, InMemoryStoreError> {
+        self.update_note(loc, |old_note| {
+            let mut note = old_note.clone();
+            note.children.insert(child.clone());
+            Ok(note)
+        })
+    }
+
+    /// Remove a child from a note
+    fn remove_children(
+        &mut self,
+        loc: &NoteLocator,
+        child: &NoteID,
+    ) -> Result<NoteLocator, InMemoryStoreError> {
+        self.update_note(loc, |old_note| {
+            let mut note = old_note.clone();
+            let success = note.children.remove(child);
+            if success {
+                Ok(note)
+            } else {
+                Err(InMemoryStoreError::NotAChild(
+                    loc.get_id().clone(),
+                    child.clone(),
+                ))
+            }
+        })
     }
 }
 
@@ -175,38 +228,21 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         loc: &NoteLocator,
         note_inner: T,
     ) -> Result<NoteLocator, Self::Error> {
-        // FIXME use update_note
-        let (id, rev) = loc.unpack();
-        let current_note = self.get_note(&loc.current())?;
-        if let Some(r) = rev {
-            if r != &current_note.revision {
-                return Err(InMemoryStoreError::UpdateOldRevision(id.clone(), r.clone()));
-            }
-        }
-        // get new revision number
-        let new_revision = self.get_new_revision();
-        let note_revisions = self.notes.get_mut(id).unwrap();
-        // sanity check
-        assert!(!note_revisions.contains_key(&new_revision));
-        // update note
-        let updated_note = Note {
-            note_inner,
-            revision: new_revision.clone(),
-            modified_at: SystemTime::now(),
-            ..current_note
-        };
-        note_revisions.insert(new_revision.clone(), updated_note);
-        // update current revision number
-        // FIXME support resurrecting deleted notes
-        *self.current_revision.get_mut(id).unwrap() = new_revision.clone();
-        Ok(NoteLocator::Specific(id.clone(), new_revision))
+        self.update_note(loc, |old_note| {
+            let mut note = old_note.clone();
+            note.note_inner = note_inner;
+            Ok(note)
+        })
     }
 
     fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), Self::Error> {
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
-            // FIXME handle change the chidlren set of the parent note
+            let parent = self.get_note(loc).unwrap().parent;
             self.current_revision.remove(id).unwrap();
+            if let Some(p) = parent {
+                self.remove_children(&NoteLocator::Current(p), id).unwrap();
+            }
             Ok(())
         } else {
             Err(InMemoryStoreError::DeleteOldRevision(
@@ -220,12 +256,10 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         let id = loc.get_id();
         if let Some(r) = self.current_revision.get(id) {
             Ok(r)
+        } else if self.notes.contains_key(id) {
+            Err(InMemoryStoreError::NoteDeleted(id.clone()))
         } else {
-            if self.notes.contains_key(id) {
-                Err(InMemoryStoreError::NoteDeleted(id.clone()))
-            } else {
-                Err(InMemoryStoreError::NoteNotExist(id.clone()))
-            }
+            Err(InMemoryStoreError::NoteNotExist(id.clone()))
         }
     }
 
