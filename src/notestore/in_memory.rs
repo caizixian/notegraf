@@ -561,10 +561,7 @@ mod tests {
             loc2.get_id()
         );
         store.delete_note(&loc2.current()).unwrap();
-        assert_eq!(
-            store.get_note(&loc1.current()).unwrap().parent,
-            None
-        );
+        assert_eq!(store.get_note(&loc1.current()).unwrap().parent, None);
     }
 
     #[test]
