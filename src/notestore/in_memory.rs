@@ -273,12 +273,17 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
             let note = self.get_note(loc).unwrap();
-            if let Some(p) = note.parent {
-                self.remove_child(&NoteLocator::Current(p), id).unwrap();
+            if let Some(p) = &note.parent {
+                self.remove_child(&NoteLocator::Current(p.clone()), id).unwrap();
+                for c in &note.children {
+                    self.set_parent(&NoteLocator::Current(c.clone()), note.parent.clone())?;
+                }
+            } else {
+                for c in &note.children {
+                    self.set_parent(&NoteLocator::Current(c.clone()), None)?;
+                }
             }
-            for c in &note.children {
-                self.set_parent(&NoteLocator::Current(c.clone()), None)?;
-            }
+
             // Mark the note as delete at last to avoid the previous steps from referring to
             // a delete note
             self.current_revision.remove(id).unwrap();
@@ -623,5 +628,22 @@ mod tests {
             .unwrap()
             .children
             .contains(loc1.get_id()));
+    }
+
+    #[test]
+    fn inherit_grand_child() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
+        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+        let loc3 = store.new_note(PlainNote::new("Grandparent".into())).unwrap();
+        store
+            .set_parent(&loc1, Some(loc2.get_id().clone()))
+            .unwrap();
+        store
+            .set_parent(&loc2.current(), Some(loc3.get_id().clone()))
+            .unwrap();
+        store.delete_note(&loc2.current()).unwrap();
+        assert_eq!(&store.get_note(&loc1.current()).unwrap().parent.unwrap(), loc3.get_id());
+        assert!(&store.get_note(&loc3.current()).unwrap().children.contains(loc1.get_id()));
     }
 }
