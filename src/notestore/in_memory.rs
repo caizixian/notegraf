@@ -56,19 +56,19 @@ where
     /// Generate a new [`NoteID`].
     ///
     /// We use the UUID V4 scheme.
-    pub(super) fn get_new_noteid(&self) -> NoteID {
+    fn get_new_noteid(&self) -> NoteID {
         NoteID::new(Uuid::new_v4().to_hyphenated().to_string())
     }
 
     /// Generate a new [`Revision`].
     ///
     /// We use the UUID V4 scheme.
-    pub(super) fn get_new_revision(&self) -> Revision {
+    fn get_new_revision(&self) -> Revision {
         Revision::new(Uuid::new_v4().to_hyphenated().to_string())
     }
 
     /// Does the locator points to a current revision
-    pub(super) fn is_current(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
+    fn is_current(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
         if let Some(r) = loc.get_revision() {
             // If the argument is a specific revision, then compare it with the current revision
             let current_rev = self.get_current_revision(loc)?;
@@ -80,7 +80,7 @@ where
     }
 
     /// Does the locator points to a revision of deleted note
-    pub(super) fn is_deleted(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
+    fn is_deleted(&self, loc: &NoteLocator) -> Result<bool, InMemoryStoreError> {
         // A note is deleted if it has revisions but not a current revision
         let id = loc.get_id();
         if self.notes.contains_key(id) {
@@ -100,7 +100,7 @@ where
     ///
     /// The set of children doesn't need to be explicitly changed.
     /// Instead, this set will be maintained to be consistent when the parent is changed.
-    pub(super) fn update_note<F>(
+    fn update_note<F>(
         &mut self,
         loc: &NoteLocator,
         op: F,
@@ -149,7 +149,7 @@ where
     }
 
     /// Add a child from a note
-    pub(super) fn add_child(
+    fn add_child(
         &mut self,
         loc: &NoteLocator,
         child: &NoteID,
@@ -162,7 +162,7 @@ where
     }
 
     /// Remove a child from a note
-    pub(super) fn remove_child(
+    fn remove_child(
         &mut self,
         loc: &NoteLocator,
         child: &NoteID,
@@ -179,6 +179,23 @@ where
                 ))
             }
         })
+    }
+
+    /// Get all revisions of a note with actual notes
+    pub fn get_revisions_with_note(
+        &self,
+        loc: &NoteLocator,
+    ) -> Result<Vec<(Revision, Note<T>)>, InMemoryStoreError> {
+        let id = loc.get_id();
+        self.notes
+            .get(id)
+            .ok_or_else(|| InMemoryStoreError::NoteNotExist(id.clone()))
+            .map(|rs| {
+                let mut v: Vec<(Revision, Note<T>)> =
+                    rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
+                v.sort_by_key(|(_, n)| n.modified_at);
+                v
+            })
     }
 }
 
@@ -315,6 +332,21 @@ mod tests {
     use crate::notetype::PlainNote;
     use std::env;
 
+    fn set_parent<T>(
+        store: &mut InMemoryStore<T>,
+        loc: &NoteLocator,
+        parent: Option<NoteID>,
+    ) -> Result<NoteLocator, InMemoryStoreError>
+    where
+        T: NoteType,
+    {
+        store.update_note(loc, |old_note| {
+            let mut note = old_note.clone();
+            note.parent = parent;
+            Ok(note)
+        })
+    }
+
     #[test]
     fn unique_id() {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
@@ -413,7 +445,10 @@ mod tests {
         let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
-        assert!(store.remove_child(&loc2, loc1.get_id()).is_err());
+        assert!(matches!(
+            store.remove_child(&loc2, loc1.get_id()).err().unwrap(),
+            InMemoryStoreError::NotAChild(_, _)
+        ));
     }
 
     #[test]
@@ -423,7 +458,10 @@ mod tests {
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         let loc3 = store.add_child(&loc2, loc1.get_id()).unwrap();
         // This points to an old revision
-        assert!(store.remove_child(&loc2, loc1.get_id()).is_err());
+        assert!(matches!(
+            store.remove_child(&loc2, loc1.get_id()).err().unwrap(),
+            InMemoryStoreError::UpdateOldRevision(_, _)
+        ));
         let loc4 = store.remove_child(&loc2.current(), loc1.get_id()).unwrap();
         assert!(!store
             .get_note(&loc2)
@@ -445,5 +483,81 @@ mod tests {
             .unwrap()
             .children
             .contains(loc1.get_id()));
+    }
+
+    #[test]
+    fn delete_note_specific() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+        store.delete_note(&loc1).unwrap();
+        assert!(store.is_deleted(&loc1).unwrap());
+    }
+
+    #[test]
+    fn delete_note_current() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+        store.delete_note(&loc1.current()).unwrap();
+        assert!(store.is_deleted(&loc1).unwrap());
+        assert!(matches!(
+            store.is_current(&loc1).err().unwrap(),
+            InMemoryStoreError::NoteDeleted(_)
+        ));
+    }
+
+    #[test]
+    fn test_set_parent() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
+        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+        set_parent(&mut store, &loc1, Some(loc2.get_id().clone())).unwrap();
+        assert!(store
+            .get_note(&loc2.current())
+            .unwrap()
+            .children
+            .contains(loc1.get_id()));
+    }
+
+    #[test]
+    fn delete_note_parent() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
+        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+        set_parent(&mut store, &loc1, Some(loc2.get_id().clone())).unwrap();
+        assert!(store
+            .get_note(&loc2.current())
+            .unwrap()
+            .children
+            .contains(loc1.get_id()));
+        store.delete_note(&loc1.current()).unwrap();
+        assert!(!store
+            .get_note(&loc2.current())
+            .unwrap()
+            .children
+            .contains(loc1.get_id()));
+    }
+
+    #[test]
+    fn resurrect_deleted_note() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+        let loc2 = store
+            .update_note_content(&loc1, PlainNote::new("Foo1".into()))
+            .unwrap();
+        store.delete_note(&loc1.current()).unwrap();
+        let revisions = store.get_revisions_with_note(&loc1).unwrap();
+        let (last_revision, last_note) = revisions.last().unwrap();
+        assert_eq!(last_note.note_inner, PlainNote::new("Foo1".into()));
+        assert_eq!(last_revision, loc2.get_revision().unwrap());
+        store
+            .update_note_content(
+                &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
+                last_note.note_inner.clone(),
+            )
+            .unwrap();
+        assert_eq!(
+            store.get_note(&loc1.current()).unwrap().note_inner,
+            PlainNote::new("Foo1".into())
+        );
     }
 }
