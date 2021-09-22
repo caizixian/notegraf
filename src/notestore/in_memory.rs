@@ -145,6 +145,8 @@ where
                 }
             }
             if let Some(ref p) = new_parent {
+                // TODO check whether p is a descendant of id
+                // That is, id transitively reachable by traversing through .parent from p
                 self.add_child(&NoteLocator::Current(p.clone()), id)
                     .unwrap();
             }
@@ -316,23 +318,55 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             .map(|rs| rs.keys().cloned().collect())
     }
 
-    fn split_note<F>(&mut self, _note: &NoteLocator, _op: F) -> Result<NoteLocator, Self::Error>
+    fn split_note<F>(
+        &mut self,
+        loc: &NoteLocator,
+        op: F,
+    ) -> Result<(NoteLocator, NoteLocator), Self::Error>
     where
         F: FnOnce(T) -> (T, T),
     {
-        todo!()
+        let note = self.get_note(loc)?;
+        let (inner_parent, inner_child) = op(note.note_inner);
+        // if loc is not current, the update here will fail, so no need to check
+        self.update_note_content(loc, inner_parent)?;
+        let loc_child = self.new_note(inner_child)?;
+        let loc_child_new = self.set_parent(&loc_child, Some(loc.get_id().clone()))?;
+        Ok((loc.current(), loc_child_new))
     }
 
     fn merge_note<F>(
         &mut self,
-        _note1: &NoteLocator,
-        _note2: &NoteLocator,
-        _op: F,
+        loc1: &NoteLocator,
+        loc2: &NoteLocator,
+        op: F,
     ) -> Result<NoteLocator, Self::Error>
     where
         F: FnOnce(T, T) -> T,
     {
-        todo!()
+        // Need to check whether both are current for atomicity
+        // Otherwise one note might be updated while the other might not
+        for loc in &[loc1, loc2] {
+            if !self.is_current(loc)? {
+                return Err(InMemoryStoreError::UpdateOldRevision(
+                    loc.get_id().clone(),
+                    loc.get_revision().unwrap().clone(),
+                ));
+            }
+        }
+
+        let note1 = self.get_note(loc1)?;
+        let note2 = self.get_note(loc2)?;
+        if note2.parent != Some(note1.id) {
+            return Err(InMemoryStoreError::NotAChild(
+                loc1.get_id().clone(),
+                loc2.get_id().clone(),
+            ));
+        }
+        let new_inner = op(note1.note_inner, note2.note_inner);
+        self.update_note_content(loc1, new_inner)?;
+        self.delete_note(loc2)?;
+        Ok(loc1.current())
     }
 
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), Self::Error> {

@@ -72,7 +72,11 @@ pub trait NoteStore<T: NoteType> {
     ///
     /// Note that this function can also be used to create a child note without modifying the
     /// parent.
-    fn split_note<F>(&mut self, note: &NoteLocator, op: F) -> Result<NoteLocator, Self::Error>
+    fn split_note<F>(
+        &mut self,
+        note: &NoteLocator,
+        op: F,
+    ) -> Result<(NoteLocator, NoteLocator), Self::Error>
     where
         F: FnOnce(T) -> (T, T);
     /// Merge two notes.
