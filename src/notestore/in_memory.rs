@@ -690,4 +690,80 @@ mod tests {
             .children
             .contains(loc1.get_id()));
     }
+
+    #[test]
+    fn split_note_empty_child() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+        let (loc1_new, loc2) = store
+            .split_note(&loc1, |x| (x, PlainNote::new("".into())))
+            .unwrap();
+        assert_eq!(
+            store.get_note(&loc1_new).unwrap().note_inner,
+            PlainNote::new("Note".into())
+        );
+        assert_eq!(
+            store.get_note(&loc2).unwrap().note_inner,
+            PlainNote::new("".into())
+        );
+        assert_eq!(
+            &store.get_note(&loc2).unwrap().parent.unwrap(),
+            loc1.get_id()
+        );
+    }
+
+    #[test]
+    fn split_note() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
+        assert_eq!(
+            store.get_note(&loc1_new).unwrap().note_inner,
+            PlainNote::new("No".into())
+        );
+        assert_eq!(
+            store.get_note(&loc2).unwrap().note_inner,
+            PlainNote::new("te".into())
+        );
+        assert_eq!(
+            &store.get_note(&loc2).unwrap().parent.unwrap(),
+            loc1.get_id()
+        );
+        assert!(&store
+            .get_note(&loc1_new)
+            .unwrap()
+            .children
+            .contains(loc2.get_id()));
+    }
+
+    #[test]
+    fn merge_note() {
+        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
+        assert_eq!(
+            store.get_note(&loc1_new).unwrap().note_inner,
+            PlainNote::new("No".into())
+        );
+        assert_eq!(
+            store.get_note(&loc2).unwrap().note_inner,
+            PlainNote::new("te".into())
+        );
+        let (loc2_new, loc3) = store.split_note(&loc2, |x| x.split_off(1)).unwrap();
+        assert_eq!(
+            store.get_note(&loc2_new).unwrap().note_inner,
+            PlainNote::new("t".into())
+        );
+        assert_eq!(
+            store.get_note(&loc3).unwrap().note_inner,
+            PlainNote::new("e".into())
+        );
+        let loc_merge = store
+            .merge_note(&loc1_new, &loc2_new, |x, y| x.merge(y))
+            .unwrap();
+        assert_eq!(
+            store.get_note(&loc_merge).unwrap().note_inner,
+            PlainNote::new("Not".into())
+        );
+    }
 }

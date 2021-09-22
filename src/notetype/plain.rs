@@ -31,6 +31,18 @@ impl PlainNote {
     pub fn add_tag(&mut self, tag: Tag) {
         self.tags.insert(tag);
     }
+
+    pub fn split_off(mut self, at: usize) -> (Self, Self) {
+        let new_body = self.body.split_off(at);
+        (self, PlainNote::new(new_body))
+    }
+
+    pub fn merge(mut self, other: Self) -> Self {
+        self.body.push_str(&other.body);
+        self.tags.extend(other.tags);
+        self.references.extend(other.references);
+        self
+    }
 }
 
 impl NoteType for PlainNote {
