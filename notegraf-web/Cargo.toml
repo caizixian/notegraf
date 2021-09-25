@@ -1,0 +1,8 @@
+[package]
+name = "notegraf-web"
+version = "0.0.1"
+authors = ["Zixian Cai"]
+edition = "2018"
+
+[dependencies]
+actix-web = "4.0.0-beta.9"
