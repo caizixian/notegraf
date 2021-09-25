@@ -1,6 +1,9 @@
 on: [push, pull_request]
 
-name: Continuous integration
+name: Continuous Integration
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   check:
@@ -41,7 +44,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: rustup component add rustfmt
+          components: rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -57,8 +60,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
+          components: clippy
+      - uses: actions-rs/clippy-check@v1
         with:
-          command: clippy
+          token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -D warnings
