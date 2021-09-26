@@ -1,5 +1,5 @@
 use actix_web::*;
-use notegraf::{InMemoryStore, NoteLocator, PlainNote, Note};
+use notegraf::{InMemoryStore, Note, NoteLocator, PlainNote};
 
 type NoteType = PlainNote;
 type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
