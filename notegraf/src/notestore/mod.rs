@@ -1,4 +1,5 @@
 //! Storage backends of notes.
+use crate::errors::NoteStoreError;
 use crate::note::*;
 use crate::notetype::NoteType;
 use futures::future::BoxFuture;
@@ -9,20 +10,21 @@ pub use in_memory::InMemoryStore;
 
 /// An abstraction for storage backends.
 pub trait NoteStore<T: NoteType> {
-    type Error: Sized;
-
     /// Create a new note.
     ///
     /// The storage backend assigns a [`NoteID`] and [`Revision`]
     ///
     /// A [`NoteStore`] can cache the parent-children or reference relationships for performance
     /// reasons, e.g., in the form of a SQL table or in a graph database.
-    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, Self::Error>>;
+    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>>;
     /// Get a note.
     ///
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or
     /// the current revision.
-    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Note<T>, Self::Error>>;
+    fn get_note<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Note<T>, NoteStoreError>>;
     /// Update the content of a note.
     ///
     /// The new content will set to be the current revision.
@@ -42,7 +44,7 @@ pub trait NoteStore<T: NoteType> {
         &'a self,
         loc: &'a NoteLocator,
         note_inner: T,
-    ) -> BoxFuture<'a, Result<NoteLocator, Self::Error>>;
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Delete a note.
     ///
     /// If a revision is specified, that revision should be the current revision.
@@ -52,21 +54,22 @@ pub trait NoteStore<T: NoteType> {
     /// It is not truly deleted. You can still fetch the note if you know the revision.
     /// Note that the parent-child relationship between notes is revisioned.
     /// Therefore, we need to update the parent note of the deleted note.
-    fn delete_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<(), Self::Error>>;
+    fn delete_note<'a>(&'a self, loc: &'a NoteLocator)
+        -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Get the current revision of a note.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
     fn get_current_revision<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Revision, Self::Error>>;
+    ) -> BoxFuture<'a, Result<Revision, NoteStoreError>>;
     /// Get all revisions of a note.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>>;
+    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>>;
     /// Split a note into two parts.
     ///
     /// The second part becomes the children of the first part.
@@ -79,13 +82,11 @@ pub trait NoteStore<T: NoteType> {
     ///
     /// Note that this function can also be used to create a child note without modifying the
     /// parent.
-    fn split_note<'a, F>(
+    fn split_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-        op: F,
-    ) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), Self::Error>>
-    where
-        F: FnOnce(T) -> (T, T) + Send + 'a;
+        op: Box<dyn FnOnce(T) -> (T, T) + Send>,
+    ) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), NoteStoreError>>;
     /// Merge two notes.
     ///
     /// The second note must the a child of the first note.
@@ -98,21 +99,19 @@ pub trait NoteStore<T: NoteType> {
     ///
     /// If a revision is specified, that revision should be the current revision.
     /// This can be used to prevent racy updates to the same note.
-    fn merge_note<'a, F>(
+    fn merge_note<'a>(
         &'a self,
         loc1: &'a NoteLocator,
         loc2: &'a NoteLocator,
-        op: F,
-    ) -> BoxFuture<'a, Result<NoteLocator, Self::Error>>
-    where
-        F: FnOnce(T, T) -> T + Send + 'a;
+        op: Box<dyn FnOnce(T, T) -> T + Send>,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.
-    fn backup<'a, P: AsRef<Path> + Send + 'a>(
+    fn backup<'a>(
         &'a self,
-        path: P,
-    ) -> BoxFuture<'a, Result<(), Self::Error>>;
+        path: Box<dyn AsRef<Path> + Send>,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, NoteStoreError>
     where
         Self: Sized;
 }

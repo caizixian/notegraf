@@ -1,15 +1,15 @@
 use actix_web::web::Data;
 use actix_web::{web, App, HttpRequest, HttpServer, Responder};
-use notegraf::{InMemoryStore, NoteLocator, NoteStore, PlainNote};
+use notegraf::{InMemoryStore, NoteLocator, PlainNote};
 
-type NT = PlainNote;
-type NS = InMemoryStore<NT>;
+type NoteType = PlainNote;
+type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
 
 async fn index() -> impl Responder {
     "Notegraf".to_owned()
 }
 
-async fn new_note(ns: web::Data<NS>) -> impl Responder {
+async fn new_note(ns: web::Data<NoteStore>) -> impl Responder {
     let loc = ns
         .as_ref()
         .new_note(PlainNote::new("Hello world".into()))
@@ -18,7 +18,7 @@ async fn new_note(ns: web::Data<NS>) -> impl Responder {
     format!("{:?}", loc)
 }
 
-async fn get_note(req: HttpRequest, ns: web::Data<NS>) -> impl Responder {
+async fn get_note(req: HttpRequest, ns: web::Data<NoteStore>) -> impl Responder {
     let note_id = req.match_info().get("note_id").unwrap();
     let loc = if let Some(revision) = req.match_info().get("revision") {
         NoteLocator::Specific(note_id.into(), revision.into())
@@ -31,7 +31,7 @@ async fn get_note(req: HttpRequest, ns: web::Data<NS>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let ns: Data<NS> = web::Data::new(NS::new());
+    let ns: Data<NoteStore> = web::Data::new(Box::new(InMemoryStore::new()));
     HttpServer::new(move || {
         App::new()
             .app_data(ns.clone())
