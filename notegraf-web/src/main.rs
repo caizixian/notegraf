@@ -1,6 +1,6 @@
-use actix_web::{web, App, HttpRequest, HttpServer, Responder};
-use notegraf::{InMemoryStore, PlainNote, NoteStore, NoteLocator};
 use actix_web::web::Data;
+use actix_web::{web, App, HttpRequest, HttpServer, Responder};
+use notegraf::{InMemoryStore, NoteLocator, NoteStore, PlainNote};
 
 type NT = PlainNote;
 type NS = InMemoryStore<NT>;

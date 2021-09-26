@@ -1,8 +1,8 @@
 //! Storage backends of notes.
 use crate::note::*;
 use crate::notetype::NoteType;
-use std::path::Path;
 use futures::future::BoxFuture;
+use std::path::Path;
 
 mod in_memory;
 pub use in_memory::InMemoryStore;
@@ -56,11 +56,17 @@ pub trait NoteStore<T: NoteType> {
     /// Get the current revision of a note.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_current_revision<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Revision, Self::Error>>;
+    fn get_current_revision<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Revision, Self::Error>>;
     /// Get all revisions of a note.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_revisions<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>>;
+    fn get_revisions<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>>;
     /// Split a note into two parts.
     ///
     /// The second part becomes the children of the first part.
@@ -101,7 +107,12 @@ pub trait NoteStore<T: NoteType> {
     where
         F: FnOnce(T, T) -> T + Send + 'a;
     /// Backup the storage to a folder on some filesystem.
-    fn backup<'a, P: AsRef<Path> + Send + 'a>(&'a self, path: P) -> BoxFuture<'a, Result<(), Self::Error>>;
+    fn backup<'a, P: AsRef<Path> + Send + 'a>(
+        &'a self,
+        path: P,
+    ) -> BoxFuture<'a, Result<(), Self::Error>>;
     /// Restore the storage from a folder on some filesystem.
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error> where Self: Sized;
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
 }
