@@ -1,6 +1,6 @@
 //! In-memory storage of notes
 use crate::note::NoteLocator;
-use crate::{Note, NoteID, NoteStore, NoteType, Revision};
+use crate::{Note, NoteID, NoteType, Revision};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -37,17 +37,20 @@ pub enum InMemoryStoreError {
 ///
 /// This is mostly designed for development use, because there is no persistence layer.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct InMemoryStore<T> {
+pub struct InMemoryStoreInner<T> {
     notes: HashMap<NoteID, HashMap<Revision, Note<T>>>,
     current_revision: HashMap<NoteID, Revision>,
 }
 
-impl<T> InMemoryStore<T>
-where
-    T: NoteType,
-{
+impl<T: NoteType> Default for InMemoryStoreInner<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: NoteType> InMemoryStoreInner<T> {
     pub fn new() -> Self {
-        InMemoryStore {
+        InMemoryStoreInner {
             notes: Default::default(),
             current_revision: Default::default(),
         }
@@ -216,18 +219,8 @@ where
                 v
             })
     }
-}
 
-impl<T: NoteType> Default for InMemoryStore<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
-    type Error = InMemoryStoreError;
-
-    fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, Self::Error> {
+    fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, InMemoryStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision();
         let note = Note::new(note_inner, id.clone(), revision.clone(), None);
@@ -243,7 +236,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, Self::Error> {
+    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, InMemoryStoreError> {
         let (id, rev) = loc.unpack();
         let rev = if let Some(r) = rev {
             r
@@ -263,7 +256,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         &mut self,
         loc: &NoteLocator,
         note_inner: T,
-    ) -> Result<NoteLocator, Self::Error> {
+    ) -> Result<NoteLocator, InMemoryStoreError> {
         self.update_note(loc, |old_note| {
             let mut note = old_note.clone();
             note.note_inner = note_inner;
@@ -271,7 +264,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), Self::Error> {
+    fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), InMemoryStoreError> {
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
             let note = self.get_note(loc).unwrap();
@@ -299,7 +292,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         }
     }
 
-    fn get_current_revision(&self, loc: &NoteLocator) -> Result<&Revision, Self::Error> {
+    fn get_current_revision(&self, loc: &NoteLocator) -> Result<&Revision, InMemoryStoreError> {
         let id = loc.get_id();
         if let Some(r) = self.current_revision.get(id) {
             Ok(r)
@@ -310,7 +303,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         }
     }
 
-    fn get_revisions(&self, loc: &NoteLocator) -> Result<Vec<Revision>, Self::Error> {
+    fn get_revisions(&self, loc: &NoteLocator) -> Result<Vec<Revision>, InMemoryStoreError> {
         let id = loc.get_id();
         self.notes
             .get(id)
@@ -322,7 +315,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         &mut self,
         loc: &NoteLocator,
         op: F,
-    ) -> Result<(NoteLocator, NoteLocator), Self::Error>
+    ) -> Result<(NoteLocator, NoteLocator), InMemoryStoreError>
     where
         F: FnOnce(T) -> (T, T),
     {
@@ -340,7 +333,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         loc1: &NoteLocator,
         loc2: &NoteLocator,
         op: F,
-    ) -> Result<NoteLocator, Self::Error>
+    ) -> Result<NoteLocator, InMemoryStoreError>
     where
         F: FnOnce(T, T) -> T,
     {
@@ -369,7 +362,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Ok(loc1.current())
     }
 
-    fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), Self::Error> {
+    fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), InMemoryStoreError> {
         let p = path.as_ref().join("notegraf_in_memory.json");
 
         let mut f = File::create(p).map_err(InMemoryStoreError::IOError)?;
@@ -378,7 +371,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Ok(())
     }
 
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, InMemoryStoreError>
     where
         Self: Sized,
     {
@@ -396,7 +389,7 @@ mod tests {
 
     #[test]
     fn unique_id() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
         assert_ne!(loc1.get_id(), loc2.get_id());
@@ -404,7 +397,7 @@ mod tests {
 
     #[test]
     fn new_note_revision() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let rev = loc.get_revision().unwrap();
         assert_eq!(store.get_current_revision(&loc.current()).unwrap(), rev);
@@ -412,7 +405,7 @@ mod tests {
 
     #[test]
     fn new_note_retrieve() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let note_inner = PlainNote::new("Foo".into());
         let loc = store.new_note(note_inner.clone()).unwrap();
         assert_eq!(
@@ -424,13 +417,13 @@ mod tests {
 
     #[test]
     fn backup() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
 
         store.backup(env::temp_dir()).unwrap();
-        let store_restore: InMemoryStore<PlainNote> =
-            InMemoryStore::restore(env::temp_dir()).unwrap();
+        let store_restore: InMemoryStoreInner<PlainNote> =
+            InMemoryStoreInner::restore(env::temp_dir()).unwrap();
         for loc in vec![loc1, loc2].iter() {
             let note = store.get_note(loc).unwrap();
             let note_restore = store_restore.get_note(loc).unwrap();
@@ -440,7 +433,7 @@ mod tests {
 
     #[test]
     fn update_note() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let rev1 = loc1.get_revision().unwrap();
         let created1 = store.get_note(&loc1.current()).unwrap().created_at;
@@ -471,7 +464,7 @@ mod tests {
 
     #[test]
     fn add_child() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         store.add_child(&loc2, loc1.get_id()).unwrap();
@@ -489,7 +482,7 @@ mod tests {
 
     #[test]
     fn remove_non_existent_child() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         assert!(matches!(
@@ -500,7 +493,7 @@ mod tests {
 
     #[test]
     fn remove_child() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         let loc3 = store.add_child(&loc2, loc1.get_id()).unwrap();
@@ -534,7 +527,7 @@ mod tests {
 
     #[test]
     fn delete_note_specific() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
         store.delete_note(&loc1).unwrap();
         assert!(store.is_deleted(&loc1).unwrap());
@@ -542,7 +535,7 @@ mod tests {
 
     #[test]
     fn delete_note_current() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
         store.delete_note(&loc1.current()).unwrap();
         assert!(store.is_deleted(&loc1).unwrap());
@@ -554,7 +547,7 @@ mod tests {
 
     #[test]
     fn test_set_parent() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         store
@@ -569,7 +562,7 @@ mod tests {
 
     #[test]
     fn delete_note_update_parent() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         store
@@ -590,7 +583,7 @@ mod tests {
 
     #[test]
     fn delete_note_update_child() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         store
@@ -606,7 +599,7 @@ mod tests {
 
     #[test]
     fn resurrect_deleted_note() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let loc2 = store
             .update_note_content(&loc1, PlainNote::new("Foo1".into()))
@@ -630,7 +623,7 @@ mod tests {
 
     #[test]
     fn resurrected_note_parent() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         store
@@ -667,7 +660,7 @@ mod tests {
 
     #[test]
     fn inherit_grandchild() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
         let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
         let loc3 = store
@@ -693,7 +686,7 @@ mod tests {
 
     #[test]
     fn split_note_empty_child() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
         let (loc1_new, loc2) = store
             .split_note(&loc1, |x| (x, PlainNote::new("".into())))
@@ -714,7 +707,7 @@ mod tests {
 
     #[test]
     fn split_note() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
         let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
         assert_eq!(
@@ -738,7 +731,7 @@ mod tests {
 
     #[test]
     fn merge_note() {
-        let mut store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
         let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
         assert_eq!(

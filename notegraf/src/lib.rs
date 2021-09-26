@@ -5,5 +5,5 @@ pub mod notetype;
 pub mod url;
 
 pub use note::{Note, NoteID, NoteLocator, Revision, Tag};
-pub use notestore::{InMemoryStore, NoteStore};
+pub use notestore::NoteStore;
 pub use notetype::{NoteType, PlainNote};

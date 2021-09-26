@@ -5,4 +5,5 @@ authors = ["Zixian Cai"]
 edition = "2018"
 
 [dependencies]
+# pinned to a minor release because a beta version is used
 actix-web = "4.0.0-beta.9"
