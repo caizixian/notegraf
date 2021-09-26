@@ -472,10 +472,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn backup<'a>(
-        &'a self,
-        path: Box<dyn AsRef<Path> + Send>,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
+    fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.backup(&*path)

@@ -106,10 +106,7 @@ pub trait NoteStore<T: NoteType> {
         op: Box<dyn FnOnce(T, T) -> T + Send>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.
-    fn backup<'a>(
-        &'a self,
-        path: Box<dyn AsRef<Path> + Send>,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
+    fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.
     fn restore<P: AsRef<Path>>(path: P) -> Result<Self, NoteStoreError>
     where
