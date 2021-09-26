@@ -151,7 +151,7 @@ where
 }
 
 /// A type for locating a note.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum NoteLocator {
     Current(NoteID),
     Specific(NoteID, Revision),
