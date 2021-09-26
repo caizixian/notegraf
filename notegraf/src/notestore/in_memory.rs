@@ -527,225 +527,328 @@ mod tests {
     use crate::notetype::PlainNote;
     use std::env;
 
-    #[test]
-    fn unique_id() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
+    #[tokio::test]
+    async fn unique_id() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
+        let loc2 = store.new_note(PlainNote::new("Bar".into())).await.unwrap();
         assert_ne!(loc1.get_id(), loc2.get_id());
     }
 
-    #[test]
-    fn new_note_revision() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc = store.new_note(PlainNote::new("Foo".into())).unwrap();
+    #[tokio::test]
+    async fn new_note_revision() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let rev = loc.get_revision().unwrap();
-        assert_eq!(&store.get_current_revision(&loc.current()).unwrap(), rev);
+        assert_eq!(
+            &store.get_current_revision(&loc.current()).await.unwrap(),
+            rev
+        );
     }
 
-    #[test]
-    fn new_note_retrieve() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
+    #[tokio::test]
+    async fn new_note_retrieve() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let note_inner = PlainNote::new("Foo".into());
-        let loc = store.new_note(note_inner.clone()).unwrap();
+        let loc = store.new_note(note_inner.clone()).await.unwrap();
         assert_eq!(
-            store.get_note(&loc.current()).unwrap().note_inner,
+            store.get_note(&loc.current()).await.unwrap().note_inner,
             note_inner
         );
-        assert_eq!(store.get_note(&loc).unwrap().note_inner, note_inner);
+        assert_eq!(store.get_note(&loc).await.unwrap().note_inner, note_inner);
     }
 
-    #[test]
-    fn backup() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Bar".into())).unwrap();
+    #[tokio::test]
+    async fn backup() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
+        let loc2 = store.new_note(PlainNote::new("Bar".into())).await.unwrap();
 
-        store.backup(env::temp_dir()).unwrap();
-        let store_restore: InMemoryStoreInner<PlainNote> =
-            InMemoryStoreInner::restore(env::temp_dir()).unwrap();
+        store.backup(env::temp_dir()).await.unwrap();
+        let store_restore: InMemoryStore<PlainNote> =
+            InMemoryStore::restore(env::temp_dir()).unwrap();
         for loc in vec![loc1, loc2].iter() {
-            let note = store.get_note(loc).unwrap();
-            let note_restore = store_restore.get_note(loc).unwrap();
+            let note = store.get_note(loc).await.unwrap();
+            let note_restore = store_restore.get_note(loc).await.unwrap();
             assert_eq!(note, note_restore);
         }
     }
 
-    #[test]
-    fn update_note() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+    #[tokio::test]
+    async fn update_note() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let rev1 = loc1.get_revision().unwrap();
-        let created1 = store.get_note(&loc1.current()).unwrap().created_at;
-        let modified1 = store.get_note(&loc1.current()).unwrap().modified_at;
+        let created1 = store.get_note(&loc1.current()).await.unwrap().created_at;
+        let modified1 = store.get_note(&loc1.current()).await.unwrap().modified_at;
         let loc2 = store
             .update_note_content(&loc1, PlainNote::new("Foo1".into()))
+            .await
             .unwrap();
         let rev2 = loc2.get_revision().unwrap();
         assert_ne!(rev1, rev2);
-        assert_eq!(&store.get_current_revision(&loc1).unwrap(), rev2);
+        assert_eq!(&store.get_current_revision(&loc1).await.unwrap(), rev2);
         assert_eq!(
-            store.get_note(&loc1.current()).unwrap().note_inner,
+            store.get_note(&loc1.current()).await.unwrap().note_inner,
             PlainNote::new("Foo1".into())
         );
         assert_eq!(
-            store.get_note(&loc1.at_revision(rev2)).unwrap().note_inner,
+            store
+                .get_note(&loc1.at_revision(rev2))
+                .await
+                .unwrap()
+                .note_inner,
             PlainNote::new("Foo1".into())
         );
         assert_ne!(
-            store.get_note(&loc1.at_revision(rev2)).unwrap().modified_at,
+            store
+                .get_note(&loc1.at_revision(rev2))
+                .await
+                .unwrap()
+                .modified_at,
             modified1
         );
         assert_eq!(
-            store.get_note(&loc1.at_revision(rev2)).unwrap().created_at,
+            store
+                .get_note(&loc1.at_revision(rev2))
+                .await
+                .unwrap()
+                .created_at,
             created1
         );
     }
 
-    #[test]
-    fn add_child() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
-        store.add_child(&loc2, loc1.get_id()).unwrap();
+    #[tokio::test]
+    async fn add_child() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
+        store
+            .ims
+            .write()
+            .await
+            .add_child(&loc2, loc1.get_id())
+            .unwrap();
         assert!(!store
             .get_note(&loc2) // This points to an old revision
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
         assert!(store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn remove_non_existent_child() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn remove_non_existent_child() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         assert!(matches!(
-            store.remove_child(&loc2, loc1.get_id()).err().unwrap(),
+            store
+                .ims
+                .write()
+                .await
+                .remove_child(&loc2, loc1.get_id())
+                .err()
+                .unwrap(),
             InMemoryStoreError::NotAChild(_, _)
         ));
     }
 
-    #[test]
-    fn remove_child() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
-        let loc3 = store.add_child(&loc2, loc1.get_id()).unwrap();
+    #[tokio::test]
+    async fn remove_child() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
+        let loc3 = store
+            .ims
+            .write()
+            .await
+            .add_child(&loc2, loc1.get_id())
+            .unwrap();
         // This points to an old revision
         assert!(matches!(
-            store.remove_child(&loc2, loc1.get_id()).err().unwrap(),
+            store
+                .ims
+                .write()
+                .await
+                .remove_child(&loc2, loc1.get_id())
+                .err()
+                .unwrap(),
             InMemoryStoreError::UpdateOldRevision(_, _)
         ));
-        let loc4 = store.remove_child(&loc2.current(), loc1.get_id()).unwrap();
+        let loc4 = store
+            .ims
+            .write()
+            .await
+            .remove_child(&loc2.current(), loc1.get_id())
+            .unwrap();
         assert!(!store
             .get_note(&loc2)
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
         assert!(store
             .get_note(&loc3)
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
         assert!(!store
             .get_note(&loc4)
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
         assert!(!store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn delete_note_specific() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
-        store.delete_note(&loc1).unwrap();
-        assert!(store.is_deleted(&loc1).unwrap());
+    #[tokio::test]
+    async fn delete_note_specific() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        store.delete_note(&loc1).await.unwrap();
+        assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
     }
 
-    #[test]
-    fn delete_note_current() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
-        store.delete_note(&loc1.current()).unwrap();
-        assert!(store.is_deleted(&loc1).unwrap());
+    #[tokio::test]
+    async fn delete_note_current() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        store.delete_note(&loc1.current()).await.unwrap();
+        assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
         assert!(matches!(
-            store.is_current(&loc1).err().unwrap(),
+            store.ims.read().await.is_current(&loc1).err().unwrap(),
             InMemoryStoreError::NoteDeleted(_)
         ));
     }
 
-    #[test]
-    fn test_set_parent() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn test_set_parent() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc1, Some(loc2.get_id().clone()))
             .unwrap();
         assert!(store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn delete_note_update_parent() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn delete_note_update_parent() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc1, Some(loc2.get_id().clone()))
             .unwrap();
         assert!(store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
-        store.delete_note(&loc1.current()).unwrap();
+        store.delete_note(&loc1.current()).await.unwrap();
         assert!(!store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn delete_note_update_child() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn delete_note_update_child() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc1, Some(loc2.get_id().clone()))
             .unwrap();
         assert_eq!(
-            &store.get_note(&loc1.current()).unwrap().parent.unwrap(),
+            &store
+                .get_note(&loc1.current())
+                .await
+                .unwrap()
+                .parent
+                .unwrap(),
             loc2.get_id()
         );
-        store.delete_note(&loc2.current()).unwrap();
-        assert_eq!(store.get_note(&loc1.current()).unwrap().parent, None);
+        store.delete_note(&loc2.current()).await.unwrap();
+        assert_eq!(store.get_note(&loc1.current()).await.unwrap().parent, None);
     }
 
-    #[test]
-    fn resurrect_deleted_note() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).unwrap();
+    #[tokio::test]
+    async fn resurrect_deleted_note() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let loc2 = store
             .update_note_content(&loc1, PlainNote::new("Foo1".into()))
+            .await
             .unwrap();
-        store.delete_note(&loc1.current()).unwrap();
-        let revisions = store.get_revisions_with_note(&loc1).unwrap();
+        store.delete_note(&loc1.current()).await.unwrap();
+        let revisions = store.get_revisions_with_note(&loc1).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
         assert_eq!(last_note.note_inner, PlainNote::new("Foo1".into()));
         assert_eq!(last_revision, loc2.get_revision().unwrap());
@@ -754,148 +857,185 @@ mod tests {
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
                 last_note.note_inner.clone(),
             )
+            .await
             .unwrap();
         assert_eq!(
-            store.get_note(&loc1.current()).unwrap().note_inner,
+            store.get_note(&loc1.current()).await.unwrap().note_inner,
             PlainNote::new("Foo1".into())
         );
     }
 
-    #[test]
-    fn resurrected_note_parent() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn resurrected_note_parent() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc1, Some(loc2.get_id().clone()))
             .unwrap();
         assert!(store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
         store
             .update_note_content(&loc1.current(), PlainNote::new("Child1".into()))
+            .await
             .unwrap();
-        store.delete_note(&loc1.current()).unwrap();
+        store.delete_note(&loc1.current()).await.unwrap();
         assert!(!store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
-        let revisions = store.get_revisions_with_note(&loc1).unwrap();
+        let revisions = store.get_revisions_with_note(&loc1).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
         store
             .update_note_content(
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
                 last_note.note_inner.clone(),
             )
+            .await
             .unwrap();
         assert!(store
             .get_note(&loc2.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn inherit_grandchild() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Child".into())).unwrap();
-        let loc2 = store.new_note(PlainNote::new("Parent".into())).unwrap();
+    #[tokio::test]
+    async fn inherit_grandchild() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Child".into()))
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Parent".into()))
+            .await
+            .unwrap();
         let loc3 = store
             .new_note(PlainNote::new("Grandparent".into()))
+            .await
             .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc1, Some(loc2.get_id().clone()))
             .unwrap();
         store
+            .ims
+            .write()
+            .await
             .set_parent(&loc2.current(), Some(loc3.get_id().clone()))
             .unwrap();
-        store.delete_note(&loc2.current()).unwrap();
+        store.delete_note(&loc2.current()).await.unwrap();
         assert_eq!(
-            &store.get_note(&loc1.current()).unwrap().parent.unwrap(),
+            &store
+                .get_note(&loc1.current())
+                .await
+                .unwrap()
+                .parent
+                .unwrap(),
             loc3.get_id()
         );
         assert!(&store
             .get_note(&loc3.current())
+            .await
             .unwrap()
             .children
             .contains(loc1.get_id()));
     }
 
-    #[test]
-    fn split_note_empty_child() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
+    #[tokio::test]
+    async fn split_note_empty_child() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
         let (loc1_new, loc2) = store
             .split_note(&loc1, |x| (x, PlainNote::new("".into())))
+            .await
             .unwrap();
         assert_eq!(
-            store.get_note(&loc1_new).unwrap().note_inner,
+            store.get_note(&loc1_new).await.unwrap().note_inner,
             PlainNote::new("Note".into())
         );
         assert_eq!(
-            store.get_note(&loc2).unwrap().note_inner,
+            store.get_note(&loc2).await.unwrap().note_inner,
             PlainNote::new("".into())
         );
         assert_eq!(
-            &store.get_note(&loc2).unwrap().parent.unwrap(),
+            &store.get_note(&loc2).await.unwrap().parent.unwrap(),
             loc1.get_id()
         );
     }
 
-    #[test]
-    fn split_note() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
-        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
+    #[tokio::test]
+    async fn split_note() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).await.unwrap();
         assert_eq!(
-            store.get_note(&loc1_new).unwrap().note_inner,
+            store.get_note(&loc1_new).await.unwrap().note_inner,
             PlainNote::new("No".into())
         );
         assert_eq!(
-            store.get_note(&loc2).unwrap().note_inner,
+            store.get_note(&loc2).await.unwrap().note_inner,
             PlainNote::new("te".into())
         );
         assert_eq!(
-            &store.get_note(&loc2).unwrap().parent.unwrap(),
+            &store.get_note(&loc2).await.unwrap().parent.unwrap(),
             loc1.get_id()
         );
         assert!(&store
             .get_note(&loc1_new)
+            .await
             .unwrap()
             .children
             .contains(loc2.get_id()));
     }
 
-    #[test]
-    fn merge_note() {
-        let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).unwrap();
-        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).unwrap();
+    #[tokio::test]
+    async fn merge_note() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        let (loc1_new, loc2) = store.split_note(&loc1, |x| x.split_off(2)).await.unwrap();
         assert_eq!(
-            store.get_note(&loc1_new).unwrap().note_inner,
+            store.get_note(&loc1_new).await.unwrap().note_inner,
             PlainNote::new("No".into())
         );
         assert_eq!(
-            store.get_note(&loc2).unwrap().note_inner,
+            store.get_note(&loc2).await.unwrap().note_inner,
             PlainNote::new("te".into())
         );
-        let (loc2_new, loc3) = store.split_note(&loc2, |x| x.split_off(1)).unwrap();
+        let (loc2_new, loc3) = store.split_note(&loc2, |x| x.split_off(1)).await.unwrap();
         assert_eq!(
-            store.get_note(&loc2_new).unwrap().note_inner,
+            store.get_note(&loc2_new).await.unwrap().note_inner,
             PlainNote::new("t".into())
         );
         assert_eq!(
-            store.get_note(&loc3).unwrap().note_inner,
+            store.get_note(&loc3).await.unwrap().note_inner,
             PlainNote::new("e".into())
         );
         let loc_merge = store
             .merge_note(&loc1_new, &loc2_new, |x, y| x.merge(y))
+            .await
             .unwrap();
         assert_eq!(
-            store.get_note(&loc_merge).unwrap().note_inner,
+            store.get_note(&loc_merge).await.unwrap().note_inner,
             PlainNote::new("Not".into())
         );
     }
