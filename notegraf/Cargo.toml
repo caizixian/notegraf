@@ -13,3 +13,4 @@ pulldown-cmark = "0.8"
 url = "2.2"
 pulldown-cmark-to-cmark = "6.0"
 futures = "0.3"
+tokio = { version = "1.12", features = ["sync"] }

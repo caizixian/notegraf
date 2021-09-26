@@ -7,7 +7,7 @@ pub use plain::PlainNote;
 mod markdown;
 pub use markdown::MarkdownNote;
 
-pub trait NoteType: Serialize + DeserializeOwned + Clone + PartialEq + Eq {
+pub trait NoteType: Serialize + DeserializeOwned + Clone + PartialEq + Eq + Send + Sync {
     type Error;
     fn get_references(&self) -> Vec<&NoteID>;
     fn get_tags(&self) -> Vec<&Tag>;

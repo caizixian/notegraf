@@ -1,6 +1,6 @@
 //! In-memory storage of notes
 use crate::note::NoteLocator;
-use crate::{Note, NoteID, NoteType, Revision};
+use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -10,6 +10,8 @@ use std::path::Path;
 use std::time::SystemTime;
 use thiserror::Error;
 use uuid::Uuid;
+use futures::future::BoxFuture;
+use tokio::sync::RwLock;
 
 #[derive(Error, Debug)]
 pub enum InMemoryStoreError {
@@ -37,7 +39,7 @@ pub enum InMemoryStoreError {
 ///
 /// This is mostly designed for development use, because there is no persistence layer.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct InMemoryStoreInner<T> {
+struct InMemoryStoreInner<T> {
     notes: HashMap<NoteID, HashMap<Revision, Note<T>>>,
     current_revision: HashMap<NoteID, Revision>,
 }
@@ -75,7 +77,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         if let Some(r) = loc.get_revision() {
             // If the argument is a specific revision, then compare it with the current revision
             let current_rev = self.get_current_revision(loc)?;
-            Ok(current_rev == r)
+            Ok(&current_rev == r)
         } else {
             // Otherwise, it's current as long as the note is not deleted
             Ok(!self.is_deleted(loc)?)
@@ -204,7 +206,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 
     /// Get all revisions of a note with actual notes
-    pub fn get_revisions_with_note(
+    fn get_revisions_with_note(
         &self,
         loc: &NoteLocator,
     ) -> Result<Vec<(Revision, Note<T>)>, InMemoryStoreError> {
@@ -236,13 +238,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, InMemoryStoreError> {
-        let (id, rev) = loc.unpack();
-        let rev = if let Some(r) = rev {
-            r
-        } else {
-            self.get_current_revision(loc)?
-        };
+    fn get_note_by_revision(&self, id: &NoteID, rev: &Revision) -> Result<Note<T>, InMemoryStoreError> {
         Ok(self
             .notes
             .get(id)
@@ -250,6 +246,15 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .get(rev)
             .ok_or_else(|| InMemoryStoreError::RevisionNotExist(id.clone(), rev.clone()))?
             .clone())
+    }
+
+    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, InMemoryStoreError> {
+        let (id, rev) = loc.unpack();
+        if let Some(r) = rev {
+            self.get_note_by_revision(id, r)
+        } else {
+            self.get_note_by_revision(id, &self.get_current_revision(loc)?)
+        }
     }
 
     fn update_note_content(
@@ -292,10 +297,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn get_current_revision(&self, loc: &NoteLocator) -> Result<&Revision, InMemoryStoreError> {
+    fn get_current_revision(&self, loc: &NoteLocator) -> Result<Revision, InMemoryStoreError> {
         let id = loc.get_id();
         if let Some(r) = self.current_revision.get(id) {
-            Ok(r)
+            Ok(r.clone())
         } else if self.notes.contains_key(id) {
             Err(InMemoryStoreError::NoteDeleted(id.clone()))
         } else {
@@ -381,6 +386,100 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 }
 
+pub struct InMemoryStore<T> {
+    ims: RwLock<InMemoryStoreInner<T>>
+}
+
+impl<T: NoteType> InMemoryStore<T> {
+    pub fn new() -> Self {
+        InMemoryStore {
+            ims: RwLock::new(InMemoryStoreInner::new())
+        }
+    }
+
+    pub fn get_revisions_with_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<(Revision, Note<T>)>, InMemoryStoreError>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_revisions_with_note(loc)
+        })
+    }
+}
+
+impl<'a, T: NoteType> NoteStore<'a, T> for &'a InMemoryStore<T> {
+    type Owned = InMemoryStore<T>;
+    type Error = InMemoryStoreError;
+
+    fn new_note(self, note_inner: T) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> {
+        Box::pin(async move {
+            let mut ims = self.ims.write().await;
+            ims.new_note(note_inner)
+        })
+    }
+
+    fn get_note(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Note<T>, Self::Error>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_note(loc)
+        })
+    }
+
+    fn update_note_content(self, loc: &'a NoteLocator, note_inner: T) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> {
+        Box::pin(async move {
+            let mut ims = self.ims.write().await;
+            ims.update_note_content(loc, note_inner)
+        })
+    }
+
+    fn delete_note(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<(), Self::Error>> {
+        Box::pin(async move {
+            let mut ims = self.ims.write().await;
+            ims.delete_note(loc)
+        })
+    }
+
+    fn get_current_revision(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Revision, Self::Error>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_current_revision(loc)
+        })
+    }
+
+    fn get_revisions(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_revisions(loc)
+        })
+    }
+
+    fn split_note<F>(self, loc: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), Self::Error>> where F: FnOnce(T) -> (T, T) + Send + 'a{
+        Box::pin(async move {
+            let mut ims = self.ims.write().await;
+            ims.split_note(loc, op)
+        })
+    }
+
+    fn merge_note<F>(self, loc1: &'a NoteLocator, loc2: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> where F: FnOnce(T, T) -> T + Send + 'a{
+        Box::pin(async move {
+            let mut ims = self.ims.write().await;
+            ims.merge_note(loc1, loc2, op)
+        })
+    }
+
+    fn backup<P: AsRef<Path> + Send + 'a>(self, path: P) -> BoxFuture<'a, Result<(), Self::Error>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.backup(path)
+        })
+    }
+
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self::Owned, Self::Error>{
+        Ok(InMemoryStore {
+            ims: RwLock::new( InMemoryStoreInner::restore(path)?)
+        })
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,7 +499,7 @@ mod tests {
         let mut store: InMemoryStoreInner<PlainNote> = InMemoryStoreInner::new();
         let loc = store.new_note(PlainNote::new("Foo".into())).unwrap();
         let rev = loc.get_revision().unwrap();
-        assert_eq!(store.get_current_revision(&loc.current()).unwrap(), rev);
+        assert_eq!(&store.get_current_revision(&loc.current()).unwrap(), rev);
     }
 
     #[test]
@@ -443,7 +542,7 @@ mod tests {
             .unwrap();
         let rev2 = loc2.get_revision().unwrap();
         assert_ne!(rev1, rev2);
-        assert_eq!(store.get_current_revision(&loc1).unwrap(), rev2);
+        assert_eq!(&store.get_current_revision(&loc1).unwrap(), rev2);
         assert_eq!(
             store.get_note(&loc1.current()).unwrap().note_inner,
             PlainNote::new("Foo1".into())
