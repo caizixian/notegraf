@@ -28,6 +28,12 @@ impl From<String> for NoteID {
     }
 }
 
+impl From<&str> for NoteID {
+    fn from(id: &str) -> NoteID {
+        NoteID::new(id.to_owned())
+    }
+}
+
 impl NoteID {
     pub fn new(id: String) -> Self {
         NoteID { id }
@@ -106,6 +112,12 @@ impl From<String> for Revision {
     }
 }
 
+impl From<&str> for Revision {
+    fn from(revision: &str) -> Revision {
+        Revision::new(revision.to_owned())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Note<T> {
     pub note_inner: T,
@@ -139,6 +151,7 @@ where
 }
 
 /// A type for locating a note.
+#[derive(Debug)]
 pub enum NoteLocator {
     Current(NoteID),
     Specific(NoteID, Revision),
