@@ -35,6 +35,8 @@ pub enum InMemoryStoreError {
     NotAChild(NoteID, NoteID),
 }
 
+type RevisionsOfNote<T> = Vec<(Revision, Note<T>)>;
+
 /// In-memory storage.
 ///
 /// This is mostly designed for development use, because there is no persistence layer.
@@ -397,7 +399,7 @@ impl<T: NoteType> InMemoryStore<T> {
         }
     }
 
-    pub fn get_revisions_with_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<(Revision, Note<T>)>, InMemoryStoreError>> {
+    pub fn get_revisions_with_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<RevisionsOfNote<T>, InMemoryStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_revisions_with_note(loc)
@@ -405,74 +407,79 @@ impl<T: NoteType> InMemoryStore<T> {
     }
 }
 
-impl<'a, T: NoteType> NoteStore<'a, T> for &'a InMemoryStore<T> {
-    type Owned = InMemoryStore<T>;
+impl<T: NoteType> Default for InMemoryStore<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     type Error = InMemoryStoreError;
 
-    fn new_note(self, note_inner: T) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> {
+    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, Self::Error>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
             ims.new_note(note_inner)
         })
     }
 
-    fn get_note(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Note<T>, Self::Error>> {
+    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Note<T>, Self::Error>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_note(loc)
         })
     }
 
-    fn update_note_content(self, loc: &'a NoteLocator, note_inner: T) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> {
+    fn update_note_content<'a>(&'a self, loc: &'a NoteLocator, note_inner: T) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
             ims.update_note_content(loc, note_inner)
         })
     }
 
-    fn delete_note(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<(), Self::Error>> {
+    fn delete_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<(), Self::Error>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
             ims.delete_note(loc)
         })
     }
 
-    fn get_current_revision(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Revision, Self::Error>> {
+    fn get_current_revision<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Revision, Self::Error>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_current_revision(loc)
         })
     }
 
-    fn get_revisions(self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>> {
+    fn get_revisions<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Vec<Revision>, Self::Error>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_revisions(loc)
         })
     }
 
-    fn split_note<F>(self, loc: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), Self::Error>> where F: FnOnce(T) -> (T, T) + Send + 'a{
+    fn split_note<'a, F>(&'a self, loc: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), Self::Error>> where F: FnOnce(T) -> (T, T) + Send + 'a{
         Box::pin(async move {
             let mut ims = self.ims.write().await;
             ims.split_note(loc, op)
         })
     }
 
-    fn merge_note<F>(self, loc1: &'a NoteLocator, loc2: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> where F: FnOnce(T, T) -> T + Send + 'a{
+    fn merge_note<'a, F>(&'a self, loc1: &'a NoteLocator, loc2: &'a NoteLocator, op: F) -> BoxFuture<'a, Result<NoteLocator, Self::Error>> where F: FnOnce(T, T) -> T + Send + 'a{
         Box::pin(async move {
             let mut ims = self.ims.write().await;
             ims.merge_note(loc1, loc2, op)
         })
     }
 
-    fn backup<P: AsRef<Path> + Send + 'a>(self, path: P) -> BoxFuture<'a, Result<(), Self::Error>> {
+    fn backup<'a, P: AsRef<Path> + Send + 'a>(&'a self, path: P) -> BoxFuture<'a, Result<(), Self::Error>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.backup(path)
         })
     }
 
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self::Owned, Self::Error>{
+    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, Self::Error>{
         Ok(InMemoryStore {
             ims: RwLock::new( InMemoryStoreInner::restore(path)?)
         })
