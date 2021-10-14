@@ -1,10 +1,18 @@
 [package]
 name = "notegraf-web"
-version = "0.0.1"
+version = "0.1.0-alpha.1"
 authors = ["Zixian Cai"]
 edition = "2018"
+license = "AGPL-3.0-only"
+description = "The reference web frontend of Notegraf"
+repository = "https://github.com/caizixian/notegraf"
+homepage = "https://github.com/caizixian/notegraf"
+readme = "README.md"
+documentation = "https://docs.rs/notegraf-web"
+categories = ["web-programming", "text-processing"]
+keywords = ["note-taking"]
 
 [dependencies]
 # pinned to a minor release because a beta version is used
 actix-web = "4.0.0-beta.9"
-notegraf = {path = "../notegraf"}
+notegraf = {version = "0.1.0-alpha.1", path = "../notegraf"}
