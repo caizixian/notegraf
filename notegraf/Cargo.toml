@@ -1,8 +1,16 @@
 [package]
 name = "notegraf"
-version = "0.0.1"
+version = "0.1.0-alpha.1"
 authors = ["Zixian Cai"]
 edition = "2018"
+license = "AGPL-3.0-only"
+description = "Core library for building a graph-oriented notebook"
+repository = "https://github.com/caizixian/notegraf"
+homepage = "https://github.com/caizixian/notegraf"
+readme = "README.md"
+documentation = "https://docs.rs/notegraf"
+categories = ["data-structures", "text-processing"]
+keywords = ["note-taking"]
 
 [dependencies]
 uuid = { version = "0.8", features = ["serde", "v4"] }
