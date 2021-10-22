@@ -6,6 +6,8 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+  workflow_dispatch:
+    inputs: {}
 jobs:
   audit:
     runs-on: ubuntu-latest
