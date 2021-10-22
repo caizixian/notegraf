@@ -2,7 +2,7 @@
 name = "notegraf"
 version = "0.1.0-alpha.1"
 authors = ["Zixian Cai"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-only"
 description = "Core library for building a graph-oriented notebook"
 repository = "https://github.com/caizixian/notegraf"
