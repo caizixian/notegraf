@@ -170,6 +170,6 @@ mod tests {
         let id_new = NoteID::new("new".into());
         let mut note = MarkdownNote::new(r#"<notegraf:/note/old>"#.into());
         note.update_reference(id_old, id_new).unwrap();
-        assert_eq!(note.body, r#"[notegraf:/note/new](notegraf:/note/new)"#)
+        assert_eq!(note.body, r#"<notegraf:/note/new>"#)
     }
 }
