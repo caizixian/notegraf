@@ -116,7 +116,7 @@ impl NoteType for MarkdownNote {
 
             _ => event,
         });
-        match cmark(parser, &mut buf, None) {
+        match cmark(parser, &mut buf) {
             Ok(_) => {
                 self.body = buf;
                 Ok(())
