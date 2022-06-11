@@ -2,12 +2,16 @@
 use crate::errors::NoteStoreError;
 use crate::note::*;
 use crate::notetype::NoteType;
+use crate::notemetadata::NoteMetadata;
 use futures::future::BoxFuture;
 use std::path::Path;
 
 mod in_memory;
-use crate::notemetadata::NoteMetadata;
+#[allow(unused_variables,dead_code)]
+mod postgresql;
+
 pub use in_memory::InMemoryStore;
+pub use postgresql::PostgreSQLStore;
 
 /// An abstraction for storage backends.
 pub trait NoteStore<T: NoteType> {
