@@ -1,13 +1,13 @@
 //! Storage backends of notes.
 use crate::errors::NoteStoreError;
 use crate::note::*;
-use crate::notetype::NoteType;
 use crate::notemetadata::NoteMetadata;
+use crate::notetype::NoteType;
 use futures::future::BoxFuture;
 use std::path::Path;
 
 mod in_memory;
-#[allow(unused_variables,dead_code)]
+#[allow(unused_variables, dead_code)]
 mod postgresql;
 
 pub use in_memory::InMemoryStore;
