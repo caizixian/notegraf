@@ -9,7 +9,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::time::SystemTime;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -106,11 +105,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .get_mut(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))?;
         assert!(!note_revisions.contains_key(&new_revision)); // sanity check
-                                                              // update note
+        // update note
         let mut updated_note = op(&old_note)?;
         updated_note.revision = new_revision.clone();
-        updated_note.modified_at = SystemTime::now();
-        updated_note.created_at = old_note.created_at;
+        updated_note.metadata = old_note.metadata.on_update_note();
         // don't need to borrow updated_note for the below change
         let new_parent = updated_note.parent.clone();
         note_revisions.insert(new_revision.clone(), updated_note);
@@ -193,7 +191,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .map(|rs| {
                 let mut v: Vec<(Revision, Note<T>)> =
                     rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
-                v.sort_by_key(|(_, n)| n.modified_at);
+                v.sort_by_key(|(_, n)| n.metadata.modified_at);
                 v
             })
     }
@@ -546,8 +544,8 @@ mod tests {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let rev1 = loc1.get_revision().unwrap();
-        let created1 = store.get_note(&loc1.current()).await.unwrap().created_at;
-        let modified1 = store.get_note(&loc1.current()).await.unwrap().modified_at;
+        let created1 = store.get_note(&loc1.current()).await.unwrap().metadata.created_at;
+        let modified1 = store.get_note(&loc1.current()).await.unwrap().metadata.modified_at;
         let loc2 = store
             .update_note_content(&loc1, PlainNote::new("Foo1".into()))
             .await
@@ -572,7 +570,7 @@ mod tests {
                 .get_note(&loc1.at_revision(rev2))
                 .await
                 .unwrap()
-                .modified_at,
+                .metadata.modified_at,
             modified1
         );
         assert_eq!(
@@ -580,7 +578,7 @@ mod tests {
                 .get_note(&loc1.at_revision(rev2))
                 .await
                 .unwrap()
-                .created_at,
+                .metadata.created_at,
             created1
         );
     }

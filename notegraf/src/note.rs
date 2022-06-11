@@ -3,7 +3,7 @@ use crate::notetype::NoteType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt::{self, Display};
-use std::time::SystemTime;
+use crate::notemetadata::NoteMetadata;
 
 /// ID of notes.
 ///
@@ -101,8 +101,7 @@ pub struct Note<T> {
     pub revision: Revision,
     pub parent: Option<NoteID>,
     pub children: HashSet<NoteID>,
-    pub created_at: SystemTime,
-    pub modified_at: SystemTime,
+    pub metadata: NoteMetadata
 }
 
 impl<T> Note<T>
@@ -116,8 +115,7 @@ where
             revision,
             parent,
             children: HashSet::new(),
-            created_at: SystemTime::now(),
-            modified_at: SystemTime::now(),
+            metadata: NoteMetadata::default()
         }
     }
 
