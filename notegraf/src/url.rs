@@ -1,6 +1,6 @@
 //! URL utilities.
 use crate::errors::URLParseError;
-use crate::{NoteID, Tag};
+use crate::NoteID;
 use std::fmt;
 use url::Url;
 
@@ -8,7 +8,6 @@ use url::Url;
 #[derive(Debug)]
 pub enum NotegrafURL {
     Note(NoteID),
-    Tag(Tag),
 }
 
 impl NotegrafURL {
@@ -34,7 +33,6 @@ impl NotegrafURL {
         }
         match parts[0] {
             "note" => Ok(NotegrafURL::Note(NoteID::new(parts[1].into()))),
-            "tag" => Ok(NotegrafURL::Tag(Tag::new(parts[1].into()))),
             _ => Err(URLParseError::SyntaxError(
                 "First part of the URL not recognized.".into(),
             )),
@@ -46,7 +44,6 @@ impl fmt::Display for NotegrafURL {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             NotegrafURL::Note(id) => write!(f, "notegraf:/note/{}", id),
-            NotegrafURL::Tag(tag) => write!(f, "notegraf:/tag/{}", tag),
         }
     }
 }

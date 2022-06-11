@@ -1,10 +1,9 @@
 use crate::url::NotegrafURL;
-use crate::{NoteID, NoteType, Tag};
+use crate::{NoteID, NoteType};
 use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -16,7 +15,6 @@ pub enum MarkdownNoteError {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct MarkdownNote {
     body: String,
-    tags: HashSet<Tag>,
 }
 
 impl MarkdownNote {
@@ -25,10 +23,6 @@ impl MarkdownNote {
             body,
             ..Default::default()
         }
-    }
-
-    pub fn add_tag(&mut self, tag: Tag) {
-        self.tags.insert(tag);
     }
 
     fn change_note_url(link: &str, old: &NoteID, new: &NoteID) -> Option<String> {
@@ -50,10 +44,6 @@ impl NoteType for MarkdownNote {
 
     fn get_references(&self) -> Vec<&NoteID> {
         todo!()
-    }
-
-    fn get_tags(&self) -> Vec<&Tag> {
-        self.tags.iter().collect()
     }
 
     fn update_reference(

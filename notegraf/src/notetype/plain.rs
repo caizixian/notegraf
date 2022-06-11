@@ -1,4 +1,4 @@
-use crate::{NoteID, NoteType, Tag};
+use crate::{NoteID, NoteType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -13,7 +13,6 @@ pub enum PlainNoteError {
 pub struct PlainNote {
     body: String,
     references: HashSet<NoteID>,
-    tags: HashSet<Tag>,
 }
 
 impl PlainNote {
@@ -28,10 +27,6 @@ impl PlainNote {
         self.references.insert(referent);
     }
 
-    pub fn add_tag(&mut self, tag: Tag) {
-        self.tags.insert(tag);
-    }
-
     pub fn split_off(mut self, at: usize) -> (Self, Self) {
         let new_body = self.body.split_off(at);
         (self, PlainNote::new(new_body))
@@ -39,7 +34,6 @@ impl PlainNote {
 
     pub fn merge(mut self, other: Self) -> Self {
         self.body.push_str(&other.body);
-        self.tags.extend(other.tags);
         self.references.extend(other.references);
         self
     }
@@ -50,10 +44,6 @@ impl NoteType for PlainNote {
 
     fn get_references(&self) -> Vec<&NoteID> {
         self.references.iter().collect()
-    }
-
-    fn get_tags(&self) -> Vec<&Tag> {
-        self.tags.iter().collect()
     }
 
     fn update_reference(
@@ -92,24 +82,6 @@ mod tests {
             .unwrap();
         assert!(note.get_references().contains(&&NoteID::new("ID3".into())));
         assert!(note.get_references().contains(&&NoteID::new("ID2".into())));
-    }
-
-    #[test]
-    fn retrieve_tags() {
-        let mut note = PlainNote::new("Foo".into());
-        note.add_tag(Tag::new("tag1".into()));
-        note.add_tag(Tag::new("tag2".into()));
-        assert!(note.get_tags().contains(&&Tag::new("tag1".into())));
-        assert!(note.get_tags().contains(&&Tag::new("tag2".into())));
-    }
-
-    #[test]
-    fn dedup_tags() {
-        let mut note = PlainNote::new("Foo".into());
-        note.add_tag(Tag::new("tag1".into()));
-        note.add_tag(Tag::new("tag2".into()));
-        note.add_tag(Tag::new("tag2".into()));
-        assert_eq!(note.get_tags().len(), 2);
     }
 
     #[test]

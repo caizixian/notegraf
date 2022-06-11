@@ -1,4 +1,4 @@
-use crate::{NoteID, Tag};
+use crate::NoteID;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -10,7 +10,6 @@ pub use markdown::MarkdownNote;
 pub trait NoteType: Serialize + DeserializeOwned + Clone + PartialEq + Eq + Send + Sync {
     type Error;
     fn get_references(&self) -> Vec<&NoteID>;
-    fn get_tags(&self) -> Vec<&Tag>;
     fn update_reference(
         &mut self,
         old_referent: NoteID,
