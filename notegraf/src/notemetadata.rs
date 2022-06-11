@@ -1,5 +1,5 @@
-use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 
 pub static NOTE_METADATA_CURRENT_SCHEMA_VERSION: u64 = 0;
 
@@ -16,19 +16,19 @@ impl Default for NoteMetadata {
         NoteMetadata {
             schema_version: NOTE_METADATA_CURRENT_SCHEMA_VERSION,
             created_at: now,
-            modified_at: now
+            modified_at: now,
         }
     }
 }
 
 impl NoteMetadata {
-    pub(crate) fn on_update_note(&self) -> Self{
+    pub(crate) fn on_update_note(&self) -> Self {
         // We cannot update the metadata if it's based on a newer schema
         assert!(NOTE_METADATA_CURRENT_SCHEMA_VERSION >= self.schema_version);
         NoteMetadata {
             schema_version: NOTE_METADATA_CURRENT_SCHEMA_VERSION,
             created_at: self.created_at,
-            modified_at: SystemTime::now()
+            modified_at: SystemTime::now(),
         }
     }
 }

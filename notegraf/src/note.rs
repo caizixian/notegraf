@@ -1,9 +1,9 @@
 //! Core types of Notegraf.
+use crate::notemetadata::NoteMetadata;
 use crate::notetype::NoteType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt::{self, Display};
-use crate::notemetadata::NoteMetadata;
 
 /// ID of notes.
 ///
@@ -101,7 +101,7 @@ pub struct Note<T> {
     pub revision: Revision,
     pub parent: Option<NoteID>,
     pub children: HashSet<NoteID>,
-    pub metadata: NoteMetadata
+    pub metadata: NoteMetadata,
 }
 
 impl<T> Note<T>
@@ -115,7 +115,7 @@ where
             revision,
             parent,
             children: HashSet::new(),
-            metadata: NoteMetadata::default()
+            metadata: NoteMetadata::default(),
         }
     }
 

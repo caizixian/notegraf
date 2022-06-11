@@ -1,9 +1,9 @@
 //! Notegraf: a graph-oriented notebook.
 pub mod errors;
 pub mod note;
+pub mod notemetadata;
 pub mod notestore;
 pub mod notetype;
-pub mod notemetadata;
 pub mod url;
 
 pub use note::{Note, NoteID, NoteLocator, Revision};

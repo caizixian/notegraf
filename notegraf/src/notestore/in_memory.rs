@@ -1,6 +1,7 @@
 //! In-memory storage of notes
 use crate::errors::NoteStoreError;
 use crate::note::NoteLocator;
+use crate::notemetadata::NoteMetadata;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
@@ -84,7 +85,11 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     ///
     /// The set of children doesn't need to be explicitly changed.
     /// Instead, this set will be maintained to be consistent when the parent is changed.
-    fn update_note<F>(&mut self, loc: &NoteLocator, op: F) -> Result<NoteLocator, NoteStoreError>
+    fn update_note_helper<F>(
+        &mut self,
+        loc: &NoteLocator,
+        op: F,
+    ) -> Result<NoteLocator, NoteStoreError>
     where
         F: FnOnce(&Note<T>) -> Result<Note<T>, NoteStoreError>,
     {
@@ -104,11 +109,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .notes
             .get_mut(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))?;
-        assert!(!note_revisions.contains_key(&new_revision)); // sanity check
+        // sanity check
+        assert!(!note_revisions.contains_key(&new_revision));
         // update note
         let mut updated_note = op(&old_note)?;
         updated_note.revision = new_revision.clone();
-        updated_note.metadata = old_note.metadata.on_update_note();
+        updated_note.metadata = updated_note.metadata.on_update_note();
         // don't need to borrow updated_note for the below change
         let new_parent = updated_note.parent.clone();
         note_revisions.insert(new_revision.clone(), updated_note);
@@ -139,7 +145,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         loc: &NoteLocator,
         parent: Option<NoteID>,
     ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note(loc, |old_note| {
+        self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
             note.parent = parent;
             Ok(note)
@@ -152,7 +158,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         loc: &NoteLocator,
         child: &NoteID,
     ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note(loc, |old_note| {
+        self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
             note.children.insert(child.clone());
             Ok(note)
@@ -165,7 +171,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         loc: &NoteLocator,
         child: &NoteID,
     ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note(loc, |old_note| {
+        self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
             let success = note.children.remove(child);
             if success {
@@ -231,14 +237,20 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn update_note_content(
+    fn update_note(
         &mut self,
         loc: &NoteLocator,
-        note_inner: T,
+        note_inner: Option<T>,
+        note_metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note(loc, |old_note| {
+        self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
-            note.note_inner = note_inner;
+            if let Some(n) = note_inner {
+                note.note_inner = n;
+            }
+            if let Some(m) = note_metadata {
+                note.metadata = m;
+            }
             Ok(note)
         })
     }
@@ -301,7 +313,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let note = self.get_note(loc)?;
         let (inner_parent, inner_child) = op(note.note_inner);
         // if loc is not current, the update here will fail, so no need to check
-        self.update_note_content(loc, inner_parent)?;
+        self.update_note(loc, Some(inner_parent), None)?;
         let loc_child = self.new_note(inner_child)?;
         let loc_child_new = self.set_parent(&loc_child, Some(loc.get_id().clone()))?;
         Ok((loc.current(), loc_child_new))
@@ -336,7 +348,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             ));
         }
         let new_inner = op(note1.note_inner, note2.note_inner);
-        self.update_note_content(loc1, new_inner)?;
+        self.update_note(loc1, Some(new_inner), None)?;
         self.delete_note(loc2)?;
         Ok(loc1.current())
     }
@@ -406,14 +418,15 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn update_note_content<'a>(
+    fn update_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-        note_inner: T,
+        note_inner: Option<T>,
+        note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.update_note_content(loc, note_inner)
+            ims.update_note(loc, note_inner, note_metadata)
         })
     }
 
@@ -544,10 +557,20 @@ mod tests {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let rev1 = loc1.get_revision().unwrap();
-        let created1 = store.get_note(&loc1.current()).await.unwrap().metadata.created_at;
-        let modified1 = store.get_note(&loc1.current()).await.unwrap().metadata.modified_at;
+        let created1 = store
+            .get_note(&loc1.current())
+            .await
+            .unwrap()
+            .metadata
+            .created_at;
+        let modified1 = store
+            .get_note(&loc1.current())
+            .await
+            .unwrap()
+            .metadata
+            .modified_at;
         let loc2 = store
-            .update_note_content(&loc1, PlainNote::new("Foo1".into()))
+            .update_note(&loc1, Some(PlainNote::new("Foo1".into())), None)
             .await
             .unwrap();
         let rev2 = loc2.get_revision().unwrap();
@@ -570,7 +593,8 @@ mod tests {
                 .get_note(&loc1.at_revision(rev2))
                 .await
                 .unwrap()
-                .metadata.modified_at,
+                .metadata
+                .modified_at,
             modified1
         );
         assert_eq!(
@@ -578,7 +602,8 @@ mod tests {
                 .get_note(&loc1.at_revision(rev2))
                 .await
                 .unwrap()
-                .metadata.created_at,
+                .metadata
+                .created_at,
             created1
         );
     }
@@ -809,7 +834,7 @@ mod tests {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
         let loc2 = store
-            .update_note_content(&loc1, PlainNote::new("Foo1".into()))
+            .update_note(&loc1, Some(PlainNote::new("Foo1".into())), None)
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
@@ -818,9 +843,10 @@ mod tests {
         assert_eq!(last_note.note_inner, PlainNote::new("Foo1".into()));
         assert_eq!(last_revision, loc2.get_revision().unwrap());
         store
-            .update_note_content(
+            .update_note(
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
-                last_note.note_inner.clone(),
+                Some(last_note.note_inner.clone()),
+                None,
             )
             .await
             .unwrap();
@@ -854,7 +880,7 @@ mod tests {
             .children
             .contains(loc1.get_id()));
         store
-            .update_note_content(&loc1.current(), PlainNote::new("Child1".into()))
+            .update_note(&loc1.current(), Some(PlainNote::new("Child1".into())), None)
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
@@ -867,9 +893,10 @@ mod tests {
         let revisions = store.get_revisions_with_note(&loc1).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
         store
-            .update_note_content(
+            .update_note(
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
-                last_note.note_inner.clone(),
+                Some(last_note.note_inner.clone()),
+                None,
             )
             .await
             .unwrap();

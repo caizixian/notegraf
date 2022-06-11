@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use std::path::Path;
 
 mod in_memory;
+use crate::notemetadata::NoteMetadata;
 pub use in_memory::InMemoryStore;
 
 /// An abstraction for storage backends.
@@ -25,7 +26,7 @@ pub trait NoteStore<T: NoteType> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Note<T>, NoteStoreError>>;
-    /// Update the content of a note.
+    /// Update the content and metadata of a note.
     ///
     /// The new content will set to be the current revision.
     ///
@@ -40,10 +41,11 @@ pub trait NoteStore<T: NoteType> {
     /// If a [`NoteStore`] caches the parent-children or reference relationships,
     /// it should check the whether any of the relevant fields of note_inner is changed,
     /// and update the the cache accordingly.
-    fn update_note_content<'a>(
+    fn update_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-        note_inner: T,
+        note_inner: Option<T>,
+        note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Delete a note.
     ///

@@ -19,10 +19,7 @@ pub struct MarkdownNote {
 
 impl MarkdownNote {
     pub fn new(body: String) -> Self {
-        MarkdownNote {
-            body,
-            ..Default::default()
-        }
+        MarkdownNote { body }
     }
 
     fn change_note_url(link: &str, old: &NoteID, new: &NoteID) -> Option<String> {
