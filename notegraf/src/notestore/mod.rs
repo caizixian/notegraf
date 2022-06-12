@@ -9,6 +9,8 @@ use std::path::Path;
 mod in_memory;
 #[allow(unused_variables, dead_code)]
 mod postgresql;
+#[cfg(test)]
+mod tests;
 
 pub use in_memory::InMemoryStore;
 pub use postgresql::PostgreSQLStore;

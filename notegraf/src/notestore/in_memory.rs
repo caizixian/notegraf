@@ -555,48 +555,27 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-
-    use crate::notetype::PlainNote;
-
     use super::*;
+    use crate::notestore::tests as common_tests;
+    use crate::notetype::PlainNote;
+    use std::env;
 
     #[tokio::test]
     async fn unique_id() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
-        let loc2 = store.new_note(PlainNote::new("Bar".into())).await.unwrap();
-        assert_ne!(loc1.get_id(), loc2.get_id());
+        common_tests::unique_id(store).await;
     }
 
     #[tokio::test]
     async fn new_note_revision() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
-        let rev = loc.get_revision().unwrap();
-        assert_eq!(
-            &store.get_current_revision(&loc.current()).await.unwrap(),
-            rev
-        );
+        common_tests::new_note_revision(store).await;
     }
 
     #[tokio::test]
     async fn new_note_retrieve() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let note_inner = PlainNote::new("Foo".into());
-        let loc = store.new_note(note_inner.clone()).await.unwrap();
-        assert_eq!(
-            store
-                .get_note(&loc.current())
-                .await
-                .unwrap()
-                .get_note_inner(),
-            note_inner
-        );
-        assert_eq!(
-            store.get_note(&loc).await.unwrap().get_note_inner(),
-            note_inner
-        );
+        common_tests::new_note_retrieve(store).await;
     }
 
     #[tokio::test]
@@ -621,91 +600,13 @@ mod tests {
     #[tokio::test]
     async fn update_note() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
-        let rev1 = loc1.get_revision().unwrap();
-        let created1 = store
-            .get_note(&loc1.current())
-            .await
-            .unwrap()
-            .get_metadata()
-            .created_at;
-        let modified1 = store
-            .get_note(&loc1.current())
-            .await
-            .unwrap()
-            .get_metadata()
-            .modified_at;
-        let loc2 = store
-            .update_note(&loc1, Some(PlainNote::new("Foo1".into())), None)
-            .await
-            .unwrap();
-        let rev2 = loc2.get_revision().unwrap();
-        assert_ne!(rev1, rev2);
-        assert_eq!(&store.get_current_revision(&loc1).await.unwrap(), rev2);
-        assert_eq!(
-            store
-                .get_note(&loc1.current())
-                .await
-                .unwrap()
-                .get_note_inner(),
-            PlainNote::new("Foo1".into())
-        );
-        assert_eq!(
-            store
-                .get_note(&loc1.at_revision(rev2))
-                .await
-                .unwrap()
-                .get_note_inner(),
-            PlainNote::new("Foo1".into())
-        );
-        assert_ne!(
-            store
-                .get_note(&loc1.at_revision(rev2))
-                .await
-                .unwrap()
-                .get_metadata()
-                .modified_at,
-            modified1
-        );
-        assert_eq!(
-            store
-                .get_note(&loc1.at_revision(rev2))
-                .await
-                .unwrap()
-                .get_metadata()
-                .created_at,
-            created1
-        );
-        assert_eq!(
-            store.get_revisions(&loc1).await.unwrap(),
-            vec![rev2.clone(), rev1.clone()]
-        )
+        common_tests::update_note(store).await;
     }
 
     #[tokio::test]
     async fn add_branch() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note(PlainNote::new("Branch".into()))
-            .await
-            .unwrap();
-        let loc2 = store
-            .new_note(PlainNote::new("Parent".into()))
-            .await
-            .unwrap();
-        store.add_branch(&loc2, loc1.get_id()).await.unwrap();
-        assert!(!store
-            .get_note(&loc2) // This points to an old revision
-            .await
-            .unwrap()
-            .get_branches()
-            .contains(loc1.get_id()));
-        assert!(store
-            .get_note(&loc2.current())
-            .await
-            .unwrap()
-            .get_branches()
-            .contains(loc1.get_id()));
+        common_tests::add_branch(store).await;
     }
 
     #[tokio::test]
@@ -731,30 +632,7 @@ mod tests {
     #[tokio::test]
     async fn delete_note_with_branches() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note(PlainNote::new("Branch".into()))
-            .await
-            .unwrap();
-        let loc2 = store
-            .new_note(PlainNote::new("Parent".into()))
-            .await
-            .unwrap();
-        store
-            .ims
-            .write()
-            .await
-            .add_branch(&loc2, loc1.get_id())
-            .unwrap();
-        assert!(store
-            .get_note(&loc2.current())
-            .await
-            .unwrap()
-            .get_branches()
-            .contains(loc1.get_id()));
-        assert!(matches!(
-            store.delete_note(&loc2.current()).await,
-            Err(NoteStoreError::HasBranches(_))
-        ));
+        common_tests::delete_note_with_branches(store).await;
     }
 
     #[tokio::test]
@@ -791,32 +669,6 @@ mod tests {
     #[tokio::test]
     async fn delete_middle_note_sequence() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Tail".into())).await.unwrap();
-        let loc2 = store
-            .new_note(PlainNote::new("Middle".into()))
-            .await
-            .unwrap();
-        let loc3 = store.new_note(PlainNote::new("Head".into())).await.unwrap();
-        store.append_note(&loc3, loc2.get_id()).await.unwrap();
-        store.append_note(&loc2, loc1.get_id()).await.unwrap();
-        store.delete_note(&loc2.current()).await.unwrap();
-        assert_eq!(
-            &store
-                .get_note(&loc1.current())
-                .await
-                .unwrap()
-                .get_prev()
-                .unwrap(),
-            loc3.get_id()
-        );
-        assert_eq!(
-            &store
-                .get_note(&loc3.current())
-                .await
-                .unwrap()
-                .get_next()
-                .unwrap(),
-            loc1.get_id()
-        );
+        common_tests::delete_middle_note_sequence(store).await;
     }
 }
