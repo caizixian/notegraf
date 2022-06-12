@@ -1,25 +1,27 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::time::SystemTime;
 
 pub static NOTE_METADATA_CURRENT_SCHEMA_VERSION: u64 = 0;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteMetadata {
     pub schema_version: u64,
-    pub created_at: SystemTime,
-    pub modified_at: SystemTime,
+    pub created_at: DateTime<Utc>,
+    pub modified_at: DateTime<Utc>,
     pub tags: HashSet<String>,
+    pub custom_metadata: serde_json::Value,
 }
 
 impl Default for NoteMetadata {
     fn default() -> Self {
-        let now = SystemTime::now();
+        let now = Utc::now();
         NoteMetadata {
             schema_version: NOTE_METADATA_CURRENT_SCHEMA_VERSION,
             created_at: now,
             modified_at: now,
             tags: HashSet::new(),
+            custom_metadata: serde_json::json!({}),
         }
     }
 }
@@ -31,8 +33,9 @@ impl NoteMetadata {
         NoteMetadata {
             schema_version: NOTE_METADATA_CURRENT_SCHEMA_VERSION,
             created_at: self.created_at,
-            modified_at: SystemTime::now(),
+            modified_at: Utc::now(),
             tags: self.tags.clone(),
+            custom_metadata: self.custom_metadata.clone(),
         }
     }
 }

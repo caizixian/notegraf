@@ -3,6 +3,7 @@ use crate::errors::NoteStoreError;
 use crate::note::NoteLocator;
 use crate::notemetadata::NoteMetadata;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
+use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -10,7 +11,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::time::SystemTime;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -378,7 +378,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .get(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
             .map(|rs| {
-                let mut v: Vec<(Revision, SystemTime)> = rs
+                let mut v: Vec<(Revision, DateTime<Utc>)> = rs
                     .iter()
                     .map(|(r, n)| (r.clone(), n.metadata.modified_at))
                     .collect();

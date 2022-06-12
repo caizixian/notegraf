@@ -7,11 +7,11 @@ use futures::future::BoxFuture;
 use std::path::Path;
 
 mod in_memory;
-//#[allow(unused_variables, dead_code)]
-//mod postgresql;
+#[allow(unused_variables, dead_code)]
+mod postgresql;
 
 pub use in_memory::InMemoryStore;
-//pub use postgresql::PostgreSQLStore;
+pub use postgresql::PostgreSQLStore;
 
 /// An abstraction for storage backends.
 pub trait NoteStore<T>

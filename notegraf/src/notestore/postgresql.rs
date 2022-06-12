@@ -1,6 +1,6 @@
 use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadata;
-use crate::{Note, NoteLocator, NoteStore, NoteType, Revision};
+use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use sqlx::PgPool;
 use std::marker::PhantomData;
@@ -28,7 +28,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn get_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Note<T>, NoteStoreError>> {
+    ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>> {
         todo!()
     }
 
@@ -62,20 +62,19 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         todo!()
     }
 
-    fn split_note<'a>(
+    fn append_note<'a>(
         &'a self,
-        loc: &'a NoteLocator,
-        op: Box<dyn FnOnce(T) -> (T, T) + Send>,
-    ) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), NoteStoreError>> {
+        last: &'a NoteLocator,
+        next: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         todo!()
     }
 
-    fn merge_note<'a>(
+    fn add_branch<'a>(
         &'a self,
-        loc1: &'a NoteLocator,
-        loc2: &'a NoteLocator,
-        op: Box<dyn FnOnce(T, T) -> T + Send>,
-    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
+        parent: &'a NoteLocator,
+        child: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         todo!()
     }
 
