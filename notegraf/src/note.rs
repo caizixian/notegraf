@@ -114,6 +114,8 @@ pub trait Note<T: NoteType>: Debug + erased_serde::Serialize {
     fn get_metadata(&self) -> NoteMetadata;
 }
 
+erased_serde::serialize_trait_object!(<T> Note<T> where T: NoteType);
+
 /// A type for locating a note.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum NoteLocator {
