@@ -10,7 +10,7 @@ mod markdown;
 pub use markdown::MarkdownNote;
 
 pub trait NoteType:
-    Serialize + DeserializeOwned + Clone + Debug + PartialEq + Eq + Send + Sync
+    Serialize + DeserializeOwned + Clone + Debug + PartialEq + Eq + Send + Sync + 'static
 {
     type Error;
     fn get_referents(&self) -> HashSet<NoteID>;

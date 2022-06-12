@@ -26,7 +26,7 @@ pub struct InMemoryNoteStored<T> {
 type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct InMemoryNoteComputed<T> {
+struct InMemoryNoteComputed<T> {
     note_inner: T,
     id: NoteID,
     revision: Revision,
@@ -285,13 +285,13 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note(&self, loc: &NoteLocator) -> Result<InMemoryNoteComputed<T>, NoteStoreError> {
+    fn get_note(&self, loc: &NoteLocator) -> Result<Box<dyn Note<T>>, NoteStoreError> {
         let note_stored = self.get_note_stored(loc)?;
         let referents = note_stored.note_inner.get_referents();
         let references = self.get_references(&note_stored.id);
         let parent = self.get_parent(&note_stored.id);
         let prev = self.get_prev(&note_stored.id);
-        Ok(InMemoryNoteComputed {
+        Ok(Box::new(InMemoryNoteComputed {
             note_inner: note_stored.note_inner,
             id: note_stored.id,
             revision: note_stored.revision,
@@ -302,7 +302,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             referents,
             references,
             metadata: note_stored.metadata,
-        })
+        }))
     }
 
     fn update_note(
@@ -444,7 +444,7 @@ impl<T: NoteType> Default for InMemoryStore<T> {
     }
 }
 
-impl<T: NoteType> NoteStore<InMemoryNoteComputed<T>, T> for InMemoryStore<T> {
+impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
@@ -455,7 +455,7 @@ impl<T: NoteType> NoteStore<InMemoryNoteComputed<T>, T> for InMemoryStore<T> {
     fn get_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<InMemoryNoteComputed<T>, NoteStoreError>> {
+    ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_note(loc)

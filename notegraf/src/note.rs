@@ -99,7 +99,7 @@ impl From<&str> for Revision {
 /// Note properties can be stored as is by the storage backend, but can also be computed.
 /// Expensive computation can be cached, but it's the storage's responsibility to keep the cache
 /// coherent.
-pub trait Note<T: NoteType>: Debug + Clone + Serialize + Sized {
+pub trait Note<T: NoteType>: Debug + erased_serde::Serialize {
     fn get_note_inner(&self) -> T;
     fn get_id(&self) -> NoteID;
     fn get_revision(&self) -> Revision;

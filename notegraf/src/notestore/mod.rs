@@ -14,10 +14,9 @@ pub use in_memory::InMemoryStore;
 //pub use postgresql::PostgreSQLStore;
 
 /// An abstraction for storage backends.
-pub trait NoteStore<N, T>
+pub trait NoteStore<T>
 where
     T: NoteType,
-    N: Note<T>,
 {
     /// Create a new note.
     ///
@@ -30,7 +29,7 @@ where
     ///
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or
     /// the current revision.
-    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<N, NoteStoreError>>;
+    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>>;
     /// Update the content and metadata of a note.
     ///
     /// The new content will set to be the current revision.

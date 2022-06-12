@@ -13,6 +13,5 @@ categories = ["web-programming", "text-processing"]
 keywords = ["note-taking"]
 
 [dependencies]
-# pinned to a minor release because a beta version is used
 actix-web = "4.0"
 notegraf = {version = "0.1.0-alpha.1", path = "../notegraf"}
