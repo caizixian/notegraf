@@ -17,7 +17,10 @@ async fn new_note(ns: web::Data<NoteStore>) -> Result<web::Json<NoteLocator>> {
     Ok(web::Json(loc))
 }
 
-async fn get_note(req: HttpRequest, ns: web::Data<NoteStore>) -> Result<web::Json<Box<dyn Note<NoteType>>>> {
+async fn get_note(
+    req: HttpRequest,
+    ns: web::Data<NoteStore>,
+) -> Result<web::Json<Box<dyn Note<NoteType>>>> {
     let note_id = req.match_info().get("note_id").unwrap();
     let loc = if let Some(revision) = req.match_info().get("revision") {
         NoteLocator::Specific(note_id.into(), revision.into())

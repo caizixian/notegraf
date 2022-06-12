@@ -29,7 +29,10 @@ where
     ///
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or
     /// the current revision.
-    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>>;
+    fn get_note<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>>;
     /// Update the content and metadata of a note.
     ///
     /// The new content will set to be the current revision.

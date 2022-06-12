@@ -332,7 +332,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             }
             // Avoid dangling references
             if !self.get_references(id).is_empty() {
-                return Err(NoteStoreError::HasReferences(id.clone()))
+                return Err(NoteStoreError::HasReferences(id.clone()));
             }
             if note.next.is_some() {
                 let prev = self.get_prev(id);
