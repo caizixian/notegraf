@@ -103,6 +103,7 @@ pub trait Note<T: NoteType>: Debug + erased_serde::Serialize {
     fn get_note_inner(&self) -> T;
     fn get_id(&self) -> NoteID;
     fn get_revision(&self) -> Revision;
+    // Represent branches
     fn get_parent(&self) -> Option<NoteID>;
     fn get_branches(&self) -> HashSet<NoteID>;
     // Represents a sequence of notes
