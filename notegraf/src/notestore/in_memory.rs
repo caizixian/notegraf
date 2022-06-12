@@ -13,29 +13,98 @@ use std::path::Path;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-type RevisionsOfNote<T> = Vec<(Revision, Note<T>)>;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InMemoryNoteStored<T> {
+    note_inner: T,
+    id: NoteID,
+    revision: Revision,
+    branches: HashSet<NoteID>,
+    next: Option<NoteID>,
+    metadata: NoteMetadata,
+}
+
+type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InMemoryNoteComputed<T> {
+    note_inner: T,
+    id: NoteID,
+    revision: Revision,
+    parent: Option<NoteID>,
+    branches: HashSet<NoteID>,
+    prev: Option<NoteID>,
+    next: Option<NoteID>,
+    referents: HashSet<NoteID>,
+    references: HashSet<NoteID>,
+    metadata: NoteMetadata,
+}
+
+impl<T> Note<T> for InMemoryNoteComputed<T>
+where
+    T: NoteType,
+{
+    fn get_note_inner(&self) -> T {
+        self.note_inner.clone()
+    }
+
+    fn get_id(&self) -> NoteID {
+        self.id.clone()
+    }
+
+    fn get_revision(&self) -> Revision {
+        self.revision.clone()
+    }
+
+    fn get_parent(&self) -> Option<NoteID> {
+        self.parent.clone()
+    }
+
+    fn get_branches(&self) -> HashSet<NoteID> {
+        self.branches.clone()
+    }
+
+    fn get_prev(&self) -> Option<NoteID> {
+        self.prev.clone()
+    }
+
+    fn get_next(&self) -> Option<NoteID> {
+        self.next.clone()
+    }
+
+    fn get_references(&self) -> HashSet<NoteID> {
+        self.references.clone()
+    }
+
+    fn get_referents(&self) -> HashSet<NoteID> {
+        self.referents.clone()
+    }
+
+    fn get_metadata(&self) -> NoteMetadata {
+        self.metadata.clone()
+    }
+}
 
 /// In-memory storage.
 ///
 /// This is mostly designed for development use, because there is no persistence layer.
 #[derive(Debug, Serialize, Deserialize)]
 struct InMemoryStoreInner<T> {
-    notes: HashMap<NoteID, HashMap<Revision, Note<T>>>,
+    notes: HashMap<NoteID, HashMap<Revision, InMemoryNoteStored<T>>>,
     current_revision: HashMap<NoteID, Revision>,
 }
 
 impl<T: NoteType> Default for InMemoryStoreInner<T> {
     fn default() -> Self {
-        Self::new()
+        InMemoryStoreInner {
+            notes: Default::default(),
+            current_revision: Default::default(),
+        }
     }
 }
 
 impl<T: NoteType> InMemoryStoreInner<T> {
     pub fn new() -> Self {
-        InMemoryStoreInner {
-            notes: Default::default(),
-            current_revision: Default::default(),
-        }
+        Default::default()
     }
 
     /// Generate a new [`NoteID`].
@@ -91,12 +160,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         op: F,
     ) -> Result<NoteLocator, NoteStoreError>
     where
-        F: FnOnce(&Note<T>) -> Result<Note<T>, NoteStoreError>,
+        F: FnOnce(&InMemoryNoteStored<T>) -> Result<InMemoryNoteStored<T>, NoteStoreError>,
     {
         let (id, rev) = loc.unpack();
-        let resurrected = self.is_deleted(loc)?;
-        let old_note = if resurrected || self.is_current(loc)? {
-            self.get_note(loc)?
+        let is_resurrecting = self.is_deleted(loc)?;
+        let old_note = if is_resurrecting || self.is_current(loc)? {
+            self.get_note_stored(loc)?
         } else {
             return Err(NoteStoreError::UpdateOldRevision(
                 id.clone(),
@@ -115,108 +184,95 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let mut updated_note = op(&old_note)?;
         updated_note.revision = new_revision.clone();
         updated_note.metadata = updated_note.metadata.on_update_note();
-        // don't need to borrow updated_note for the below change
-        let new_parent = updated_note.parent.clone();
-        note_revisions.insert(new_revision.clone(), updated_note);
-        self.current_revision
-            .insert(id.clone(), new_revision.clone());
-        // propagate changes in parent-children relationships
-        if new_parent != old_note.parent || resurrected {
-            if let Some(ref p) = old_note.parent {
-                if !resurrected {
-                    // The old parent of a resurrected note is like None
-                    self.remove_child(&NoteLocator::Current(p.clone()), id)
-                        .unwrap();
-                }
-            }
-            if let Some(ref p) = new_parent {
-                // TODO check for cycles
-                // Even though through the allowed API (such as split and merge), it's impossible
-                // to create cycles. We should add a sanity check to prevent cycles from forming.
-                // Specifically, we need to check whether p is a descendant of id.
-                // That is, id transitively reachable by traversing through .parent from p
-                self.add_child(&NoteLocator::Current(p.clone()), id)
-                    .unwrap();
-            }
-        }
         Ok(NoteLocator::Specific(id.clone(), new_revision))
-    }
-
-    /// Set parent of a note
-    fn set_parent(
-        &mut self,
-        loc: &NoteLocator,
-        parent: Option<NoteID>,
-    ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note_helper(loc, |old_note| {
-            let mut note = old_note.clone();
-            note.parent = parent;
-            Ok(note)
-        })
-    }
-
-    /// Add a child from a note
-    fn add_child(
-        &mut self,
-        loc: &NoteLocator,
-        child: &NoteID,
-    ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note_helper(loc, |old_note| {
-            let mut note = old_note.clone();
-            note.children.insert(child.clone());
-            Ok(note)
-        })
-    }
-
-    /// Remove a child from a note
-    fn remove_child(
-        &mut self,
-        loc: &NoteLocator,
-        child: &NoteID,
-    ) -> Result<NoteLocator, NoteStoreError> {
-        self.update_note_helper(loc, |old_note| {
-            let mut note = old_note.clone();
-            let success = note.children.remove(child);
-            if success {
-                Ok(note)
-            } else {
-                Err(NoteStoreError::NotAChild(
-                    loc.get_id().clone(),
-                    child.clone(),
-                ))
-            }
-        })
     }
 
     /// Get all revisions of a note with actual notes
     fn get_revisions_with_note(
         &self,
         loc: &NoteLocator,
-    ) -> Result<Vec<(Revision, Note<T>)>, NoteStoreError> {
+    ) -> Result<Vec<(Revision, InMemoryNoteStored<T>)>, NoteStoreError> {
         let id = loc.get_id();
         self.notes
             .get(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
             .map(|rs| {
-                let mut v: Vec<(Revision, Note<T>)> =
+                let mut v: Vec<(Revision, InMemoryNoteStored<T>)> =
                     rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
                 v.sort_by_key(|(_, n)| n.metadata.modified_at);
                 v
             })
     }
 
+    fn get_note_by_revision(
+        &self,
+        id: &NoteID,
+        rev: &Revision,
+    ) -> Result<InMemoryNoteStored<T>, NoteStoreError> {
+        Ok(self
+            .notes
+            .get(id)
+            .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))?
+            .get(rev)
+            .ok_or_else(|| NoteStoreError::RevisionNotExist(id.clone(), rev.clone()))?
+            .clone())
+    }
+
+    fn get_note_stored(&self, loc: &NoteLocator) -> Result<InMemoryNoteStored<T>, NoteStoreError> {
+        let (id, rev) = loc.unpack();
+        if let Some(r) = rev {
+            self.get_note_by_revision(id, r)
+        } else {
+            self.get_note_by_revision(id, &self.get_current_revision(loc)?)
+        }
+    }
+
+    fn get_references(&self, referent: &NoteID) -> HashSet<NoteID> {
+        let mut references = HashSet::new();
+        for (id, revision) in &self.current_revision {
+            let note = self.get_note_by_revision(id, revision).unwrap();
+            if note.note_inner.get_referents().contains(referent) {
+                references.insert(note.id.clone());
+            }
+        }
+        references
+    }
+
+    fn get_parent(&self, child: &NoteID) -> Option<NoteID> {
+        for (id, revision) in &self.current_revision {
+            let note = self.get_note_by_revision(id, revision).unwrap();
+            if note.branches.contains(child) {
+                return Some(note.id);
+            }
+        }
+        None
+    }
+
+    fn get_prev(&self, next: &NoteID) -> Option<NoteID> {
+        for (id, revision) in &self.current_revision {
+            let note = self.get_note_by_revision(id, revision).unwrap();
+            if let Some(ref nn) = note.next {
+                if nn == next {
+                    return Some(note.id);
+                }
+            }
+        }
+        None
+    }
+
+    // The methods above are helper methods
+    // The methods below are to implement the NoteStore interface
     fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision();
-        let note = Note::new(
+        let note = InMemoryNoteStored {
             note_inner,
-            id.clone(),
-            revision.clone(),
-            None,
-            HashSet::new(),
-            HashSet::new(),
-            NoteMetadata::default(),
-        );
+            id: id.clone(),
+            revision: revision.clone(),
+            branches: Default::default(),
+            next: None,
+            metadata: Default::default(),
+        };
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
         // unwrap won't fail because we just inserted an entry
@@ -229,23 +285,24 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note_by_revision(&self, id: &NoteID, rev: &Revision) -> Result<Note<T>, NoteStoreError> {
-        Ok(self
-            .notes
-            .get(id)
-            .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))?
-            .get(rev)
-            .ok_or_else(|| NoteStoreError::RevisionNotExist(id.clone(), rev.clone()))?
-            .clone())
-    }
-
-    fn get_note(&self, loc: &NoteLocator) -> Result<Note<T>, NoteStoreError> {
-        let (id, rev) = loc.unpack();
-        if let Some(r) = rev {
-            self.get_note_by_revision(id, r)
-        } else {
-            self.get_note_by_revision(id, &self.get_current_revision(loc)?)
-        }
+    fn get_note(&self, loc: &NoteLocator) -> Result<InMemoryNoteComputed<T>, NoteStoreError> {
+        let note_stored = self.get_note_stored(loc)?;
+        let referents = note_stored.note_inner.get_referents();
+        let references = self.get_references(&note_stored.id);
+        let parent = self.get_parent(&note_stored.id);
+        let prev = self.get_prev(&note_stored.id);
+        Ok(InMemoryNoteComputed {
+            note_inner: note_stored.note_inner,
+            id: note_stored.id,
+            revision: note_stored.revision,
+            parent,
+            branches: note_stored.branches,
+            prev,
+            next: note_stored.next,
+            referents,
+            references,
+            metadata: note_stored.metadata,
+        })
     }
 
     fn update_note(
@@ -270,19 +327,21 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         // FIXME check for dangling references
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
-            let note = self.get_note(loc).unwrap();
-            if let Some(p) = &note.parent {
-                self.remove_child(&NoteLocator::Current(p.clone()), id)
-                    .unwrap();
-                for c in &note.children {
-                    self.set_parent(&NoteLocator::Current(c.clone()), note.parent.clone())?;
-                }
-            } else {
-                for c in &note.children {
-                    self.set_parent(&NoteLocator::Current(c.clone()), None)?;
+            let note = self.get_note_stored(loc).unwrap();
+            if !note.branches.is_empty() {
+                return Err(NoteStoreError::HasBranches(id.clone()));
+            }
+            if note.next.is_some() {
+                let prev = self.get_prev(id);
+                if let Some(prev_id) = prev {
+                    self.update_note_helper(&NoteLocator::Current(prev_id), |old_note| {
+                        let mut parent_note = old_note.clone();
+                        assert_eq!(parent_note.next.as_ref(), Some(id));
+                        parent_note.next = note.next;
+                        Ok(parent_note)
+                    })?;
                 }
             }
-
             // Mark the note as delete at last to avoid the previous steps from referring to
             // a delete note
             self.current_revision.remove(id).unwrap();
@@ -314,56 +373,25 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .map(|rs| rs.keys().cloned().collect())
     }
 
-    fn split_note<F>(
-        &mut self,
-        loc: &NoteLocator,
-        op: F,
-    ) -> Result<(NoteLocator, NoteLocator), NoteStoreError>
-    where
-        F: FnOnce(T) -> (T, T),
-    {
-        let note = self.get_note(loc)?;
-        let (inner_parent, inner_child) = op(note.note_inner);
-        // if loc is not current, the update here will fail, so no need to check
-        self.update_note(loc, Some(inner_parent), None)?;
-        let loc_child = self.new_note(inner_child)?;
-        let loc_child_new = self.set_parent(&loc_child, Some(loc.get_id().clone()))?;
-        Ok((loc.current(), loc_child_new))
+    fn append_note(&mut self, last: &NoteLocator, next: &NoteID) -> Result<(), NoteStoreError> {
+        self.update_note_helper(last, |old_note| {
+            let mut note = old_note.clone();
+            if note.next.is_some() {
+                return Err(NoteStoreError::ExistingNext(note.id, next.clone()));
+            }
+            note.next = Some(next.clone());
+            Ok(note)
+        })?;
+        Ok(())
     }
 
-    fn merge_note<F>(
-        &mut self,
-        loc1: &NoteLocator,
-        loc2: &NoteLocator,
-        op: F,
-    ) -> Result<NoteLocator, NoteStoreError>
-    where
-        F: FnOnce(T, T) -> T,
-    {
-        // FIXME update existing references
-        // Need to check whether both are current for atomicity
-        // Otherwise one note might be updated while the other might not
-        for loc in &[loc1, loc2] {
-            if !self.is_current(loc)? {
-                return Err(NoteStoreError::UpdateOldRevision(
-                    loc.get_id().clone(),
-                    loc.get_revision().unwrap().clone(),
-                ));
-            }
-        }
-
-        let note1 = self.get_note(loc1)?;
-        let note2 = self.get_note(loc2)?;
-        if note2.parent != Some(note1.id) {
-            return Err(NoteStoreError::NotAChild(
-                loc1.get_id().clone(),
-                loc2.get_id().clone(),
-            ));
-        }
-        let new_inner = op(note1.note_inner, note2.note_inner);
-        self.update_note(loc1, Some(new_inner), None)?;
-        self.delete_note(loc2)?;
-        Ok(loc1.current())
+    fn add_branch(&mut self, parent: &NoteLocator, child: &NoteID) -> Result<(), NoteStoreError> {
+        let _loc = self.update_note_helper(parent, |old_note| {
+            let mut note = old_note.clone();
+            note.branches.insert(child.clone());
+            Ok(note)
+        })?;
+        Ok(())
     }
 
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), NoteStoreError> {
@@ -413,7 +441,7 @@ impl<T: NoteType> Default for InMemoryStore<T> {
     }
 }
 
-impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
+impl<T: NoteType> NoteStore<InMemoryNoteComputed<T>, T> for InMemoryStore<T> {
     fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
@@ -424,7 +452,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn get_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Note<T>, NoteStoreError>> {
+    ) -> BoxFuture<'a, Result<InMemoryNoteComputed<T>, NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_note(loc)
@@ -473,26 +501,25 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn split_note<'a>(
+    fn append_note<'a>(
         &'a self,
-        loc: &'a NoteLocator,
-        op: Box<dyn FnOnce(T) -> (T, T) + Send>,
-    ) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), NoteStoreError>> {
+        last: &'a NoteLocator,
+        next: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.split_note(loc, op)
+            ims.append_note(last, next)
         })
     }
 
-    fn merge_note<'a>(
+    fn add_branch<'a>(
         &'a self,
-        loc1: &'a NoteLocator,
-        loc2: &'a NoteLocator,
-        op: Box<dyn FnOnce(T, T) -> T + Send>,
-    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
+        parent: &'a NoteLocator,
+        child: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.merge_note(loc1, loc2, op)
+            ims.add_branch(parent, child)
         })
     }
 
@@ -510,6 +537,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::env;
@@ -1054,3 +1082,4 @@ mod tests {
         );
     }
 }
+*/

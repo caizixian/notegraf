@@ -4,6 +4,7 @@ use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -39,11 +40,11 @@ impl MarkdownNote {
 impl NoteType for MarkdownNote {
     type Error = MarkdownNoteError;
 
-    fn get_references(&self) -> Vec<&NoteID> {
+    fn get_referents(&self) -> HashSet<NoteID> {
         todo!()
     }
 
-    fn update_reference(
+    fn update_referent(
         &mut self,
         old_referent: NoteID,
         new_referent: NoteID,
@@ -147,7 +148,7 @@ mod tests {
         let id_old = NoteID::new("old".into());
         let id_new = NoteID::new("new".into());
         let mut note = MarkdownNote::new(r#"[foo](notegraf:/note/old)"#.into());
-        note.update_reference(id_old, id_new).unwrap();
+        note.update_referent(id_old, id_new).unwrap();
         assert_eq!(note.body, r#"[foo](notegraf:/note/new)"#)
     }
 
@@ -156,7 +157,7 @@ mod tests {
         let id_old = NoteID::new("old".into());
         let id_new = NoteID::new("new".into());
         let mut note = MarkdownNote::new(r#"<notegraf:/note/old>"#.into());
-        note.update_reference(id_old, id_new).unwrap();
+        note.update_referent(id_old, id_new).unwrap();
         assert_eq!(note.body, r#"<notegraf:/note/new>"#)
     }
 }

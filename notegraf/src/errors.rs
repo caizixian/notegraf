@@ -23,6 +23,10 @@ pub enum NoteStoreError {
     DeleteOldRevision(NoteID, Revision),
     #[error("inconsistency detected: note `{1}` is not a child of note `{0}`")]
     NotAChild(NoteID, NoteID),
+    #[error("cannot append note `{1}` to note `{0}`, because note `{0}` is not the last note in a sequence")]
+    ExistingNext(NoteID, NoteID),
+    #[error("cannot delete note `{0}`, because it has branches")]
+    HasBranches(NoteID),
 }
 
 /// Error type for Notegraf URL parsing.

@@ -42,11 +42,11 @@ impl PlainNote {
 impl NoteType for PlainNote {
     type Error = PlainNoteError;
 
-    fn get_references(&self) -> Vec<&NoteID> {
-        self.references.iter().collect()
+    fn get_referents(&self) -> HashSet<NoteID> {
+        self.references.clone()
     }
 
-    fn update_reference(
+    fn update_referent(
         &mut self,
         old_referent: NoteID,
         new_referent: NoteID,
@@ -69,8 +69,8 @@ mod tests {
         let mut note = PlainNote::new("Foo".into());
         note.add_reference(NoteID::new("ID1".into()));
         note.add_reference(NoteID::new("ID2".into()));
-        assert!(note.get_references().contains(&&NoteID::new("ID1".into())));
-        assert!(note.get_references().contains(&&NoteID::new("ID2".into())));
+        assert!(note.get_referents().contains(&&NoteID::new("ID1".into())));
+        assert!(note.get_referents().contains(&&NoteID::new("ID2".into())));
     }
 
     #[test]
@@ -78,10 +78,10 @@ mod tests {
         let mut note = PlainNote::new("Foo".into());
         note.add_reference(NoteID::new("ID1".into()));
         note.add_reference(NoteID::new("ID2".into()));
-        note.update_reference(NoteID::new("ID1".into()), NoteID::new("ID3".into()))
+        note.update_referent(NoteID::new("ID1".into()), NoteID::new("ID3".into()))
             .unwrap();
-        assert!(note.get_references().contains(&&NoteID::new("ID3".into())));
-        assert!(note.get_references().contains(&&NoteID::new("ID2".into())));
+        assert!(note.get_referents().contains(&&NoteID::new("ID3".into())));
+        assert!(note.get_referents().contains(&&NoteID::new("ID2".into())));
     }
 
     #[test]
@@ -90,6 +90,6 @@ mod tests {
         note.add_reference(NoteID::new("ID1".into()));
         note.add_reference(NoteID::new("ID2".into()));
         note.add_reference(NoteID::new("ID2".into()));
-        assert_eq!(note.get_references().len(), 2);
+        assert_eq!(note.get_referents().len(), 2);
     }
 }

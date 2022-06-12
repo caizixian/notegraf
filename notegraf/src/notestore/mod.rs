@@ -6,11 +6,11 @@ use crate::notetype::NoteType;
 use futures::future::BoxFuture;
 use std::path::Path;
 
-//mod in_memory;
+mod in_memory;
 //#[allow(unused_variables, dead_code)]
 //mod postgresql;
 
-//pub use in_memory::InMemoryStore;
+pub use in_memory::InMemoryStore;
 //pub use postgresql::PostgreSQLStore;
 
 /// An abstraction for storage backends.
@@ -30,10 +30,7 @@ where
     ///
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or
     /// the current revision.
-    fn get_note<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<N, NoteStoreError>>;
+    fn get_note<'a>(&'a self, loc: &'a NoteLocator) -> BoxFuture<'a, Result<N, NoteStoreError>>;
     /// Update the content and metadata of a note.
     ///
     /// The new content will set to be the current revision.
@@ -83,9 +80,17 @@ where
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>>;
     /// Append a note to the last (or only) note in a sequence
-    fn append_note<'a>(&'a self, last: &'a NoteLocator, next: &'a NoteLocator);
+    fn append_note<'a>(
+        &'a self,
+        last: &'a NoteLocator,
+        next: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Add a branch to a note
-    fn add_branch<'a>(&'a self, last: &'a NoteLocator, next: &'a NoteLocator);
+    fn add_branch<'a>(
+        &'a self,
+        parent: &'a NoteLocator,
+        child: &'a NoteID,
+    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.
