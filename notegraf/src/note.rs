@@ -3,7 +3,7 @@ use crate::notemetadata::NoteMetadata;
 use crate::notetype::NoteType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::fmt::{self, Display};
+use std::fmt::{self, Debug, Display};
 
 /// ID of notes.
 ///
@@ -94,49 +94,24 @@ impl From<&str> for Revision {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 /// Represent a complete note entity for downstream consumption
 ///
 /// Note properties can be stored as is by the storage backend, but can also be computed.
 /// Expensive computation can be cached, but it's the storage's responsibility to keep the cache
 /// coherent.
-pub struct Note<T> {
-    pub note_inner: T,
-    pub id: NoteID,
-    pub revision: Revision,
-    pub parent: Option<NoteID>,
-    pub children: HashSet<NoteID>,
-    pub referents: HashSet<NoteID>,
-    pub metadata: NoteMetadata,
-}
-
-impl<T> Note<T>
-where
-    T: NoteType,
-{
-    pub fn new(
-        note_inner: T,
-        id: NoteID,
-        revision: Revision,
-        parent: Option<NoteID>,
-        children: HashSet<NoteID>,
-        referents: HashSet<NoteID>,
-        metadata: NoteMetadata,
-    ) -> Self {
-        Note {
-            note_inner,
-            id,
-            revision,
-            parent,
-            children,
-            referents,
-            metadata,
-        }
-    }
-
-    pub fn get_references(&self) -> Vec<&NoteID> {
-        self.note_inner.get_references()
-    }
+pub trait Note<T: NoteType>: Debug + Clone + Serialize + Sized {
+    fn get_note_inner(&self) -> T;
+    fn get_id(&self) -> NoteID;
+    fn get_revision(&self) -> Revision;
+    fn get_parent(&self) -> Option<NoteID>;
+    fn get_branches(&self) -> HashSet<NoteID>;
+    // Represents a sequence of notes
+    fn get_prev(&self) -> Option<NoteID>;
+    fn get_next(&self) -> Option<NoteID>;
+    // Represents bi-directional references
+    fn get_references(&self) -> HashSet<NoteID>;
+    fn get_referents(&self) -> HashSet<NoteID>;
+    fn get_metadata(&self) -> NoteMetadata;
 }
 
 /// A type for locating a note.

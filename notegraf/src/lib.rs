@@ -7,5 +7,5 @@ pub mod notetype;
 pub mod url;
 
 pub use note::{Note, NoteID, NoteLocator, Revision};
-pub use notestore::{InMemoryStore, NoteStore};
-pub use notetype::{NoteType, PlainNote};
+//pub use notestore::{InMemoryStore, NoteStore};
+pub use notetype::{NoteType, PlainNote, MarkdownNote};

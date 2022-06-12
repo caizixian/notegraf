@@ -6,15 +6,19 @@ use crate::notetype::NoteType;
 use futures::future::BoxFuture;
 use std::path::Path;
 
-mod in_memory;
-#[allow(unused_variables, dead_code)]
-mod postgresql;
+//mod in_memory;
+//#[allow(unused_variables, dead_code)]
+//mod postgresql;
 
-pub use in_memory::InMemoryStore;
-pub use postgresql::PostgreSQLStore;
+//pub use in_memory::InMemoryStore;
+//pub use postgresql::PostgreSQLStore;
 
 /// An abstraction for storage backends.
-pub trait NoteStore<T: NoteType> {
+pub trait NoteStore<N, T>
+where
+    T: NoteType,
+    N: Note<T>,
+{
     /// Create a new note.
     ///
     /// The storage backend assigns a [`NoteID`] and [`Revision`]
@@ -29,7 +33,7 @@ pub trait NoteStore<T: NoteType> {
     fn get_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Note<T>, NoteStoreError>>;
+    ) -> BoxFuture<'a, Result<N, NoteStoreError>>;
     /// Update the content and metadata of a note.
     ///
     /// The new content will set to be the current revision.
@@ -78,43 +82,10 @@ pub trait NoteStore<T: NoteType> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>>;
-    /// Split a note into two parts.
-    ///
-    /// The second part becomes the children of the first part.
-    /// The first part is updated in-place, i.e., same [`NoteID`] but a different [`Revision`].
-    ///
-    /// The closure argument specifies how the inner note can be split.
-    ///
-    /// If a revision is specified, that revision should be the current revision.
-    /// This can be used to prevent racy updates to the same note.
-    ///
-    /// Note that this function can also be used to create a child note without modifying the
-    /// parent.
-    fn split_note<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-        op: Box<dyn FnOnce(T) -> (T, T) + Send>,
-    ) -> BoxFuture<'a, Result<(NoteLocator, NoteLocator), NoteStoreError>>;
-    /// Merge two notes.
-    ///
-    /// The second note must the a child of the first note.
-    ///
-    /// There is the no guarantee whether the notes will be merged in-place.
-    /// The only invariant is that the children of the first and the second notes will become
-    /// the children of the new note.
-    ///
-    /// The closure argument specifies how two inner notes can be joined.
-    ///
-    /// If a revision is specified, that revision should be the current revision.
-    /// This can be used to prevent racy updates to the same note.
-    ///
-    /// Need to update existing references
-    fn merge_note<'a>(
-        &'a self,
-        loc1: &'a NoteLocator,
-        loc2: &'a NoteLocator,
-        op: Box<dyn FnOnce(T, T) -> T + Send>,
-    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
+    /// Append a note to the last (or only) note in a sequence
+    fn append_note<'a>(&'a self, last: &'a NoteLocator, next: &'a NoteLocator);
+    /// Add a branch to a note
+    fn add_branch<'a>(&'a self, last: &'a NoteLocator, next: &'a NoteLocator);
     /// Backup the storage to a folder on some filesystem.
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.
