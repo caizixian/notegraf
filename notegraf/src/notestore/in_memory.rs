@@ -5,7 +5,7 @@ use crate::notemetadata::NoteMetadata;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -130,7 +130,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                 }
             }
             if let Some(ref p) = new_parent {
-                // TODO check whether p is a descendant of id
+                // TODO check for cycles
+                // Even though through the allowed API (such as split and merge), it's impossible
+                // to create cycles. We should add a sanity check to prevent cycles from forming.
+                // Specifically, we need to check whether p is a descendant of id.
                 // That is, id transitively reachable by traversing through .parent from p
                 self.add_child(&NoteLocator::Current(p.clone()), id)
                     .unwrap();
@@ -205,7 +208,15 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision();
-        let note = Note::new(note_inner, id.clone(), revision.clone(), None);
+        let note = Note::new(
+            note_inner,
+            id.clone(),
+            revision.clone(),
+            None,
+            HashSet::new(),
+            HashSet::new(),
+            NoteMetadata::default(),
+        );
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
         // unwrap won't fail because we just inserted an entry
@@ -256,6 +267,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 
     fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), NoteStoreError> {
+        // FIXME check for dangling references
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
             let note = self.get_note(loc).unwrap();
@@ -328,6 +340,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     where
         F: FnOnce(T, T) -> T,
     {
+        // FIXME update existing references
         // Need to check whether both are current for atomicity
         // Otherwise one note might be updated while the other might not
         for loc in &[loc1, loc2] {

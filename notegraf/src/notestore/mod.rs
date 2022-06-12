@@ -60,6 +60,8 @@ pub trait NoteStore<T: NoteType> {
     /// It is not truly deleted. You can still fetch the note if you know the revision.
     /// Note that the parent-child relationship between notes is revisioned.
     /// Therefore, we need to update the parent note of the deleted note.
+    ///
+    /// Need to check for dangling references.
     fn delete_note<'a>(&'a self, loc: &'a NoteLocator)
         -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Get the current revision of a note.
@@ -105,6 +107,8 @@ pub trait NoteStore<T: NoteType> {
     ///
     /// If a revision is specified, that revision should be the current revision.
     /// This can be used to prevent racy updates to the same note.
+    ///
+    /// Need to update existing references
     fn merge_note<'a>(
         &'a self,
         loc1: &'a NoteLocator,
