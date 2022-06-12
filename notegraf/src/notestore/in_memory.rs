@@ -10,6 +10,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::time::SystemTime;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -376,7 +377,16 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         self.notes
             .get(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
-            .map(|rs| rs.keys().cloned().collect())
+            .map(|rs| {
+                let mut v: Vec<(Revision, SystemTime)> = rs
+                    .iter()
+                    .map(|(r, n)| (r.clone(), n.metadata.modified_at))
+                    .collect();
+                // Newer to older. In other words, larger timestamps to smaller timestamps
+                v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
+                let revs: Vec<Revision> = v.iter().map(|(r, _)| r.clone()).collect();
+                revs
+            })
     }
 
     fn append_note(&mut self, last: &NoteLocator, next: &NoteID) -> Result<(), NoteStoreError> {
@@ -666,6 +676,10 @@ mod tests {
                 .created_at,
             created1
         );
+        assert_eq!(
+            store.get_revisions(&loc1).await.unwrap(),
+            vec![rev2.clone(), rev1.clone()]
+        )
     }
 
     #[tokio::test]

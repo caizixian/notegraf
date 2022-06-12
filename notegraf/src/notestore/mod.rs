@@ -74,7 +74,7 @@ where
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>>;
-    /// Get all revisions of a note.
+    /// Get all revisions of a note, in the order from newer to older.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
     fn get_revisions<'a>(
