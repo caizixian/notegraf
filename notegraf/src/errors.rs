@@ -27,6 +27,8 @@ pub enum NoteStoreError {
     ExistingNext(NoteID, NoteID),
     #[error("cannot delete note `{0}`, because it has branches")]
     HasBranches(NoteID),
+    #[error("cannot delete note `{0}`, because other notes refer to it")]
+    HasReferences(NoteID),
 }
 
 /// Error type for Notegraf URL parsing.

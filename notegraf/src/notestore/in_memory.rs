@@ -324,12 +324,15 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 
     fn delete_note(&mut self, loc: &NoteLocator) -> Result<(), NoteStoreError> {
-        // FIXME check for dangling references
         let (id, rev) = loc.unpack();
         if self.is_current(loc)? {
             let note = self.get_note_stored(loc).unwrap();
             if !note.branches.is_empty() {
                 return Err(NoteStoreError::HasBranches(id.clone()));
+            }
+            // Avoid dangling references
+            if !self.get_references(id).is_empty() {
+                return Err(NoteStoreError::HasReferences(id.clone()))
             }
             if note.next.is_some() {
                 let prev = self.get_prev(id);
