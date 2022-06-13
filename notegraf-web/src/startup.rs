@@ -1,6 +1,6 @@
 use crate::routes::*;
 use crate::NoteType;
-use actix_files::Files;
+use actix_files::{Files, NamedFile};
 use actix_web::dev::Server;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::Data;
@@ -8,6 +8,10 @@ use actix_web::{web, App, HttpServer};
 use notegraf::notestore::BoxedNoteStore;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
+
+async fn index_file() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open("./dist/index.html")?)
+}
 
 pub fn run(
     listener: TcpListener,
@@ -24,9 +28,9 @@ pub fn run(
             .configure(|cfg| {
                 if !debug {
                     cfg.service(Files::new("/static", "./dist/"));
-                    cfg.service(Files::new("/", "./dist/").index_file("index.html"));
                 }
             })
+            .service(web::resource("/{tail}*").route(web::get().to(index_file)))
             .app_data(ns.clone())
     })
     .listen(listener)?
