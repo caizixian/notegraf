@@ -1,49 +1,29 @@
-use actix_web::*;
-use notegraf::{InMemoryStore, Note, NoteLocator, PlainNote};
-use std::option::Option::None;
+use notegraf_web::configuration::CONFIGURATION;
+use notegraf_web::startup::run;
+use notegraf_web::telemetry::{get_otlp_tracer, get_subscriber, init_tracing};
+use lazy_static::lazy_static;
+use std::net::TcpListener;
+use tracing_subscriber::layer::SubscriberExt;
 
-type NoteType = PlainNote;
-type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
-
-async fn index() -> Result<web::Json<&'static str>> {
-    Ok(web::Json("Notegraf"))
-}
-
-async fn new_note(ns: web::Data<NoteStore>) -> Result<web::Json<NoteLocator>> {
-    let loc = ns
-        .as_ref()
-        .new_note(PlainNote::new("Hello world".into()), None)
-        .await
-        .unwrap();
-    Ok(web::Json(loc))
-}
-
-async fn get_note(
-    req: HttpRequest,
-    ns: web::Data<NoteStore>,
-) -> Result<web::Json<Box<dyn Note<NoteType>>>> {
-    let note_id = req.match_info().get("note_id").unwrap();
-    let loc = if let Some(revision) = req.match_info().get("revision") {
-        NoteLocator::Specific(note_id.into(), revision.into())
-    } else {
-        NoteLocator::Current(note_id.into())
+lazy_static! {
+    static ref TRACING: () = {
+        let subscriber =
+            get_subscriber(&*CONFIGURATION).with(tracing_subscriber::fmt::Layer::default());
+        if let Some(tracer) = get_otlp_tracer(&*CONFIGURATION) {
+            let subscriber = subscriber.with(tracing_opentelemetry::layer().with_tracer(tracer));
+            init_tracing(subscriber);
+        } else {
+            init_tracing(subscriber);
+        }
     };
-    let note = ns.as_ref().get_note(&loc).await.unwrap();
-    Ok(web::Json(note))
 }
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let ns: web::Data<NoteStore> = web::Data::new(Box::new(InMemoryStore::new()));
-    HttpServer::new(move || {
-        App::new()
-            .app_data(ns.clone())
-            .route("/", web::get().to(index))
-            .route("/new_note", web::get().to(new_note))
-            .route("/get_note/{note_id}", web::get().to(get_note))
-            .route("/get_note/{note_id}/{revision}", web::get().to(get_note))
-    })
-    .bind("127.0.0.1:8000")?
-    .run()
-    .await
+    lazy_static::initialize(&TRACING);
+    let address = format!("{}:{}", CONFIGURATION.host, CONFIGURATION.port);
+    let listener = TcpListener::bind(address)?;
+    run(listener, CONFIGURATION.get_note_store(), CONFIGURATION.debug)?.await?;
+    opentelemetry::global::shutdown_tracer_provider();
+    Ok(())
 }

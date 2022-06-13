@@ -12,6 +12,30 @@ documentation = "https://docs.rs/notegraf-web"
 categories = ["web-programming", "text-processing"]
 keywords = ["note-taking"]
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "notegraf-web"
+
 [dependencies]
-actix-web = "4.0"
+actix-web = "4.1"
+actix-files = "0.6"
+config = { version = "0.13", default-features = false, features = ["yaml"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-opentelemetry = "0.17"
+tracing-actix-web = { version = "0.5", features = ["opentelemetry_0_17"] }
+tracing-futures = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-log = "0.1"
+lazy_static = "1.4"
+opentelemetry = { version = "0.17", features = ["rt-tokio-current-thread"] }
+opentelemetry-otlp = "0.10"
+tokio = { version = "1.19", features = ["macros", "sync", "rt"] }
 notegraf = {version = "0.1.0-alpha.1", path = "../notegraf"}
+sqlx = { version = "0.5", features = ["postgres"] }
+serde = "1.0"
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
