@@ -1,5 +1,5 @@
-use sqlx::postgres::PgConnectOptions;
 use notegraf::{InMemoryStore, PlainNote};
+use sqlx::postgres::PgConnectOptions;
 
 pub type NoteType = PlainNote;
 pub type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
@@ -7,7 +7,7 @@ pub type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
 #[derive(serde::Deserialize, Debug)]
 pub enum NoteStoreType {
     InMemory,
-    PostgreSQL
+    PostgreSQL,
 }
 
 #[derive(serde::Deserialize, Debug)]

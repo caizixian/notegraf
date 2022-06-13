@@ -1,7 +1,7 @@
+use lazy_static::lazy_static;
 use notegraf_web::configuration::CONFIGURATION;
 use notegraf_web::startup::run;
 use notegraf_web::telemetry::{get_subscriber, init_tracing};
-use lazy_static::lazy_static;
 use std::net::TcpListener;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 pub struct TestApp {
-    pub address: String
+    pub address: String,
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -24,10 +24,12 @@ pub async fn spawn_app() -> TestApp {
     let address = format!("http://127.0.0.1:{}", port);
     lazy_static::initialize(&TRACING);
 
-    let server = run(listener, CONFIGURATION.get_note_store(), CONFIGURATION.debug)
-        .expect("Failed to bind address");
+    let server = run(
+        listener,
+        CONFIGURATION.get_note_store(),
+        CONFIGURATION.debug,
+    )
+    .expect("Failed to bind address");
     let _ = tokio::spawn(server);
-    TestApp {
-        address
-    }
+    TestApp { address }
 }

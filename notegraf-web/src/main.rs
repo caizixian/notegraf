@@ -1,7 +1,7 @@
+use lazy_static::lazy_static;
 use notegraf_web::configuration::CONFIGURATION;
 use notegraf_web::startup::run;
 use notegraf_web::telemetry::{get_otlp_tracer, get_subscriber, init_tracing};
-use lazy_static::lazy_static;
 use std::net::TcpListener;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -23,7 +23,12 @@ async fn main() -> std::io::Result<()> {
     lazy_static::initialize(&TRACING);
     let address = format!("{}:{}", CONFIGURATION.host, CONFIGURATION.port);
     let listener = TcpListener::bind(address)?;
-    run(listener, CONFIGURATION.get_note_store(), CONFIGURATION.debug)?.await?;
+    run(
+        listener,
+        CONFIGURATION.get_note_store(),
+        CONFIGURATION.debug,
+    )?
+    .await?;
     opentelemetry::global::shutdown_tracer_provider();
     Ok(())
 }
