@@ -3,7 +3,7 @@ use crate::{NoteID, NoteType};
 use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
 use thiserror::Error;
@@ -14,43 +14,27 @@ pub enum MarkdownNoteError {
     FormatError(#[from] fmt::Error),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(into = "String", from = "String")]
 pub struct MarkdownNote {
     body: String,
 }
 
-impl Serialize for MarkdownNote {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.body)
+impl From<String> for MarkdownNote {
+    fn from(note: String) -> MarkdownNote {
+        MarkdownNote::new(note)
     }
 }
 
-struct StringVisitor;
-
-impl<'de> de::Visitor<'de> for StringVisitor {
-    type Value = MarkdownNote;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(MarkdownNote { body: v.to_owned() })
+impl From<&str> for MarkdownNote {
+    fn from(note: &str) -> MarkdownNote {
+        MarkdownNote::new(note.to_owned())
     }
 }
 
-impl<'de> Deserialize<'de> for MarkdownNote {
-    fn deserialize<D>(deserializer: D) -> Result<MarkdownNote, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(StringVisitor)
+impl From<MarkdownNote> for String {
+    fn from(note: MarkdownNote) -> String {
+        note.body
     }
 }
 
