@@ -3,19 +3,55 @@ use crate::{NoteID, NoteType};
 use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
+use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum MarkdownNoteError {
     #[error("format error")]
-    FormatError(#[from] std::fmt::Error),
+    FormatError(#[from] fmt::Error),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct MarkdownNote {
     body: String,
+}
+
+impl Serialize for MarkdownNote {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.body)
+    }
+}
+
+struct StringVisitor;
+
+impl<'de> de::Visitor<'de> for StringVisitor {
+    type Value = MarkdownNote;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(MarkdownNote { body: v.to_owned() })
+    }
+}
+
+impl<'de> Deserialize<'de> for MarkdownNote {
+    fn deserialize<D>(deserializer: D) -> Result<MarkdownNote, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(StringVisitor)
+    }
 }
 
 impl MarkdownNote {
@@ -159,5 +195,20 @@ mod tests {
         let mut note = MarkdownNote::new(r#"<notegraf:/note/old>"#.into());
         note.update_referent(id_old, id_new).unwrap();
         assert_eq!(note.body, r#"<notegraf:/note/new>"#)
+    }
+
+    #[test]
+    fn serialize() {
+        let ser = serde_json::to_string(&MarkdownNote {
+            body: "Hello, world!".to_owned(),
+        })
+        .unwrap();
+        assert_eq!(ser, "\"Hello, world!\"");
+    }
+
+    #[test]
+    fn deserialize() {
+        let note: MarkdownNote = serde_json::from_str("\"Hello, world!\"").unwrap();
+        assert_eq!(note.body, "Hello, world!");
     }
 }
