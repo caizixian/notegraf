@@ -24,10 +24,8 @@ impl Settings {
         match self.notestoretype {
             NoteStoreType::InMemory => {
                 let store: BoxedNoteStore<crate::NoteType> = Box::new(InMemoryStore::new());
-                if cfg!(feature = "notetype_markdown") {
-                    if self.populateinmemorystore {
-                        notegraf::notestore::util::populate_test_data(&store).await;
-                    }
+                if cfg!(feature = "notetype_markdown") && self.populateinmemorystore {
+                    notegraf::notestore::util::populate_test_data(&store).await;
                 }
                 store
             }

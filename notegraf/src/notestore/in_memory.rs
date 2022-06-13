@@ -115,7 +115,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     ///
     /// We use the UUID V4 scheme.
     fn get_new_noteid(&mut self) -> NoteID {
-        let note_id = NoteID::new(format!{"note-{}", self.note_id_counter});
+        let note_id = NoteID::new(format!("note-{}", self.note_id_counter));
         self.note_id_counter += 1;
         note_id
     }
@@ -193,6 +193,13 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let mut updated_note = op(&old_note)?;
         updated_note.revision = new_revision.clone();
         updated_note.metadata = updated_note.metadata.on_update_note();
+        if is_resurrecting {
+            // If a note has branches, it cannot be deleted in the first place
+            assert!(updated_note.branches.is_empty());
+            // If a note previously has a next note, we will clear the attribute, in case the next
+            // note now has a prev
+            updated_note.next = None;
+        }
         note_revisions.insert(new_revision.clone(), updated_note);
         self.current_revision
             .insert(id.clone(), new_revision.clone());
@@ -704,5 +711,71 @@ mod tests {
     async fn delete_middle_note_sequence() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         common_tests::delete_middle_note_sequence(store).await;
+    }
+
+    #[tokio::test]
+    async fn resurrect_note_in_sequence() {
+        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
+        let loc1 = store
+            .new_note(PlainNote::new("Tail".into()), None)
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Middle".into()), None)
+            .await
+            .unwrap();
+        let loc3 = store
+            .new_note(PlainNote::new("Head".into()), None)
+            .await
+            .unwrap();
+        store.append_note(&loc3, loc2.get_id()).await.unwrap();
+        store.append_note(&loc2, loc1.get_id()).await.unwrap();
+        store.delete_note(&loc2.current()).await.unwrap();
+        assert_eq!(
+            &store
+                .get_note(&loc1.current())
+                .await
+                .unwrap()
+                .get_prev()
+                .unwrap(),
+            loc3.get_id()
+        );
+        assert_eq!(
+            &store
+                .get_note(&loc3.current())
+                .await
+                .unwrap()
+                .get_next()
+                .unwrap(),
+            loc1.get_id()
+        );
+        assert!(matches!(
+            store.ims.read().await.is_current(&loc2).err().unwrap(),
+            NoteStoreError::NoteDeleted(_)
+        ));
+
+        let revisions = store.get_revisions_with_note(&loc2).await.unwrap();
+        let (last_revision, last_note) = revisions.last().unwrap();
+        assert_eq!(last_note.note_inner, PlainNote::new("Middle".into()));
+        store
+            .update_note(
+                &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
+                Some(last_note.note_inner.clone()),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .get_note(&loc2.current())
+                .await
+                .unwrap()
+                .get_note_inner(),
+            PlainNote::new("Middle".into())
+        );
+        assert_eq!(
+            store.get_note(&loc2.current()).await.unwrap().get_next(),
+            None
+        );
     }
 }
