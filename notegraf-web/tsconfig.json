@@ -1,0 +1,7 @@
+{
+  "include": ["src/frontend/*.ts", "src/frontend/*.tsx"],
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "notegraf-web",
+  "version": "0.1.0-alpha.1",
+  "description": "The reference web frontend of Notegraf",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "source": "src/frontend/index.html",
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "scripts": {
+    "start": "parcel --open",
+    "build": "cargo build --release && parcel build --public-url /static --no-cache && rm -r .parcel-cache",
+    "check": "tsc --noEmit && cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caizixian/notegraf.git"
+  },
+  "author": "Zixian Cai",
+  "bugs": {
+    "url": "https://github.com/caizixian/notegraf/issues"
+  },
+  "homepage": "https://github.com/caizixian/notegraf",
+  "dependencies": {
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.12",
+    "@types/react-dom": "^18.0.5",
+    "http-proxy-middleware": "^2.0.6",
+    "parcel": "^2.6.0",
+    "postcss": "^8.4.14",
+    "tailwindcss": "^3.1.2",
+    "typescript": "^4.7.3"
+  }
+}
