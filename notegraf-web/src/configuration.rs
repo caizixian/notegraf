@@ -1,7 +1,10 @@
-use notegraf::{InMemoryStore, PlainNote};
+use notegraf::InMemoryStore;
 use sqlx::postgres::PgConnectOptions;
 
-pub type NoteType = PlainNote;
+#[cfg(feature = "notetype_plain")]
+pub type NoteType = notegraf::PlainNote;
+#[cfg(feature = "notetype_markdown")]
+pub type NoteType = notegraf::MarkdownNote;
 pub type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
 
 #[derive(serde::Deserialize, Debug)]
