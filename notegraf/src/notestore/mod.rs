@@ -11,6 +11,7 @@ mod in_memory;
 mod postgresql;
 #[cfg(test)]
 mod tests;
+pub mod util;
 
 pub use in_memory::InMemoryStore;
 pub use postgresql::PostgreSQLStore;
@@ -106,3 +107,5 @@ where
     where
         Self: Sized;
 }
+
+pub type BoxedNoteStore<T> = Box<dyn NoteStore<T> + Sync + Send>;

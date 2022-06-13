@@ -1,11 +1,6 @@
+use notegraf::notestore::BoxedNoteStore;
 use notegraf::InMemoryStore;
 use sqlx::postgres::PgConnectOptions;
-
-#[cfg(feature = "notetype_plain")]
-pub type NoteType = notegraf::PlainNote;
-#[cfg(feature = "notetype_markdown")]
-pub type NoteType = notegraf::MarkdownNote;
-pub type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
 
 #[derive(serde::Deserialize, Debug)]
 pub enum NoteStoreType {
@@ -20,13 +15,22 @@ pub struct Settings {
     pub port: u16,
     pub debug: bool,
     notestoretype: NoteStoreType,
+    populateinmemorystore: bool,
     pub otlpendpoint: Option<String>,
 }
 
 impl Settings {
-    pub fn get_note_store(&self) -> NoteStore {
+    pub async fn get_note_store(&self) -> BoxedNoteStore<crate::NoteType> {
         match self.notestoretype {
-            NoteStoreType::InMemory => Box::new(InMemoryStore::new()),
+            NoteStoreType::InMemory => {
+                let store: BoxedNoteStore<crate::NoteType> = Box::new(InMemoryStore::new());
+                if cfg!(feature = "notetype_markdown") {
+                    if self.populateinmemorystore {
+                        notegraf::notestore::util::populate_test_data(&store).await;
+                    }
+                }
+                store
+            }
             NoteStoreType::PostgreSQL => {
                 // let mut db_options = CONFIGURATION.database.options();
                 // db_options.log_statements(LevelFilter::Debug);
@@ -82,6 +86,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let config = config::Config::builder()
         .set_default("debug", false)?
         .set_default("host", "localhost")?
+        .set_default("populateinmemorystore", true)?
         .add_source(config::File::with_name("configuration").required(false))
         .add_source(
             config::Environment::default()

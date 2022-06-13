@@ -12,7 +12,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InMemoryNoteStored<T> {
@@ -92,6 +91,8 @@ where
 struct InMemoryStoreInner<T> {
     pub notes: HashMap<NoteID, HashMap<Revision, InMemoryNoteStored<T>>>,
     current_revision: HashMap<NoteID, Revision>,
+    note_id_counter: u64,
+    revision_id_counter: HashMap<NoteID, u64>,
 }
 
 impl<T: NoteType> Default for InMemoryStoreInner<T> {
@@ -99,6 +100,8 @@ impl<T: NoteType> Default for InMemoryStoreInner<T> {
         InMemoryStoreInner {
             notes: Default::default(),
             current_revision: Default::default(),
+            note_id_counter: 0,
+            revision_id_counter: Default::default(),
         }
     }
 }
@@ -111,15 +114,20 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     /// Generate a new [`NoteID`].
     ///
     /// We use the UUID V4 scheme.
-    fn get_new_noteid(&self) -> NoteID {
-        NoteID::new(Uuid::new_v4().to_hyphenated().to_string())
+    fn get_new_noteid(&mut self) -> NoteID {
+        let note_id = NoteID::new(format!{"note-{}", self.note_id_counter});
+        self.note_id_counter += 1;
+        note_id
     }
 
     /// Generate a new [`Revision`].
     ///
     /// We use the UUID V4 scheme.
-    fn get_new_revision(&self) -> Revision {
-        Revision::new(Uuid::new_v4().to_hyphenated().to_string())
+    fn get_new_revision(&mut self, note_id: &NoteID) -> Revision {
+        let revision_counter = self.revision_id_counter.entry(note_id.clone()).or_insert(0);
+        let revision = Revision::new(format!("revision-{}", *revision_counter));
+        *revision_counter += 1;
+        revision
     }
 
     /// Does the locator points to a current revision
@@ -174,7 +182,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             ));
         };
         // get new revision number
-        let new_revision = self.get_new_revision();
+        let new_revision = self.get_new_revision(id);
         let note_revisions = self
             .notes
             .get_mut(id)
@@ -272,7 +280,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
-        let revision = self.get_new_revision();
+        let revision = self.get_new_revision(&id);
         let note = InMemoryNoteStored {
             note_inner,
             id: id.clone(),

@@ -1,4 +1,8 @@
 //! Notegraf: a graph-oriented notebook.
+#[macro_use]
+#[allow(unused_imports)]
+extern crate tracing;
+
 pub mod errors;
 pub mod note;
 pub mod notemetadata;

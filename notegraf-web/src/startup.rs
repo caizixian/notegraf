@@ -1,19 +1,20 @@
-use crate::configuration::NoteStore;
 use crate::routes::*;
+use crate::NoteType;
 use actix_files::Files;
 use actix_web::dev::Server;
 use actix_web::middleware::{NormalizePath, TrailingSlash};
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
+use notegraf::notestore::BoxedNoteStore;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
 pub fn run(
     listener: TcpListener,
-    note_store: NoteStore,
+    note_store: BoxedNoteStore<NoteType>,
     debug: bool,
 ) -> Result<Server, std::io::Error> {
-    let ns: Data<NoteStore> = Data::new(note_store);
+    let ns: Data<BoxedNoteStore<NoteType>> = Data::new(note_store);
     let server = HttpServer::new(move || {
         App::new()
             .wrap(NormalizePath::new(TrailingSlash::Trim))

@@ -1234,6 +1234,7 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "tracing",
  "url",
  "uuid",
 ]
@@ -1251,6 +1252,7 @@ dependencies = [
  "opentelemetry-otlp",
  "reqwest",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "tracing",
