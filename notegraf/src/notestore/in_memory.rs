@@ -235,7 +235,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let mut references = HashSet::new();
         for (id, revision) in &self.current_revision {
             let note = self.get_note_by_revision(id, revision).unwrap();
-            if note.note_inner.get_referents().contains(referent) {
+            if note.note_inner.get_referents().unwrap().contains(referent) {
                 references.insert(note.id.clone());
             }
         }
@@ -295,7 +295,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
 
     fn get_note(&self, loc: &NoteLocator) -> Result<Box<dyn Note<T>>, NoteStoreError> {
         let note_stored = self.get_note_stored(loc)?;
-        let referents = note_stored.note_inner.get_referents();
+        let referents = note_stored
+            .note_inner
+            .get_referents()
+            .map_err(|e| NoteStoreError::ParseError(format!("{:?}", e)))?;
         let references = self.get_references(&note_stored.id);
         let parent = self.get_parent(&note_stored.id);
         let prev = self.get_prev(&note_stored.id);

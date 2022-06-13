@@ -12,8 +12,8 @@ pub use markdown::MarkdownNote;
 pub trait NoteType:
     Serialize + DeserializeOwned + Clone + Debug + PartialEq + Eq + Send + Sync + 'static
 {
-    type Error;
-    fn get_referents(&self) -> HashSet<NoteID>;
+    type Error: Debug;
+    fn get_referents(&self) -> Result<HashSet<NoteID>, Self::Error>;
     fn update_referent(
         &mut self,
         old_referent: NoteID,

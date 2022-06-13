@@ -43,6 +43,15 @@ impl MarkdownNote {
         MarkdownNote { body }
     }
 
+    fn extract_note_id_from_url(link: &str) -> Option<NoteID> {
+        let url = NotegrafURL::parse(link);
+        if let Ok(NotegrafURL::Note(ref id)) = url {
+            Some(id.clone())
+        } else {
+            None
+        }
+    }
+
     fn change_note_url(link: &str, old: &NoteID, new: &NoteID) -> Option<String> {
         let url = NotegrafURL::parse(link);
         if let Ok(NotegrafURL::Note(ref id)) = url {
@@ -57,11 +66,31 @@ impl MarkdownNote {
     }
 }
 
+fn cmark_options() -> Options {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_SMART_PUNCTUATION);
+    options
+}
+
 impl NoteType for MarkdownNote {
     type Error = MarkdownNoteError;
 
-    fn get_referents(&self) -> HashSet<NoteID> {
-        todo!()
+    fn get_referents(&self) -> Result<HashSet<NoteID>, Self::Error> {
+        let options = cmark_options();
+        let mut referents = HashSet::new();
+        let parser = Parser::new_ext(&self.body, options);
+        for event in parser {
+            if let Event::Start(PTag::Link(_linktype, destination, _title)) = event {
+                if let Some(id) = MarkdownNote::extract_note_id_from_url(&destination) {
+                    referents.insert(id);
+                }
+            }
+        }
+        Ok(referents)
     }
 
     fn update_referent(
@@ -69,12 +98,7 @@ impl NoteType for MarkdownNote {
         old_referent: NoteID,
         new_referent: NoteID,
     ) -> Result<(), Self::Error> {
-        let mut options = Options::empty();
-        options.insert(Options::ENABLE_TABLES);
-        options.insert(Options::ENABLE_FOOTNOTES);
-        options.insert(Options::ENABLE_STRIKETHROUGH);
-        options.insert(Options::ENABLE_TASKLISTS);
-        options.insert(Options::ENABLE_SMART_PUNCTUATION);
+        let options = cmark_options();
         let mut buf = String::new();
         let mut change_autolink_text = false;
         let mut old_autolink = None;

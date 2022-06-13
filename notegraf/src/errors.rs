@@ -29,6 +29,8 @@ pub enum NoteStoreError {
     HasBranches(NoteID),
     #[error("cannot delete note `{0}`, because other notes refer to it")]
     HasReferences(NoteID),
+    #[error("note cannot be parsed: `{0}`")]
+    ParseError(String),
 }
 
 /// Error type for Notegraf URL parsing.
