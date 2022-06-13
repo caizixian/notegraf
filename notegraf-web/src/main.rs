@@ -1,5 +1,6 @@
 use actix_web::*;
 use notegraf::{InMemoryStore, Note, NoteLocator, PlainNote};
+use std::option::Option::None;
 
 type NoteType = PlainNote;
 type NoteStore = Box<dyn notegraf::NoteStore<NoteType> + Sync + Send>;
@@ -11,7 +12,7 @@ async fn index() -> Result<web::Json<&'static str>> {
 async fn new_note(ns: web::Data<NoteStore>) -> Result<web::Json<NoteLocator>> {
     let loc = ns
         .as_ref()
-        .new_note(PlainNote::new("Hello world".into()))
+        .new_note(PlainNote::new("Hello world".into()), None)
         .await
         .unwrap();
     Ok(web::Json(loc))

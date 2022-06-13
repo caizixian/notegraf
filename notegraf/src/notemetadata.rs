@@ -47,7 +47,10 @@ mod tests {
     #[tokio::test]
     async fn update_note_tags() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
+        let loc1 = store
+            .new_note(PlainNote::new("Foo".into()), None)
+            .await
+            .unwrap();
         let rev1 = loc1.get_revision().unwrap();
         let metadata1 = store
             .get_note(&loc1.current())

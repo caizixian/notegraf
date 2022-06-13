@@ -266,7 +266,11 @@ impl<T: NoteType> InMemoryStoreInner<T> {
 
     // The methods above are helper methods
     // The methods below are to implement the NoteStore interface
-    fn new_note(&mut self, note_inner: T) -> Result<NoteLocator, NoteStoreError> {
+    fn new_note(
+        &mut self,
+        note_inner: T,
+        metadata: Option<NoteMetadata>,
+    ) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision();
         let note = InMemoryNoteStored {
@@ -275,7 +279,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             revision: revision.clone(),
             branches: Default::default(),
             next: None,
-            metadata: Default::default(),
+            metadata: metadata.unwrap_or_default(),
         };
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
@@ -458,10 +462,14 @@ impl<T: NoteType> Default for InMemoryStore<T> {
 }
 
 impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
-    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
+    fn new_note(
+        &self,
+        note_inner: T,
+        metadata: Option<NoteMetadata>,
+    ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.new_note(note_inner)
+            ims.new_note(note_inner, metadata)
         })
     }
 
@@ -581,8 +589,14 @@ mod tests {
     #[tokio::test]
     async fn backup() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
-        let loc2 = store.new_note(PlainNote::new("Bar".into())).await.unwrap();
+        let loc1 = store
+            .new_note(PlainNote::new("Foo".into()), None)
+            .await
+            .unwrap();
+        let loc2 = store
+            .new_note(PlainNote::new("Bar".into()), None)
+            .await
+            .unwrap();
 
         store.backup(Box::new(env::temp_dir())).await.unwrap();
         let store_restore: InMemoryStore<PlainNote> =
@@ -612,7 +626,10 @@ mod tests {
     #[tokio::test]
     async fn delete_note_specific() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        let loc1 = store
+            .new_note(PlainNote::new("Note".into()), None)
+            .await
+            .unwrap();
         store.delete_note(&loc1).await.unwrap();
         assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
     }
@@ -620,7 +637,10 @@ mod tests {
     #[tokio::test]
     async fn delete_note_current() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Note".into())).await.unwrap();
+        let loc1 = store
+            .new_note(PlainNote::new("Note".into()), None)
+            .await
+            .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
         assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
         assert!(matches!(
@@ -638,7 +658,10 @@ mod tests {
     #[tokio::test]
     async fn resurrect_deleted_note() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store.new_note(PlainNote::new("Foo".into())).await.unwrap();
+        let loc1 = store
+            .new_note(PlainNote::new("Foo".into()), None)
+            .await
+            .unwrap();
         let loc2 = store
             .update_note(&loc1, Some(PlainNote::new("Foo1".into())), None)
             .await

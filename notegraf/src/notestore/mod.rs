@@ -26,7 +26,11 @@ where
     ///
     /// A [`NoteStore`] can cache the parent-children or reference relationships for performance
     /// reasons, e.g., in the form of a SQL table or in a graph database.
-    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>>;
+    fn new_note(
+        &self,
+        note_inner: T,
+        metadata: Option<NoteMetadata>,
+    ) -> BoxFuture<Result<NoteLocator, NoteStoreError>>;
     /// Get a note.
     ///
     /// Using different variants of the [`NoteLocator`], one can get a specific revision or

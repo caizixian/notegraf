@@ -21,7 +21,11 @@ impl<T: NoteType> PostgreSQLStore<T> {
 }
 
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
-    fn new_note(&self, note_inner: T) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
+    fn new_note(
+        &self,
+        note_inner: T,
+        metadata: Option<NoteMetadata>,
+    ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         todo!()
     }
 
