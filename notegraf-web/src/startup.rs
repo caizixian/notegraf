@@ -30,6 +30,8 @@ pub fn run(
                     cfg.service(Files::new("/static", "./dist/"));
                 }
             })
+            // Service the static page for client-side routing
+            // https://create-react-app.dev/docs/deployment/#serving-apps-with-client-side-routing
             .service(web::resource("/{tail}*").route(web::get().to(index_file)))
             .app_data(ns.clone())
     })
