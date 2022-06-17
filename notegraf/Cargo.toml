@@ -23,7 +23,7 @@ url = "2.2"
 pulldown-cmark-to-cmark = "10.0"
 futures = "0.3"
 tokio = { version = "1.19", features = ["sync"] }
-sqlx = { version = "0.5", features = ["runtime-actix-rustls", "postgres", "uuid", "chrono", "json", "offline"] }
+sqlx = { version = "0.6", features = ["runtime-actix-rustls", "postgres", "uuid", "chrono", "json", "offline"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 
