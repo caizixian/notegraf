@@ -6,7 +6,7 @@ import "./markdown.tsx";
 
 function App() {
     return (
-        <div>
+        <div className={"h-screen bg-white dark:bg-slate-800 dark:text-white"}>
             <h1>Notegraf</h1>
             <Outlet/>
         </div>
