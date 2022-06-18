@@ -1,9 +1,10 @@
 import './app.css';
 import * as React from "react";
 import {Note, NoteComponent} from "./note"
+import {withRouter} from "./util";
 
 type NoteSequenceProps = {
-    anchorNoteID: string
+    router: any
 }
 
 type NoteSequenceState = {
@@ -13,19 +14,21 @@ type NoteSequenceState = {
     error: any
 }
 
-export class NoteSequence extends React.Component<NoteSequenceProps, NoteSequenceState> {
+class NoteSequence extends React.Component<NoteSequenceProps, NoteSequenceState> {
     state: NoteSequenceState;
 
-    private static initialState = {
-        recursiveLoad: false,
-        isLoaded: false,
-        notes: [],
-        error: null
+    private getInitialState(): NoteSequenceState {
+        return {
+            recursiveLoad: this.props.router.searchParams.get("recursiveLoad") === "true",
+            isLoaded: false,
+            notes: [],
+            error: null
+        };
     };
 
     constructor(props: NoteSequenceProps) {
         super(props);
-        this.state = NoteSequence.initialState;
+        this.state = this.getInitialState();
         this.handleCheckbox = this.handleCheckbox.bind(this);
     }
 
@@ -33,6 +36,10 @@ export class NoteSequence extends React.Component<NoteSequenceProps, NoteSequenc
         const {name, checked} = event.currentTarget;
         // @ts-ignore
         this.setState({
+            [name]: checked
+        });
+        // @ts-ignore
+        this.props.router.setSearchParams({
             [name]: checked
         });
         await this.fetchNoteSequence();
@@ -49,7 +56,7 @@ export class NoteSequence extends React.Component<NoteSequenceProps, NoteSequenc
     async fetchNoteSequence() {
         let notes: Note[] = [];
         try {
-            let anchorNote = await NoteSequence.fetchNote(this.props.anchorNoteID);
+            let anchorNote = await NoteSequence.fetchNote(this.props.router.params.anchorNoteID);
             notes.push(anchorNote);
             if (this.state.recursiveLoad) {
                 while (notes[0].prev != null) {
@@ -90,3 +97,5 @@ export class NoteSequence extends React.Component<NoteSequenceProps, NoteSequenc
         </div>)
     }
 }
+
+export let NoteSequenceWithRouter = withRouter(NoteSequence);

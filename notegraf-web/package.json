@@ -30,7 +30,8 @@
     "dompurify": "^2.3.8",
     "marked": "^4.0.17",
     "react": "^18.1.0",
-    "react-dom": "^18.1.0"
+    "react-dom": "^18.1.0",
+    "react-router-dom": "^6.3.0"
   },
   "devDependencies": {
     "@types/dompurify": "^2.3.3",

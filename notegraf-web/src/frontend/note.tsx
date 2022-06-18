@@ -2,6 +2,7 @@ import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
 import "./app.css"
+import {Link} from "react-router-dom";
 
 export type Note = {
     note_inner: string,
@@ -29,30 +30,24 @@ type NoteComponentProps = {
     showPrevNext: boolean
 }
 
-type Empty = Record<any, never>;
-
-export class NoteComponent extends React.Component<NoteComponentProps, Empty> {
-    constructor(props: NoteComponentProps) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <article className="note border m-1 p-1">
-                {this.props.showPrevNext &&
-                    <div>
-                        {this.props.note.prev != null && <a href={"/note/" + this.props.note.prev} className={"underline text-blue-500 m-0.5"}>prev</a>}
-                        {this.props.note.next != null && <a href={"/note/" + this.props.note.next} className={"underline text-blue-500 m-0.5"}>next</a>}
-                    </div>}
-                <details>
-                    <summary>Metadata</summary>
-                    <p>Created at: {this.props.note.metadata.created_at}</p>
-                    <p>Modified at: {this.props.note.metadata.modified_at}</p>
-                </details>
-                <div dangerouslySetInnerHTML={{
-                    __html: sanitize(marked(this.props.note.note_inner))
-                }}/>
-            </article>
-        );
-    }
+export function NoteComponent(props: NoteComponentProps) {
+    return (
+        <article className="note border m-1 p-1">
+            {props.showPrevNext &&
+                <div>
+                    {props.note.prev != null && <Link to={`../${props.note.prev}`} key={props.note.prev}
+                                                           className={"underline text-blue-500 m-0.5"}>prev</Link>}
+                    {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
+                                                           className={"underline text-blue-500 m-0.5"}>next</Link>}
+                </div>}
+            <details>
+                <summary>Metadata</summary>
+                <p>Created at: {props.note.metadata.created_at}</p>
+                <p>Modified at: {props.note.metadata.modified_at}</p>
+            </details>
+            <div dangerouslySetInnerHTML={{
+                __html: sanitize(marked(props.note.note_inner))
+            }}/>
+        </article>
+    );
 }
