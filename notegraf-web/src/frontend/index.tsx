@@ -1,6 +1,6 @@
 import * as React from "react";
 import {createRoot} from "react-dom/client";
-import {NoteSequenceWithRouter} from "./note_sequence";
+import {NoteSequence} from "./note_sequence";
 import {BrowserRouter, Outlet, Route, Routes} from "react-router-dom";
 
 function App() {
@@ -35,7 +35,7 @@ root.render(
                                 <p>Probably a search bar here</p>
                             }
                         />
-                        <Route path=":anchorNoteID" element={<NoteSequenceWithRouter/>}></Route>
+                        <Route path=":anchorNoteID" element={<NoteSequence/>}></Route>
                     </Route>
                 </Route>
                 <Route
