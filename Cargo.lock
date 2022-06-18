@@ -600,15 +600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "erased-serde"
-version = "0.3.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad132dd8d0d0b546348d7d86cb3191aad14b34e5f979781fc005c80d4ac67ffd"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "event-listener"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1225,7 +1216,6 @@ name = "notegraf"
 version = "0.1.0-alpha.2"
 dependencies = [
  "chrono",
- "erased-serde",
  "futures",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",

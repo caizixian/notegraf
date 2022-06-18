@@ -2,7 +2,7 @@ use crate::NoteType;
 use actix_web::{get, web, HttpResponse, Responder};
 use notegraf::errors::NoteStoreError;
 use notegraf::notestore::BoxedNoteStore;
-use notegraf::NoteLocator;
+use notegraf::{NoteLocator, NoteSerializable};
 use serde_json::json;
 
 async fn get_note_by_locator(
@@ -11,7 +11,7 @@ async fn get_note_by_locator(
 ) -> impl Responder {
     let result = store.as_ref().get_note(loc).await;
     match result {
-        Ok(note) => HttpResponse::Ok().json(json!(note)),
+        Ok(note) => HttpResponse::Ok().json(json!(NoteSerializable::all_fields(note))),
         Err(e) => {
             if let NoteStoreError::NoteNotExist(n) = e {
                 info!("Attempted to get a note by id \"{}\", but not found", &n);

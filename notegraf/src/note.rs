@@ -1,7 +1,8 @@
 //! Core types of Notegraf.
 use crate::notemetadata::NoteMetadata;
 use crate::notetype::NoteType;
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
 use std::fmt::{self, Debug, Display};
 
@@ -99,7 +100,8 @@ impl From<&str> for Revision {
 /// Note properties can be stored as is by the storage backend, but can also be computed.
 /// Expensive computation can be cached, but it's the storage's responsibility to keep the cache
 /// coherent.
-pub trait Note<T: NoteType>: Debug + erased_serde::Serialize {
+pub trait Note<T: NoteType>: Debug {
+    fn get_title(&self) -> Option<String>;
     fn get_note_inner(&self) -> T;
     fn get_id(&self) -> NoteID;
     fn get_revision(&self) -> Revision;
@@ -115,7 +117,111 @@ pub trait Note<T: NoteType>: Debug + erased_serde::Serialize {
     fn get_metadata(&self) -> NoteMetadata;
 }
 
-erased_serde::serialize_trait_object!(<T> Note<T> where T: NoteType);
+pub enum NoteField {
+    Title,
+    NoteInner,
+    ID,
+    Revision,
+    Parent,
+    Branches,
+    Prev,
+    Next,
+    References,
+    Referents,
+    Metadata,
+}
+
+pub struct NoteFieldSelector {
+    fields: Vec<NoteField>,
+}
+
+impl NoteFieldSelector {
+    pub fn new(fields: Vec<NoteField>) -> Self {
+        NoteFieldSelector { fields }
+    }
+}
+
+impl Default for NoteFieldSelector {
+    fn default() -> Self {
+        NoteFieldSelector::new(vec![
+            NoteField::Title,
+            NoteField::NoteInner,
+            NoteField::ID,
+            NoteField::Revision,
+            NoteField::Parent,
+            NoteField::Branches,
+            NoteField::Prev,
+            NoteField::Next,
+            NoteField::References,
+            NoteField::Referents,
+            NoteField::Metadata,
+        ])
+    }
+}
+
+pub struct NoteSerializable<T> {
+    s: NoteFieldSelector,
+    n: Box<dyn Note<T>>,
+}
+
+impl<T> Serialize for NoteSerializable<T>
+where
+    T: NoteType,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut s = serializer.serialize_struct("Note", self.s.fields.len())?;
+        for f in &self.s.fields {
+            match f {
+                NoteField::Title => {
+                    s.serialize_field("title", &self.n.get_title())?;
+                }
+                NoteField::NoteInner => {
+                    s.serialize_field("note_inner", &self.n.get_note_inner())?;
+                }
+                NoteField::ID => {
+                    s.serialize_field("id", &self.n.get_id())?;
+                }
+                NoteField::Revision => {
+                    s.serialize_field("revision", &self.n.get_revision())?;
+                }
+                NoteField::Parent => {
+                    s.serialize_field("parent", &self.n.get_parent())?;
+                }
+                NoteField::Branches => {
+                    s.serialize_field("branches", &self.n.get_branches())?;
+                }
+                NoteField::Prev => {
+                    s.serialize_field("prev", &self.n.get_prev())?;
+                }
+                NoteField::Next => {
+                    s.serialize_field("next", &self.n.get_next())?;
+                }
+                NoteField::References => {
+                    s.serialize_field("references", &self.n.get_references())?;
+                }
+                NoteField::Referents => {
+                    s.serialize_field("referents", &self.n.get_referents())?;
+                }
+                NoteField::Metadata => {
+                    s.serialize_field("metadata", &self.n.get_metadata())?;
+                }
+            }
+        }
+        s.end()
+    }
+}
+
+impl<T> NoteSerializable<T> {
+    pub fn all_fields(note: Box<dyn Note<T>>) -> Self {
+        NoteSerializable {
+            s: NoteFieldSelector::default(),
+            n: note,
+        }
+    }
+}
 
 /// A type for locating a note.
 #[derive(Debug, Serialize, Deserialize)]

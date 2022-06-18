@@ -15,6 +15,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InMemoryNoteStored<T> {
+    title: Option<String>,
     note_inner: T,
     id: NoteID,
     revision: Revision,
@@ -25,8 +26,9 @@ pub struct InMemoryNoteStored<T> {
 
 type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 struct InMemoryNoteComputed<T> {
+    title: Option<String>,
     note_inner: T,
     id: NoteID,
     revision: Revision,
@@ -43,6 +45,10 @@ impl<T> Note<T> for InMemoryNoteComputed<T>
 where
     T: NoteType,
 {
+    fn get_title(&self) -> Option<String> {
+        self.title.clone()
+    }
+
     fn get_note_inner(&self) -> T {
         self.note_inner.clone()
     }
@@ -283,12 +289,14 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     // The methods below are to implement the NoteStore interface
     fn new_note(
         &mut self,
+        title: Option<String>,
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision(&id);
         let note = InMemoryNoteStored {
+            title,
             note_inner,
             id: id.clone(),
             revision: revision.clone(),
@@ -318,6 +326,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let parent = self.get_parent(&note_stored.id);
         let prev = self.get_prev(&note_stored.id);
         Ok(Box::new(InMemoryNoteComputed {
+            title: note_stored.title,
             note_inner: note_stored.note_inner,
             id: note_stored.id,
             revision: note_stored.revision,
@@ -334,11 +343,15 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     fn update_note(
         &mut self,
         loc: &NoteLocator,
+        title: Option<Option<String>>,
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
         self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
+            if let Some(t) = title {
+                note.title = t;
+            }
             if let Some(n) = note_inner {
                 note.note_inner = n;
             }
@@ -482,12 +495,13 @@ impl<T: NoteType> Default for InMemoryStore<T> {
 impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn new_note(
         &self,
+        title: Option<String>,
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.new_note(note_inner, metadata)
+            ims.new_note(title, note_inner, metadata)
         })
     }
 
@@ -504,12 +518,13 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn update_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
+        title: Option<Option<String>>,
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.update_note(loc, note_inner, note_metadata)
+            ims.update_note(loc, title, note_inner, note_metadata)
         })
     }
 
@@ -582,9 +597,11 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::note::NoteSerializable;
     use crate::notestore::tests as common_tests;
     use crate::notetype::PlainNote;
     use std::env;
+    use std::option::Option::None;
 
     #[tokio::test]
     async fn unique_id() {
@@ -608,11 +625,11 @@ mod tests {
     async fn backup() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(PlainNote::new("Foo".into()), None)
+            .new_note(None, PlainNote::new("Foo".into()), None)
             .await
             .unwrap();
         let loc2 = store
-            .new_note(PlainNote::new("Bar".into()), None)
+            .new_note(None, PlainNote::new("Bar".into()), None)
             .await
             .unwrap();
 
@@ -623,8 +640,8 @@ mod tests {
             let note = store.get_note(loc).await.unwrap();
             let note_restore = store_restore.get_note(loc).await.unwrap();
             assert_eq!(
-                serde_json::to_string(&note).unwrap(),
-                serde_json::to_string(&note_restore).unwrap()
+                serde_json::to_string(&NoteSerializable::all_fields(note)).unwrap(),
+                serde_json::to_string(&NoteSerializable::all_fields(note_restore)).unwrap()
             );
         }
     }
@@ -645,7 +662,7 @@ mod tests {
     async fn delete_note_specific() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(PlainNote::new("Note".into()), None)
+            .new_note(None, PlainNote::new("Note".into()), None)
             .await
             .unwrap();
         store.delete_note(&loc1).await.unwrap();
@@ -656,7 +673,7 @@ mod tests {
     async fn delete_note_current() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(PlainNote::new("Note".into()), None)
+            .new_note(None, PlainNote::new("Note".into()), None)
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
@@ -677,11 +694,11 @@ mod tests {
     async fn resurrect_deleted_note() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(PlainNote::new("Foo".into()), None)
+            .new_note(None, PlainNote::new("Foo".into()), None)
             .await
             .unwrap();
         let loc2 = store
-            .update_note(&loc1, Some(PlainNote::new("Foo1".into())), None)
+            .update_note(&loc1, None, Some(PlainNote::new("Foo1".into())), None)
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
@@ -692,6 +709,7 @@ mod tests {
         store
             .update_note(
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
+                None,
                 Some(last_note.note_inner.clone()),
                 None,
             )
@@ -717,15 +735,15 @@ mod tests {
     async fn resurrect_note_in_sequence() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(PlainNote::new("Tail".into()), None)
+            .new_note(None, PlainNote::new("Tail".into()), None)
             .await
             .unwrap();
         let loc2 = store
-            .new_note(PlainNote::new("Middle".into()), None)
+            .new_note(None, PlainNote::new("Middle".into()), None)
             .await
             .unwrap();
         let loc3 = store
-            .new_note(PlainNote::new("Head".into()), None)
+            .new_note(None, PlainNote::new("Head".into()), None)
             .await
             .unwrap();
         store.append_note(&loc3, loc2.get_id()).await.unwrap();
@@ -760,6 +778,7 @@ mod tests {
         store
             .update_note(
                 &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
+                None,
                 Some(last_note.note_inner.clone()),
                 None,
             )
