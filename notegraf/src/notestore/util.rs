@@ -30,7 +30,8 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
     let loc3 = store
         .new_note(
             "".to_owned(),
-            "## Math testing\n```math\n\\frac{1}{2}\n```\n\nInline math `${\\frac{1}{2}}$`\n".into(),
+            "## Math testing\n```math\n\\frac{1}{2}\n```\n\nInline math `${\\frac{1}{2}}$`\n"
+                .into(),
             None,
         )
         .await
