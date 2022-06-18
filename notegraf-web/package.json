@@ -27,10 +27,14 @@
   },
   "homepage": "https://github.com/caizixian/notegraf",
   "dependencies": {
+    "dompurify": "^2.3.8",
+    "marked": "^4.0.17",
     "react": "^18.1.0",
     "react-dom": "^18.1.0"
   },
   "devDependencies": {
+    "@types/dompurify": "^2.3.3",
+    "@types/marked": "^4.0.3",
     "@types/react": "^18.0.12",
     "@types/react-dom": "^18.0.5",
     "http-proxy-middleware": "^2.0.6",

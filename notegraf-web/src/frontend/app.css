@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+article h1 {
+    @apply text-4xl;
+}
+
+article h2 {
+    @apply text-3xl;
+}
+
+article h3 {
+    @apply text-2xl;
+}
+
+article h4 {
+    @apply text-xl;
+}
+
+article h5 {
+    @apply text-lg;
+}
+
+article p {
+    @apply text-base;
+}
