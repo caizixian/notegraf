@@ -36,9 +36,9 @@ export function NoteComponent(props: NoteComponentProps) {
             {props.showPrevNext &&
                 <div>
                     {props.note.prev != null && <Link to={`../${props.note.prev}`} key={props.note.prev}
-                                                           className={"underline text-blue-500 m-0.5"}>prev</Link>}
+                                                      className={"underline text-blue-500 m-0.5"}>prev</Link>}
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
-                                                           className={"underline text-blue-500 m-0.5"}>next</Link>}
+                                                      className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
             <details>
                 <summary>Metadata</summary>

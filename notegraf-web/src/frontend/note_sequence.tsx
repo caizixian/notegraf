@@ -1,7 +1,7 @@
 import './app.css';
 import * as React from "react";
-import {Note, NoteComponent} from "./note"
 import {useEffect, useState} from "react";
+import {Note, NoteComponent} from "./note"
 import {useParams, useSearchParams} from "react-router-dom";
 
 async function fetchNote(noteID: string): Promise<Note> {
@@ -34,15 +34,19 @@ export function NoteSequence() {
     let [searchParams, setSearchParams] = useSearchParams();
     const [notes, setNotes] = useState<Note[]>([]);
     const [error, setError] = useState<any>(null);
-    const [recursiveLoad, setRecursiveLoad] = useState(searchParams.get("recursiveLoad") === "true");
+    const recursiveLoad = searchParams.get("recursiveLoad") === "true";
+
+    const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         async function fetchNoteSequenceInner() {
             try {
                 const notes = await fetchNoteSequence(anchorNoteID as string, recursiveLoad);
                 setNotes(notes);
+                setIsLoaded(true);
             } catch (e) {
                 setError(e);
+                setIsLoaded(true);
             }
         }
 
@@ -51,17 +55,24 @@ export function NoteSequence() {
 
     function handleCheckbox(event: React.FormEvent<HTMLInputElement>) {
         const checked = event.currentTarget.checked;
-        setRecursiveLoad(checked);
         setSearchParams({
             recursiveLoad: checked.toString()
         });
     }
 
+    if (!isLoaded) {
+        return (<div>Loading...</div>);
+    }
+    if (error) {
+        return (<div>{error.toString()}</div>);
+    }
+
     return (<div className="note-sequence">
-        <label><input type="checkbox" id="recursiveLoad" name="recursiveLoad" checked={recursiveLoad}
-                      onChange={handleCheckbox}/>Recursive Load</label>
-        {error === null ? notes.map(note =>
-            <NoteComponent note={note} key={note.id} showPrevNext={!recursiveLoad}></NoteComponent>
-        ) : (<div>{error.toString()}</div>)}
+        <label>
+            <input type="checkbox" id="recursiveLoad" name="recursiveLoad" checked={recursiveLoad}
+                   onChange={handleCheckbox}/>
+            Recursive Load
+        </label>
+        {notes.map(note => (<NoteComponent note={note} key={note.id} showPrevNext={!recursiveLoad}></NoteComponent>))}
     </div>);
 }
