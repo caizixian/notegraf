@@ -2,6 +2,7 @@ import * as React from "react";
 import {createRoot} from "react-dom/client";
 import {NoteSequence} from "./note_sequence";
 import {BrowserRouter, Outlet, Route, Routes} from "react-router-dom";
+import "./markdown.tsx";
 
 function App() {
     return (

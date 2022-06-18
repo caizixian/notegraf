@@ -16,7 +16,7 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
     let loc2 = store
         .new_note(
             "".to_owned(),
-            "## Sequence2\nbody2".into(),
+            "## Code testing\n`inline code`\n```python\na = [1, 2, 3, 4]\nfor n in a:\n    print(n)\n```\n".into(),
             Some(NoteMetadata {
                 tags: HashSet::from_iter(
                     vec!["tag1".to_owned(), "tag2".to_owned()].iter().cloned(),
@@ -28,7 +28,11 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         .unwrap();
     store.append_note(&loc1, loc2.get_id()).await.unwrap();
     let loc3 = store
-        .new_note("".to_owned(), "## Sequence3".into(), None)
+        .new_note(
+            "".to_owned(),
+            "## Math testing\n```math\n\\frac{1}{2}\n```\n\nInline math `${\\frac{1}{2}}$`\n".into(),
+            None,
+        )
         .await
         .unwrap();
     store.append_note(&loc2, loc3.get_id()).await.unwrap();
