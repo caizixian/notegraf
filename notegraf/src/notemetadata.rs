@@ -49,7 +49,7 @@ mod tests {
     async fn update_note_tags() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Foo".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
             .await
             .unwrap();
         let rev1 = loc1.get_revision().unwrap();

@@ -101,7 +101,7 @@ impl From<&str> for Revision {
 /// Expensive computation can be cached, but it's the storage's responsibility to keep the cache
 /// coherent.
 pub trait Note<T: NoteType>: Debug {
-    fn get_title(&self) -> Option<String>;
+    fn get_title(&self) -> String;
     fn get_note_inner(&self) -> T;
     fn get_id(&self) -> NoteID;
     fn get_revision(&self) -> Revision;

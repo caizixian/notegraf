@@ -4,11 +4,11 @@ use std::option::Option::None;
 
 pub(super) async fn unique_id(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note(None, PlainNote::new("Foo".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
         .await
         .unwrap();
     let loc2 = store
-        .new_note(None, PlainNote::new("Bar".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Bar".into()), None)
         .await
         .unwrap();
     assert_ne!(loc1.get_id(), loc2.get_id());
@@ -16,7 +16,7 @@ pub(super) async fn unique_id(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
     let loc = store
-        .new_note(None, PlainNote::new("Foo".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
         .await
         .unwrap();
     let rev = loc.get_revision().unwrap();
@@ -29,7 +29,7 @@ pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
 pub(super) async fn new_note_retrieve(store: impl NoteStore<PlainNote>) {
     let note_inner = PlainNote::new("Foo".into());
     let loc = store
-        .new_note(None, note_inner.clone(), None)
+        .new_note("".to_owned(), note_inner.clone(), None)
         .await
         .unwrap();
     assert_eq!(
@@ -48,7 +48,7 @@ pub(super) async fn new_note_retrieve(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note(None, PlainNote::new("Foo".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
         .await
         .unwrap();
     let rev1 = loc1.get_revision().unwrap();
@@ -113,11 +113,11 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note(None, PlainNote::new("Branch".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Branch".into()), None)
         .await
         .unwrap();
     let loc2 = store
-        .new_note(None, PlainNote::new("Parent".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
         .await
         .unwrap();
     store.add_branch(&loc2, loc1.get_id()).await.unwrap();
@@ -137,11 +137,11 @@ pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note(None, PlainNote::new("Branch".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Branch".into()), None)
         .await
         .unwrap();
     let loc2 = store
-        .new_note(None, PlainNote::new("Parent".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
         .await
         .unwrap();
     store.add_branch(&loc2, loc1.get_id()).await.unwrap();
@@ -159,15 +159,15 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
 
 pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note(None, PlainNote::new("Tail".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
         .await
         .unwrap();
     let loc2 = store
-        .new_note(None, PlainNote::new("Middle".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
         .await
         .unwrap();
     let loc3 = store
-        .new_note(None, PlainNote::new("Head".into()), None)
+        .new_note("".to_owned(), PlainNote::new("Head".into()), None)
         .await
         .unwrap();
     store.append_note(&loc3, loc2.get_id()).await.unwrap();

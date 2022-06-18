@@ -23,7 +23,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn new_note(
         &self,
-        title: Option<String>,
+        title: String,
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
@@ -40,7 +40,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn update_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-        title: Option<Option<String>>,
+        title: Option<String>,
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {

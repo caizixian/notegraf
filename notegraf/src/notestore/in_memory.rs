@@ -15,7 +15,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InMemoryNoteStored<T> {
-    title: Option<String>,
+    title: String,
     note_inner: T,
     id: NoteID,
     revision: Revision,
@@ -28,7 +28,7 @@ type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
 
 #[derive(Debug, Clone)]
 struct InMemoryNoteComputed<T> {
-    title: Option<String>,
+    title: String,
     note_inner: T,
     id: NoteID,
     revision: Revision,
@@ -45,7 +45,7 @@ impl<T> Note<T> for InMemoryNoteComputed<T>
 where
     T: NoteType,
 {
-    fn get_title(&self) -> Option<String> {
+    fn get_title(&self) -> String {
         self.title.clone()
     }
 
@@ -289,7 +289,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     // The methods below are to implement the NoteStore interface
     fn new_note(
         &mut self,
-        title: Option<String>,
+        title: String,
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
@@ -343,7 +343,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     fn update_note(
         &mut self,
         loc: &NoteLocator,
-        title: Option<Option<String>>,
+        title: Option<String>,
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> Result<NoteLocator, NoteStoreError> {
@@ -495,7 +495,7 @@ impl<T: NoteType> Default for InMemoryStore<T> {
 impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn new_note(
         &self,
-        title: Option<String>,
+        title: String,
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
@@ -518,7 +518,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn update_note<'a>(
         &'a self,
         loc: &'a NoteLocator,
-        title: Option<Option<String>>,
+        title: Option<String>,
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
@@ -625,11 +625,11 @@ mod tests {
     async fn backup() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Foo".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
             .await
             .unwrap();
         let loc2 = store
-            .new_note(None, PlainNote::new("Bar".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Bar".into()), None)
             .await
             .unwrap();
 
@@ -662,7 +662,7 @@ mod tests {
     async fn delete_note_specific() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Note".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
             .await
             .unwrap();
         store.delete_note(&loc1).await.unwrap();
@@ -673,7 +673,7 @@ mod tests {
     async fn delete_note_current() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Note".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
@@ -694,7 +694,7 @@ mod tests {
     async fn resurrect_deleted_note() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Foo".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
             .await
             .unwrap();
         let loc2 = store
@@ -735,15 +735,15 @@ mod tests {
     async fn resurrect_note_in_sequence() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note(None, PlainNote::new("Tail".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
             .await
             .unwrap();
         let loc2 = store
-            .new_note(None, PlainNote::new("Middle".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
             .await
             .unwrap();
         let loc3 = store
-            .new_note(None, PlainNote::new("Head".into()), None)
+            .new_note("".to_owned(), PlainNote::new("Head".into()), None)
             .await
             .unwrap();
         store.append_note(&loc3, loc2.get_id()).await.unwrap();
