@@ -230,7 +230,7 @@ mod tests {
     fn get_connect_options() -> PgConnectOptions {
         let host = env::var("NOTEGRAF_DATABASE_HOST").unwrap_or("localhost".to_owned());
         let port = env::var("NOTEGRAF_DATABASE_PORT").unwrap_or("5432".to_owned());
-        let username = env::var("NOTEGRAF_DATABASE_PORT");
+        let username = env::var("NOTEGRAF_DATABASE_USERNAME");
         let password = env::var("NOTEGRAF_DATABASE_PASSWORD");
         let options = PgConnectOptions::new()
             .host(&host)

@@ -24,7 +24,7 @@ jobs:
 
   test:
     name: Test Suite
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:14
@@ -39,9 +39,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
     env:
       NOTEGRAF_PORT: "8000" # not used for test
       NOTEGRAF_DEBUG: "true"
