@@ -608,7 +608,6 @@ mod tests {
     use crate::notestore::tests as common_tests;
     use crate::notetype::PlainNote;
     use std::env;
-    use std::option::Option::None;
 
     #[tokio::test]
     async fn unique_id() {
