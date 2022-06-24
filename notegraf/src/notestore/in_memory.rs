@@ -10,18 +10,20 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::marker::PhantomData;
 use std::path::Path;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InMemoryNoteStored<T> {
     title: String,
-    note_inner: T,
+    note_inner: String,
     id: NoteID,
     revision: Revision,
     branches: HashSet<NoteID>,
     next: Option<NoteID>,
     metadata: NoteMetadata,
+    _phantom: PhantomData<T>,
 }
 
 type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
@@ -256,7 +258,11 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let mut references = HashSet::new();
         for (id, revision) in &self.current_revision {
             let note = self.get_note_by_revision(id, revision).unwrap();
-            if note.note_inner.get_referents().unwrap().contains(referent) {
+            if T::from(note.note_inner)
+                .get_referents()
+                .unwrap()
+                .contains(referent)
+            {
                 references.insert(note.id.clone());
             }
         }
@@ -297,12 +303,13 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let revision = self.get_new_revision(&id);
         let note = InMemoryNoteStored {
             title,
-            note_inner,
+            note_inner: note_inner.into(),
             id: id.clone(),
             revision: revision.clone(),
             branches: Default::default(),
             next: None,
             metadata: metadata.unwrap_or_default(),
+            _phantom: PhantomData,
         };
         assert!(!self.notes.contains_key(&id));
         self.notes.insert(id.clone(), HashMap::new());
@@ -318,8 +325,8 @@ impl<T: NoteType> InMemoryStoreInner<T> {
 
     fn get_note(&self, loc: &NoteLocator) -> Result<Box<dyn Note<T>>, NoteStoreError> {
         let note_stored = self.get_note_stored(loc)?;
-        let referents = note_stored
-            .note_inner
+        let note_inner = T::from(note_stored.note_inner);
+        let referents = note_inner
             .get_referents()
             .map_err(|e| NoteStoreError::ParseError(format!("{:?}", e)))?;
         let references = self.get_references(&note_stored.id);
@@ -327,7 +334,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let prev = self.get_prev(&note_stored.id);
         Ok(Box::new(InMemoryNoteComputed {
             title: note_stored.title,
-            note_inner: note_stored.note_inner,
+            note_inner,
             id: note_stored.id,
             revision: note_stored.revision,
             parent,
@@ -353,7 +360,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                 note.title = t;
             }
             if let Some(n) = note_inner {
-                note.note_inner = n;
+                note.note_inner = n.into();
             }
             if let Some(m) = note_metadata {
                 note.metadata = m;
@@ -704,13 +711,14 @@ mod tests {
         store.delete_note(&loc1.current()).await.unwrap();
         let revisions = store.get_revisions_with_note(&loc1).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
-        assert_eq!(last_note.note_inner, PlainNote::new("Foo1".into()));
+        let last_inner = PlainNote::from(last_note.note_inner.clone());
+        assert_eq!(last_inner, PlainNote::new("Foo1".into()));
         assert_eq!(last_revision, loc2.get_revision().unwrap());
         store
             .update_note(
                 &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
                 None,
-                Some(last_note.note_inner.clone()),
+                Some(last_inner),
                 None,
             )
             .await
@@ -774,12 +782,13 @@ mod tests {
 
         let revisions = store.get_revisions_with_note(&loc2).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
-        assert_eq!(last_note.note_inner, PlainNote::new("Middle".into()));
+        let last_inner = PlainNote::from(last_note.note_inner.clone());
+        assert_eq!(last_inner, PlainNote::new("Middle".into()));
         store
             .update_note(
                 &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
                 None,
-                Some(last_note.note_inner.clone()),
+                Some(last_inner),
                 None,
             )
             .await

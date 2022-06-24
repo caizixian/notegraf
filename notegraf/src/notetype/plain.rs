@@ -60,6 +60,24 @@ impl NoteType for PlainNote {
     }
 }
 
+impl From<String> for PlainNote {
+    fn from(note: String) -> PlainNote {
+        serde_json::from_str(&note).unwrap()
+    }
+}
+
+impl From<&str> for PlainNote {
+    fn from(note: &str) -> PlainNote {
+        serde_json::from_str(note).unwrap()
+    }
+}
+
+impl From<PlainNote> for String {
+    fn from(note: PlainNote) -> String {
+        serde_json::to_string(&note).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
