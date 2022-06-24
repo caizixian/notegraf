@@ -2,8 +2,8 @@ use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadata;
 use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
-use sqlx::postgres::PgConnectOptions;
-use sqlx::{Connection, Executor, PgConnection, PgPool};
+use sqlx::postgres::{PgConnectOptions, PgQueryResult};
+use sqlx::{Connection, Executor, PgConnection, PgPool, Postgres, Transaction};
 use std::marker::PhantomData;
 use std::path::Path;
 use uuid::Uuid;
@@ -21,7 +21,7 @@ impl<T: NoteType> PostgreSQLStoreBuilder<T> {
         }
     }
 
-    pub async fn build(self) -> PostgreSQLStore<T> {
+    pub async fn build(mut self) -> PostgreSQLStore<T> {
         let mut connection = PgConnection::connect_with(&self.db_options)
             .await
             .expect("Failed to connect to Postgres");
@@ -30,7 +30,7 @@ impl<T: NoteType> PostgreSQLStoreBuilder<T> {
             .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
             .await
             .expect("Failed to create database.");
-
+        self.db_options = self.db_options.database(&db_name);
         let connection_pool = PgPool::connect_with(self.db_options)
             .await
             .expect("Failed to connect to Postgres.");
@@ -50,6 +50,72 @@ pub struct PostgreSQLStore<T> {
     _phantom: PhantomData<T>,
 }
 
+impl<T: NoteType> PostgreSQLStore<T> {
+    fn get_new_noteid() -> Uuid {
+        Uuid::new_v4()
+    }
+
+    fn get_new_revision() -> Uuid {
+        Uuid::new_v4()
+    }
+
+    async fn insert_revision(
+        transaction: &mut Transaction<'_, Postgres>,
+        id: Uuid,
+        revision: Uuid,
+        title: String,
+        note_inner: T,
+        metadata: Option<NoteMetadata>,
+    ) -> sqlx::Result<PgQueryResult> {
+        let metadata = metadata.unwrap_or_default();
+        let tags: Vec<String> = metadata.tags.iter().cloned().collect();
+        let note_inner: String = note_inner.clone().into();
+        sqlx::query!(
+            r#"
+            INSERT INTO
+                revision(
+                    revision, id, title, note_inner, parent, prev,
+                    metadata_schema_version, metadata_created_at,
+                    metadata_modified_at, metadata_tags, metadata_custom_metadata
+                )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            revision,
+            id,
+            title,
+            &note_inner,
+            None as Option<Uuid>,
+            None as Option<Uuid>,
+            metadata.schema_version as i64,
+            metadata.created_at,
+            metadata.modified_at,
+            &tags,
+            metadata.custom_metadata
+        )
+        .execute(transaction)
+        .await
+    }
+
+    async fn upsert_current_revision(
+        transaction: &mut Transaction<'_, Postgres>,
+        id: Uuid,
+        revision: Uuid,
+    ) -> sqlx::Result<PgQueryResult> {
+        sqlx::query!(
+            r#"
+            INSERT INTO current_revision (id, current_revision)
+            VALUES ($1, $2)
+            ON CONFLICT (id) DO UPDATE
+            SET current_revision = EXCLUDED.current_revision
+            "#,
+            id,
+            revision
+        )
+        .execute(transaction)
+        .await
+    }
+}
+
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn new_note(
         &self,
@@ -57,7 +123,29 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         note_inner: T,
         metadata: Option<NoteMetadata>,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let note_id = Self::get_new_noteid();
+            let revision = Self::get_new_revision();
+            let mut transaction = self.db_pool.begin().await?;
+            sqlx::query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
+                .execute(&mut transaction)
+                .await?;
+            Self::insert_revision(
+                &mut transaction,
+                note_id,
+                revision,
+                title,
+                note_inner,
+                metadata,
+            )
+            .await?;
+            Self::upsert_current_revision(&mut transaction, note_id, revision).await?;
+            transaction.commit().await?;
+            Ok(NoteLocator::Specific(
+                note_id.to_string().into(),
+                revision.to_string().into(),
+            ))
+        })
     }
 
     fn get_note<'a>(

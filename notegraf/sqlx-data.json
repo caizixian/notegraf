@@ -1,0 +1,50 @@
+{
+  "db": "PostgreSQL",
+  "648217c23f3d7daa14454ee40641400756a36eaf6830bc6e485ee9597c550f0b": {
+    "query": "\n            INSERT INTO\n                revision(\n                    revision, id, title, note_inner, parent, prev,\n                    metadata_schema_version, metadata_created_at,\n                    metadata_modified_at, metadata_tags, metadata_custom_metadata\n                )\n            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Text",
+          "Uuid",
+          "Uuid",
+          "Int8",
+          "Timestamptz",
+          "Timestamptz",
+          "TextArray",
+          "Jsonb"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "6d83af4cc4e18c6abcbee0a77e91b7f681136996aa67803cf816fa7390c59575": {
+    "query": "\n            INSERT INTO current_revision (id, current_revision)\n            VALUES ($1, $2)\n            ON CONFLICT (id) DO UPDATE\n            SET current_revision = EXCLUDED.current_revision\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "993d4cef0950217b0e95ac7ca25fea164768809cf6ffb979543cb9ae58517970": {
+    "query": "INSERT INTO note(id) VALUES ($1)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  }
+}

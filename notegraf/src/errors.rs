@@ -31,6 +31,8 @@ pub enum NoteStoreError {
     HasReferences(NoteID),
     #[error("note cannot be parsed: `{0}`")]
     ParseError(String),
+    #[error("PostgreSQL error")]
+    PostgreSQLError(#[from] sqlx::Error),
 }
 
 /// Error type for Notegraf URL parsing.
