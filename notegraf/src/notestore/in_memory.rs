@@ -121,7 +121,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
 
     /// Generate a new [`NoteID`].
     ///
-    /// We use the UUID V4 scheme.
+    /// We use a deterministic sequential format for easy testing
     fn get_new_noteid(&mut self) -> NoteID {
         let note_id = NoteID::new(format!("note-{}", self.note_id_counter));
         self.note_id_counter += 1;
@@ -130,7 +130,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
 
     /// Generate a new [`Revision`].
     ///
-    /// We use the UUID V4 scheme.
+    /// We use a deterministic sequential format for easy testing
     fn get_new_revision(&mut self, note_id: &NoteID) -> Revision {
         let revision_counter = self.revision_id_counter.entry(note_id.clone()).or_insert(0);
         let revision = Revision::new(format!("revision-{}", *revision_counter));
