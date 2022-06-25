@@ -32,7 +32,8 @@ impl Settings {
             }
             NoteStoreType::PostgreSQL => {
                 let db_options = CONFIGURATION.database.as_ref().expect("When notestoretype is set to PostgreSQL, you must configure the keys under database").options();
-                let store: BoxedNoteStore<crate::NoteType> = Box::new(PostgreSQLStoreBuilder::new(db_options).build().await);
+                let store: BoxedNoteStore<crate::NoteType> =
+                    Box::new(PostgreSQLStoreBuilder::new(db_options).build().await);
                 if cfg!(feature = "notetype_markdown") && self.populatepostgresqlstore {
                     notegraf::notestore::util::populate_test_data(&store).await;
                 }
