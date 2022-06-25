@@ -1,5 +1,5 @@
 use notegraf::notestore::BoxedNoteStore;
-use notegraf::InMemoryStore;
+use notegraf::{InMemoryStore, PostgreSQLStoreBuilder};
 use sqlx::postgres::PgConnectOptions;
 
 #[derive(serde::Deserialize, Debug)]
@@ -10,12 +10,13 @@ pub enum NoteStoreType {
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Settings {
-    _database: Option<DatabaseSettings>,
+    database: Option<DatabaseSettings>,
     pub host: String,
     pub port: u16,
     pub debug: bool,
     notestoretype: NoteStoreType,
     populateinmemorystore: bool,
+    populatepostgresqlstore: bool,
     pub otlpendpoint: Option<String>,
 }
 
@@ -30,16 +31,12 @@ impl Settings {
                 store
             }
             NoteStoreType::PostgreSQL => {
-                // let mut db_options = CONFIGURATION.database.options();
-                // db_options.log_statements(LevelFilter::Debug);
-                // let connection_pool = PgPool::connect_with(db_options)
-                //     .await
-                //     .expect("Failed to connect to Postgres.");
-                // sqlx::migrate!("../notegraf/migrations")
-                //     .run(&connection_pool)
-                //     .await
-                //     .expect("Failed to migrate the database");
-                unimplemented!()
+                let db_options = CONFIGURATION.database.as_ref().expect("When notestoretype is set to PostgreSQL, you must configure the keys under database").options();
+                let store: BoxedNoteStore<crate::NoteType> = Box::new(PostgreSQLStoreBuilder::new(db_options).build().await);
+                if cfg!(feature = "notetype_markdown") && self.populatepostgresqlstore {
+                    notegraf::notestore::util::populate_test_data(&store).await;
+                }
+                store
             }
         }
     }
@@ -85,6 +82,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         .set_default("debug", false)?
         .set_default("host", "localhost")?
         .set_default("populateinmemorystore", true)?
+        .set_default("populatepostgresqlstore", false)?
         .add_source(config::File::with_name("configuration").required(false))
         .add_source(
             config::Environment::default()

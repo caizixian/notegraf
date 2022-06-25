@@ -14,7 +14,7 @@ mod tests;
 pub mod util;
 
 pub use in_memory::InMemoryStore;
-pub use postgresql::PostgreSQLStore;
+pub use postgresql::{PostgreSQLStore, PostgreSQLStoreBuilder};
 
 /// An abstraction for storage backends.
 pub trait NoteStore<T>

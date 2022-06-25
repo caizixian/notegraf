@@ -11,5 +11,5 @@ pub mod notetype;
 pub mod url;
 
 pub use note::{Note, NoteID, NoteLocator, NoteSerializable, Revision};
-pub use notestore::{InMemoryStore, NoteStore};
+pub use notestore::{InMemoryStore, PostgreSQLStore, PostgreSQLStoreBuilder, NoteStore};
 pub use notetype::{MarkdownNote, NoteType, PlainNote};
