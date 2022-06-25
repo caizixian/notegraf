@@ -1,5 +1,116 @@
 {
   "db": "PostgreSQL",
+  "09e08dccb1256132d1df867f4d1c120af18e5662d9e64436d27eae2d3e0689ee": {
+    "query": "\n            SELECT\n                revision.revision,\n                revision.id,\n                every(revision.revision = current_revision.current_revision\n                    AND current_revision.current_revision IS NOT NULL) AS is_current,\n                revision.title,\n                revision.note_inner,\n                revision.parent,\n                array_remove(array_agg(revision1.id), NULL) AS branches,\n                revision.prev,\n                array_remove(array_agg(revision2.id), NULL) AS next,\n                revision.referents,\n                array_remove(array_agg(revision3.id), NULL) AS \"references\",\n                revision.metadata_schema_version,\n                revision.metadata_created_at,\n                revision.metadata_modified_at,\n                revision.metadata_tags,\n                revision.metadata_custom_metadata\n            FROM revision\n            LEFT JOIN current_revision ON revision.id = current_revision.id\n            LEFT JOIN revision AS revision1 on revision1.parent = revision.id\n            LEFT JOIN revision AS revision2 on revision2.prev = revision.id\n            LEFT JOIN revision AS revision3 on revision.id = ANY(revision3.referents)\n            WHERE revision.id = $1 AND revision.revision = $2\n            GROUP BY revision.revision\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "revision",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "is_current",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 3,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "note_inner",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "parent",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "branches",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "prev",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "next",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 9,
+          "name": "referents",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 10,
+          "name": "references",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 11,
+          "name": "metadata_schema_version",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 12,
+          "name": "metadata_created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 13,
+          "name": "metadata_modified_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 14,
+          "name": "metadata_tags",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 15,
+          "name": "metadata_custom_metadata",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        null,
+        false,
+        false,
+        true,
+        null,
+        true,
+        null,
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "5edaa96dc6b5a468028606ec4a90022bbe402028a2560b97c1083c49064fe055": {
     "query": "\n            INSERT INTO\n                revision(\n                    revision, id, title, note_inner, parent, prev, referents,\n                    metadata_schema_version, metadata_created_at,\n                    metadata_modified_at, metadata_tags, metadata_custom_metadata\n                )\n            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            ",
     "describe": {
@@ -46,6 +157,116 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "feffb0efefa198f43e676c8c5284e8218c1fdf1a782901644e2d8c0e53fd7dff": {
+    "query": "\n            SELECT\n                revision.revision,\n                revision.id,\n                true AS is_current,\n                revision.title,\n                revision.note_inner,\n                revision.parent,\n                array_remove(array_agg(revision1.id), NULL) AS branches,\n                revision.prev,\n                array_remove(array_agg(revision2.id), NULL) AS next,\n                revision.referents,\n                array_remove(array_agg(revision3.id), NULL) AS \"references\",\n                revision.metadata_schema_version,\n                revision.metadata_created_at,\n                revision.metadata_modified_at,\n                revision.metadata_tags,\n                revision.metadata_custom_metadata\n            FROM revision\n            LEFT JOIN current_revision ON revision.id = current_revision.id\n            LEFT JOIN revision AS revision1 on revision1.parent = revision.id\n            LEFT JOIN revision AS revision2 on revision2.prev = revision.id\n            LEFT JOIN revision AS revision3 on revision.id = ANY(revision3.referents)\n            WHERE revision.id = $1 AND current_revision.current_revision IS NOT NULL\n            GROUP BY revision.revision\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "revision",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "is_current",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 3,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "note_inner",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "parent",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "branches",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "prev",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "next",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 9,
+          "name": "referents",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 10,
+          "name": "references",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 11,
+          "name": "metadata_schema_version",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 12,
+          "name": "metadata_created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 13,
+          "name": "metadata_modified_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 14,
+          "name": "metadata_tags",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 15,
+          "name": "metadata_custom_metadata",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        null,
+        false,
+        false,
+        true,
+        null,
+        true,
+        null,
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   }
 }

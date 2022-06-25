@@ -12,7 +12,7 @@ pub enum PlainNoteError {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct PlainNote {
     body: String,
-    references: HashSet<NoteID>,
+    referents: HashSet<NoteID>,
 }
 
 impl PlainNote {
@@ -23,8 +23,8 @@ impl PlainNote {
         }
     }
 
-    pub fn add_reference(&mut self, referent: NoteID) {
-        self.references.insert(referent);
+    pub fn add_referent(&mut self, referent: NoteID) {
+        self.referents.insert(referent);
     }
 
     pub fn split_off(mut self, at: usize) -> (Self, Self) {
@@ -34,7 +34,7 @@ impl PlainNote {
 
     pub fn merge(mut self, other: Self) -> Self {
         self.body.push_str(&other.body);
-        self.references.extend(other.references);
+        self.referents.extend(other.referents);
         self
     }
 }
@@ -43,7 +43,7 @@ impl NoteType for PlainNote {
     type Error = PlainNoteError;
 
     fn get_referents(&self) -> Result<HashSet<NoteID>, Self::Error> {
-        Ok(self.references.clone())
+        Ok(self.referents.clone())
     }
 
     fn update_referent(
@@ -51,11 +51,11 @@ impl NoteType for PlainNote {
         old_referent: NoteID,
         new_referent: NoteID,
     ) -> Result<(), Self::Error> {
-        if !self.references.contains(&old_referent) {
+        if !self.referents.contains(&old_referent) {
             return Err(Self::Error::ReferenceNotExist(old_referent));
         }
-        self.references.remove(&old_referent);
-        self.references.insert(new_referent);
+        self.referents.remove(&old_referent);
+        self.referents.insert(new_referent);
         Ok(())
     }
 }
@@ -85,8 +85,8 @@ mod tests {
     #[test]
     fn retrieve_references() {
         let mut note = PlainNote::new("Foo".into());
-        note.add_reference(NoteID::new("ID1".into()));
-        note.add_reference(NoteID::new("ID2".into()));
+        note.add_referent(NoteID::new("ID1".into()));
+        note.add_referent(NoteID::new("ID2".into()));
         assert!(note
             .get_referents()
             .unwrap()
@@ -100,8 +100,8 @@ mod tests {
     #[test]
     fn update_references() {
         let mut note = PlainNote::new("Foo".into());
-        note.add_reference(NoteID::new("ID1".into()));
-        note.add_reference(NoteID::new("ID2".into()));
+        note.add_referent(NoteID::new("ID1".into()));
+        note.add_referent(NoteID::new("ID2".into()));
         note.update_referent(NoteID::new("ID1".into()), NoteID::new("ID3".into()))
             .unwrap();
         assert!(note
@@ -117,9 +117,9 @@ mod tests {
     #[test]
     fn dedup_references() {
         let mut note = PlainNote::new("Foo".into());
-        note.add_reference(NoteID::new("ID1".into()));
-        note.add_reference(NoteID::new("ID2".into()));
-        note.add_reference(NoteID::new("ID2".into()));
+        note.add_referent(NoteID::new("ID1".into()));
+        note.add_referent(NoteID::new("ID2".into()));
+        note.add_referent(NoteID::new("ID2".into()));
         assert_eq!(note.get_referents().unwrap().len(), 2);
     }
 }
