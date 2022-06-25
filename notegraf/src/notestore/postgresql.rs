@@ -19,7 +19,6 @@ pub struct PostgreSQLStoreBuilder<T> {
 struct PostgreSQLNoteRaw {
     revision: Uuid,
     id: Uuid,
-    is_current: Option<bool>,
     title: String,
     note_inner: String,
     parent: Option<Uuid>,
@@ -33,6 +32,55 @@ struct PostgreSQLNoteRaw {
     metadata_modified_at: DateTime<Utc>,
     metadata_tags: Vec<String>,
     metadata_custom_metadata: serde_json::Value,
+}
+
+impl PostgreSQLNoteRaw {
+    fn into_note<T: NoteType>(self) -> PostgreSQLNote<T> {
+        let note_inner: T = T::from(self.note_inner);
+        let parent: Option<NoteID> = self.parent.map(|x| x.to_string().into());
+        let branches: HashSet<NoteID> = match self.branches {
+            Some(b) => HashSet::from_iter(b.iter().map(|x| x.to_string().into())),
+            None => HashSet::new(),
+        };
+        let prev: Option<NoteID> = self.prev.map(|x| x.to_string().into());
+        let next: Option<NoteID> = match self.next {
+            Some(n) => {
+                if n.is_empty() {
+                    None
+                } else {
+                    assert_eq!(n.len(), 1);
+                    Some(n[0].to_string().into())
+                }
+            }
+            None => None,
+        };
+        let referents: HashSet<NoteID> =
+            HashSet::from_iter(self.referents.iter().map(|x| x.to_string().into()));
+        let references: HashSet<NoteID> = match self.references {
+            Some(r) => HashSet::from_iter(r.iter().map(|x| x.to_string().into())),
+            None => HashSet::new(),
+        };
+        let metadata = NoteMetadata {
+            schema_version: self.metadata_schema_version as u64,
+            created_at: self.metadata_created_at,
+            modified_at: self.metadata_modified_at,
+            tags: HashSet::from_iter(self.metadata_tags.iter().cloned()),
+            custom_metadata: self.metadata_custom_metadata,
+        };
+        PostgreSQLNote {
+            title: self.title,
+            note_inner,
+            id: self.id.to_string().into(),
+            revision: self.revision.to_string().into(),
+            parent,
+            branches,
+            prev,
+            next,
+            referents,
+            references,
+            metadata,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -155,7 +203,6 @@ impl<T: NoteType> PostgreSQLStore<T> {
             SELECT
                 revision.revision,
                 revision.id,
-                true AS is_current,
                 revision.title,
                 revision.note_inner,
                 revision.parent,
@@ -171,9 +218,9 @@ impl<T: NoteType> PostgreSQLStore<T> {
                 revision.metadata_custom_metadata
             FROM revision
             LEFT JOIN current_revision ON revision.id = current_revision.id
-            LEFT JOIN revision AS revision1 on revision1.parent = revision.id
-            LEFT JOIN revision AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision AS revision3 on revision.id = ANY(revision3.referents)
+            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
+            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
+            LEFT JOIN revision_only_current AS revision3 on revision.id = ANY(revision3.referents)
             WHERE revision.id = $1 AND current_revision.current_revision IS NOT NULL
             GROUP BY revision.revision
             "#,
@@ -199,8 +246,6 @@ impl<T: NoteType> PostgreSQLStore<T> {
             SELECT
                 revision.revision,
                 revision.id,
-                every(revision.revision = current_revision.current_revision
-                    AND current_revision.current_revision IS NOT NULL) AS is_current,
                 revision.title,
                 revision.note_inner,
                 revision.parent,
@@ -215,10 +260,9 @@ impl<T: NoteType> PostgreSQLStore<T> {
                 revision.metadata_tags,
                 revision.metadata_custom_metadata
             FROM revision
-            LEFT JOIN current_revision ON revision.id = current_revision.id
-            LEFT JOIN revision AS revision1 on revision1.parent = revision.id
-            LEFT JOIN revision AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision AS revision3 on revision.id = ANY(revision3.referents)
+            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
+            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
+            LEFT JOIN revision_only_current AS revision3 on revision.id = ANY(revision3.referents)
             WHERE revision.id = $1 AND revision.revision = $2
             GROUP BY revision.revision
             "#,
@@ -250,8 +294,11 @@ impl<T: NoteType> PostgreSQLStore<T> {
             Err(e) => return Err(NoteStoreError::NoteInnerError(e.to_string())),
         }
         .iter()
-        .map(|x| Uuid::parse_str(x.as_ref()).unwrap())
-        .collect();
+        .map(|x| {
+            x.to_uuid()
+                .ok_or_else(|| NoteStoreError::NotUuid(x.clone().into()))
+        })
+        .collect::<Result<Vec<Uuid>, NoteStoreError>>()?;
         let metadata = metadata.unwrap_or_default();
         let tags: Vec<String> = metadata.tags.iter().cloned().collect();
         let note_inner: String = note_inner.clone().into();
@@ -343,7 +390,29 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let note = match loc {
+                NoteLocator::Current(ref i) => {
+                    let id = i
+                        .to_uuid()
+                        .ok_or_else(|| NoteStoreError::NotUuid(i.clone().into()))?;
+                    Self::get_note_current(&mut transaction, id).await?
+                }
+                NoteLocator::Specific(ref i, ref r) => {
+                    let id = i
+                        .to_uuid()
+                        .ok_or_else(|| NoteStoreError::NotUuid(i.clone().into()))?;
+                    let revision = r
+                        .to_uuid()
+                        .ok_or_else(|| NoteStoreError::NotUuid(r.clone().into()))?;
+                    Self::get_note_specific(&mut transaction, id, revision).await?
+                }
+            };
+            transaction.commit().await?;
+            let note: PostgreSQLNote<T> = note.into_note();
+            Ok(Box::new(note) as Box<dyn Note<T>>)
+        })
     }
 
     fn update_note<'a>(
@@ -367,7 +436,42 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let id = loc
+                .get_id()
+                .to_uuid()
+                .ok_or_else(|| NoteStoreError::NotUuid(loc.get_id().clone().into()))?;
+            let res = sqlx::query!(
+                r#"
+                SELECT current_revision
+                FROM current_revision
+                WHERE id = $1
+                "#,
+                id
+            )
+            .fetch_one(&self.db_pool)
+            .await;
+            if let Ok(row) = res {
+                return Ok(row.current_revision.to_string().into());
+            }
+            let res = sqlx::query!(
+                r#"
+                SELECT revision
+                FROM revision
+                WHERE id = $1
+                "#,
+                id
+            )
+            .fetch_one(&self.db_pool)
+            .await;
+            if res.is_ok() {
+                // No current revision but there are some revisions
+                // So the note was deleted
+                Err(NoteStoreError::NoteDeleted(id.to_string().into()))
+            } else {
+                Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+            }
+        })
     }
 
     fn get_revisions<'a>(
@@ -445,5 +549,15 @@ mod tests {
     #[tokio::test]
     async fn unique_id() {
         common_tests::unique_id(get_store().await).await;
+    }
+
+    #[tokio::test]
+    async fn new_note_revision() {
+        common_tests::new_note_revision(get_store().await).await;
+    }
+
+    #[tokio::test]
+    async fn new_note_retrieve() {
+        common_tests::new_note_retrieve(get_store().await).await;
     }
 }

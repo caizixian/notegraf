@@ -35,6 +35,8 @@ pub enum NoteStoreError {
     PostgreSQLError(#[from] sqlx::Error),
     #[error("error processing note inner")]
     NoteInnerError(String),
+    #[error("id or revision is not UUID")]
+    NotUuid(String),
 }
 
 /// Error type for Notegraf URL parsing.

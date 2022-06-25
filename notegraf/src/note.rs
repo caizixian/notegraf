@@ -5,6 +5,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
 use std::fmt::{self, Debug, Display};
+use uuid::Uuid;
 
 /// ID of notes.
 ///
@@ -39,6 +40,10 @@ impl NoteID {
     pub fn new(id: String) -> Self {
         NoteID { id }
     }
+
+    pub fn to_uuid(&self) -> Option<Uuid> {
+        Uuid::parse_str(&self.id).ok()
+    }
 }
 
 impl Display for NoteID {
@@ -62,6 +67,10 @@ pub struct Revision {
 impl Revision {
     pub fn new(revision: String) -> Self {
         Revision { revision }
+    }
+
+    pub fn to_uuid(&self) -> Option<Uuid> {
+        Uuid::parse_str(&self.revision).ok()
     }
 }
 
