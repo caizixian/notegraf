@@ -451,8 +451,15 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             )
             .fetch_one(&self.db_pool)
             .await;
-            if let Ok(row) = res {
-                return Ok(row.current_revision.to_string().into());
+            match res {
+                Ok(row) => {
+                    return Ok(row.current_revision.to_string().into());
+                }
+                Err(e) => {
+                    if !matches!(e, sqlx::Error::RowNotFound) {
+                        return Err(NoteStoreError::PostgreSQLError(e));
+                    }
+                }
             }
             let res = sqlx::query!(
                 r#"
@@ -464,12 +471,15 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             )
             .fetch_one(&self.db_pool)
             .await;
-            if res.is_ok() {
-                // No current revision but there are some revisions
-                // So the note was deleted
-                Err(NoteStoreError::NoteDeleted(id.to_string().into()))
-            } else {
-                Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+            match res {
+                Ok(_) => Err(NoteStoreError::NoteDeleted(id.to_string().into())),
+                Err(e) => {
+                    if matches!(e, sqlx::Error::RowNotFound) {
+                        Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+                    } else {
+                        Err(NoteStoreError::PostgreSQLError(e))
+                    }
+                }
             }
         })
     }
