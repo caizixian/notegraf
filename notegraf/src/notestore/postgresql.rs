@@ -220,7 +220,10 @@ impl<T: NoteType> PostgreSQLStore<T> {
             LEFT JOIN current_revision ON revision.id = current_revision.id
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision_only_current AS revision3 on ARRAY[revision.id] <@ revision3.referents
+            -- https://stackoverflow.com/a/29245753
+            -- indexes are bound to operators, and the indexed expression must be to the left of
+            -- the operator
+            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
             WHERE revision.id = $1 AND current_revision.current_revision IS NOT NULL
             GROUP BY revision.revision
             "#,
@@ -262,7 +265,10 @@ impl<T: NoteType> PostgreSQLStore<T> {
             FROM revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision_only_current AS revision3 on ARRAY[revision.id] <@ revision3.referents
+            -- https://stackoverflow.com/a/29245753
+            -- indexes are bound to operators, and the indexed expression must be to the left of
+            -- the operator
+            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
             WHERE revision.id = $1 AND revision.revision = $2
             GROUP BY revision.revision
             "#,
