@@ -47,6 +47,7 @@ jobs:
       NOTEGRAF_DATABASE_PORT: "5432"
       NOTEGRAF_DATABASE_USERNAME: "postgres"
       NOTEGRAF_DATABASE_PASSWORD: "password"
+      NOTEGRAF_DATABASE_NAME: "notegraf"
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -117,6 +118,7 @@ jobs:
       NOTEGRAF_DATABASE_PORT: "5432"
       NOTEGRAF_DATABASE_USERNAME: "postgres"
       NOTEGRAF_DATABASE_PASSWORD: "password"
+      NOTEGRAF_DATABASE_NAME: "notegraf"
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
