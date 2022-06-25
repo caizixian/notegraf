@@ -220,7 +220,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
             LEFT JOIN current_revision ON revision.id = current_revision.id
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision_only_current AS revision3 on revision.id = ANY(revision3.referents)
+            LEFT JOIN revision_only_current AS revision3 on ARRAY[revision.id] <@ revision3.referents
             WHERE revision.id = $1 AND current_revision.current_revision IS NOT NULL
             GROUP BY revision.revision
             "#,
@@ -262,7 +262,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
             FROM revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            LEFT JOIN revision_only_current AS revision3 on revision.id = ANY(revision3.referents)
+            LEFT JOIN revision_only_current AS revision3 on ARRAY[revision.id] <@ revision3.referents
             WHERE revision.id = $1 AND revision.revision = $2
             GROUP BY revision.revision
             "#,
@@ -352,6 +352,32 @@ impl<T: NoteType> PostgreSQLStore<T> {
         .execute(transaction)
         .await
     }
+
+    async fn noteid_exist(
+        transaction: &mut Transaction<'_, Postgres>,
+        id: Uuid,
+    ) -> Result<bool, NoteStoreError> {
+        let res = sqlx::query!(
+            r#"
+                SELECT id
+                FROM note
+                WHERE id = $1
+                "#,
+            id
+        )
+        .fetch_one(transaction)
+        .await;
+        match res {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if matches!(e, sqlx::Error::RowNotFound) {
+                    Ok(false)
+                } else {
+                    Err(NoteStoreError::PostgreSQLError(e))
+                }
+            }
+        }
+    }
 }
 
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
@@ -409,7 +435,6 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                     Self::get_note_specific(&mut transaction, id, revision).await?
                 }
             };
-            transaction.commit().await?;
             let note: PostgreSQLNote<T> = note.into_note();
             Ok(Box::new(note) as Box<dyn Note<T>>)
         })
@@ -441,6 +466,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 .get_id()
                 .to_uuid()
                 .ok_or_else(|| NoteStoreError::NotUuid(loc.get_id().clone().into()))?;
+            let mut transaction = self.db_pool.begin().await?;
             let res = sqlx::query!(
                 r#"
                 SELECT current_revision
@@ -449,7 +475,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 "#,
                 id
             )
-            .fetch_one(&self.db_pool)
+            .fetch_one(&mut transaction)
             .await;
             match res {
                 Ok(row) => {
@@ -461,25 +487,11 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                     }
                 }
             }
-            let res = sqlx::query!(
-                r#"
-                SELECT revision
-                FROM revision
-                WHERE id = $1
-                "#,
-                id
-            )
-            .fetch_one(&self.db_pool)
-            .await;
-            match res {
-                Ok(_) => Err(NoteStoreError::NoteDeleted(id.to_string().into())),
-                Err(e) => {
-                    if matches!(e, sqlx::Error::RowNotFound) {
-                        Err(NoteStoreError::NoteNotExist(id.to_string().into()))
-                    } else {
-                        Err(NoteStoreError::PostgreSQLError(e))
-                    }
-                }
+            let ever_existed = Self::noteid_exist(&mut transaction, id).await?;
+            if ever_existed {
+                Err(NoteStoreError::NoteDeleted(id.to_string().into()))
+            } else {
+                Err(NoteStoreError::NoteNotExist(id.to_string().into()))
             }
         })
     }
