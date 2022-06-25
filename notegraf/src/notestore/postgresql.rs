@@ -182,7 +182,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         .fetch_one(transaction)
         .await;
         if let Err(sqlx::Error::RowNotFound) = res {
-            return Err(NoteStoreError::NoteNotExist(id.to_string().into()));
+            Err(NoteStoreError::NoteNotExist(id.to_string().into()))
         } else {
             res.map_err(NoteStoreError::PostgreSQLError)
         }
@@ -228,10 +228,10 @@ impl<T: NoteType> PostgreSQLStore<T> {
         .fetch_one(transaction)
         .await;
         if let Err(sqlx::Error::RowNotFound) = res {
-            return Err(NoteStoreError::RevisionNotExist(
+            Err(NoteStoreError::RevisionNotExist(
                 id.to_string().into(),
                 revision.to_string().into(),
-            ));
+            ))
         } else {
             res.map_err(NoteStoreError::PostgreSQLError)
         }
