@@ -1,7 +1,7 @@
 {
   "db": "PostgreSQL",
-  "648217c23f3d7daa14454ee40641400756a36eaf6830bc6e485ee9597c550f0b": {
-    "query": "\n            INSERT INTO\n                revision(\n                    revision, id, title, note_inner, parent, prev,\n                    metadata_schema_version, metadata_created_at,\n                    metadata_modified_at, metadata_tags, metadata_custom_metadata\n                )\n            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ",
+  "5edaa96dc6b5a468028606ec4a90022bbe402028a2560b97c1083c49064fe055": {
+    "query": "\n            INSERT INTO\n                revision(\n                    revision, id, title, note_inner, parent, prev, referents,\n                    metadata_schema_version, metadata_created_at,\n                    metadata_modified_at, metadata_tags, metadata_custom_metadata\n                )\n            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            ",
     "describe": {
       "columns": [],
       "parameters": {
@@ -12,6 +12,7 @@
           "Text",
           "Uuid",
           "Uuid",
+          "UuidArray",
           "Int8",
           "Timestamptz",
           "Timestamptz",

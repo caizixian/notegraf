@@ -16,6 +16,7 @@ CREATE TABLE revision
     FOREIGN KEY (parent) REFERENCES note (id),
     prev                     uuid UNIQUE,
     FOREIGN KEY (prev) REFERENCES note (id),
+    referents                uuid[] NOT NULL,
     metadata_schema_version  bigint      NOT NULL,
     metadata_created_at      timestamptz NOT NULL,
     metadata_modified_at     timestamptz NOT NULL,

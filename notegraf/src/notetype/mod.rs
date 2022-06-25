@@ -2,6 +2,7 @@ use crate::NoteID;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashSet;
+use std::error::Error;
 use std::fmt::Debug;
 
 mod plain;
@@ -22,7 +23,7 @@ pub trait NoteType:
     + Into<String>
     + 'static
 {
-    type Error: Debug;
+    type Error: Debug + Error;
     fn get_referents(&self) -> Result<HashSet<NoteID>, Self::Error>;
     fn update_referent(
         &mut self,

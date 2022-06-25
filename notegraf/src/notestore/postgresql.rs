@@ -66,7 +66,14 @@ impl<T: NoteType> PostgreSQLStore<T> {
         title: String,
         note_inner: T,
         metadata: Option<NoteMetadata>,
-    ) -> sqlx::Result<PgQueryResult> {
+    ) -> Result<NoteLocator, NoteStoreError> {
+        let referents: Vec<Uuid> = match note_inner.get_referents() {
+            Ok(r) => r,
+            Err(e) => return Err(NoteStoreError::NoteInnerError(e.to_string())),
+        }
+        .iter()
+        .map(|x| Uuid::parse_str(x.as_ref()).unwrap())
+        .collect();
         let metadata = metadata.unwrap_or_default();
         let tags: Vec<String> = metadata.tags.iter().cloned().collect();
         let note_inner: String = note_inner.clone().into();
@@ -74,11 +81,11 @@ impl<T: NoteType> PostgreSQLStore<T> {
             r#"
             INSERT INTO
                 revision(
-                    revision, id, title, note_inner, parent, prev,
+                    revision, id, title, note_inner, parent, prev, referents,
                     metadata_schema_version, metadata_created_at,
                     metadata_modified_at, metadata_tags, metadata_custom_metadata
                 )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
             revision,
             id,
@@ -86,6 +93,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
             &note_inner,
             None as Option<Uuid>,
             None as Option<Uuid>,
+            &referents,
             metadata.schema_version as i64,
             metadata.created_at,
             metadata.modified_at,
@@ -94,6 +102,11 @@ impl<T: NoteType> PostgreSQLStore<T> {
         )
         .execute(transaction)
         .await
+        .map_err(|e| NoteStoreError::PostgreSQLError(e))?;
+        Ok(NoteLocator::Specific(
+            id.to_string().into(),
+            revision.to_string().into(),
+        ))
     }
 
     async fn upsert_current_revision(

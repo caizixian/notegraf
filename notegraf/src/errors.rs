@@ -33,6 +33,8 @@ pub enum NoteStoreError {
     ParseError(String),
     #[error("PostgreSQL error")]
     PostgreSQLError(#[from] sqlx::Error),
+    #[error("error processing note inner")]
+    NoteInnerError(String),
 }
 
 /// Error type for Notegraf URL parsing.
