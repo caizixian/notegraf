@@ -4,7 +4,7 @@ use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
 use sqlx::postgres::{PgConnectOptions, PgQueryResult};
-use sqlx::{Connection, Executor, PgConnection, PgPool, Postgres, Transaction};
+use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::path::Path;
@@ -155,16 +155,7 @@ impl<T: NoteType> PostgreSQLStoreBuilder<T> {
         }
     }
 
-    pub async fn build(mut self) -> PostgreSQLStore<T> {
-        let mut connection = PgConnection::connect_with(&self.db_options)
-            .await
-            .expect("Failed to connect to Postgres");
-        let db_name = Uuid::new_v4().to_string();
-        connection
-            .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
-            .await
-            .expect("Failed to create database.");
-        self.db_options = self.db_options.database(&db_name);
+    pub async fn build(self) -> PostgreSQLStore<T> {
         let connection_pool = PgPool::connect_with(self.db_options)
             .await
             .expect("Failed to connect to Postgres.");
@@ -287,13 +278,16 @@ impl<T: NoteType> PostgreSQLStore<T> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn insert_revision(
         transaction: &mut Transaction<'_, Postgres>,
         id: Uuid,
         revision: Uuid,
         title: String,
         note_inner: T,
-        metadata: Option<NoteMetadata>,
+        parent: Option<Uuid>,
+        prev: Option<Uuid>,
+        metadata: NoteMetadata,
     ) -> Result<NoteLocator, NoteStoreError> {
         let referents: Vec<Uuid> = match note_inner.get_referents() {
             Ok(r) => r,
@@ -305,7 +299,6 @@ impl<T: NoteType> PostgreSQLStore<T> {
                 .ok_or_else(|| NoteStoreError::NotUuid(x.clone().into()))
         })
         .collect::<Result<Vec<Uuid>, NoteStoreError>>()?;
-        let metadata = metadata.unwrap_or_default();
         let tags: Vec<String> = metadata.tags.iter().cloned().collect();
         let note_inner: String = note_inner.clone().into();
         sqlx::query!(
@@ -322,8 +315,8 @@ impl<T: NoteType> PostgreSQLStore<T> {
             id,
             title,
             &note_inner,
-            None as Option<Uuid>,
-            None as Option<Uuid>,
+            parent,
+            prev,
             &referents,
             metadata.schema_version as i64,
             metadata.created_at,
@@ -365,10 +358,10 @@ impl<T: NoteType> PostgreSQLStore<T> {
     ) -> Result<bool, NoteStoreError> {
         let res = sqlx::query!(
             r#"
-                SELECT id
-                FROM note
-                WHERE id = $1
-                "#,
+            SELECT id
+            FROM note
+            WHERE id = $1
+            "#,
             id
         )
         .fetch_one(transaction)
@@ -406,7 +399,9 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 revision,
                 title,
                 note_inner,
-                metadata,
+                None,
+                None,
+                metadata.unwrap_or_default(),
             )
             .await?;
             Self::upsert_current_revision(&mut transaction, note_id, revision).await?;
@@ -542,6 +537,7 @@ mod tests {
     use super::*;
     use crate::notestore::tests as common_tests;
     use crate::notetype::PlainNote;
+    use sqlx::{Connection, Executor, PgConnection};
     use std::env;
 
     /// Configure the connect options with the following environment variables
@@ -569,7 +565,16 @@ mod tests {
     }
 
     async fn get_store() -> PostgreSQLStore<PlainNote> {
-        PostgreSQLStoreBuilder::new(get_connect_options())
+        let options = get_connect_options();
+        let mut connection = PgConnection::connect_with(&options)
+            .await
+            .expect("Failed to connect to Postgres");
+        let db_name = Uuid::new_v4().to_string();
+        connection
+            .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
+            .await
+            .expect("Failed to create database.");
+        PostgreSQLStoreBuilder::new(options.database(&db_name))
             .build()
             .await
     }
