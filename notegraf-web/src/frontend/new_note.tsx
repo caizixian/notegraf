@@ -1,10 +1,12 @@
 import * as React from "react";
 import {useForm} from "react-hook-form";
 import {useNavigate} from "react-router-dom";
+import {useLocalStorage} from "./autosave";
 
 export function NewNoteForm() {
-    const {register, handleSubmit} = useForm();
+    const {register, watch, setValue, handleSubmit} = useForm();
     const navigate = useNavigate();
+    useLocalStorage("autosave.note.new", watch, setValue, {title: "", note_inner: ""}, 5000);
 
     const onSubmit = (data: any) => {
         fetch('/api/v1/note', {
