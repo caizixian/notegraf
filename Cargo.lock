@@ -1251,6 +1251,7 @@ dependencies = [
  "tracing-log",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "uuid 1.1.2",
 ]
 
 [[package]]

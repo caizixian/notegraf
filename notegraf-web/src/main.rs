@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(address)?;
     run(
         listener,
-        CONFIGURATION.get_note_store().await,
+        CONFIGURATION.get_note_store(false).await,
         CONFIGURATION.debug,
     )?
     .await?;

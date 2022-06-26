@@ -23,7 +23,7 @@ pub async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
     lazy_static::initialize(&TRACING);
-    let store = CONFIGURATION.get_note_store().await;
+    let store = CONFIGURATION.get_note_store(true).await;
     let server = run(listener, store, CONFIGURATION.debug).expect("Failed to bind address");
     let _ = tokio::spawn(server);
     TestApp { address }

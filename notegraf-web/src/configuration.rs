@@ -1,6 +1,8 @@
 use notegraf::notestore::BoxedNoteStore;
 use notegraf::{InMemoryStore, PostgreSQLStoreBuilder};
 use sqlx::postgres::PgConnectOptions;
+use sqlx::{Connection, Executor, PgConnection};
+use uuid::Uuid;
 
 #[derive(serde::Deserialize, Debug)]
 pub enum NoteStoreType {
@@ -20,11 +22,27 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub async fn get_note_store(&self) -> BoxedNoteStore<crate::NoteType> {
+    pub async fn get_note_store(&self, random_db: bool) -> BoxedNoteStore<crate::NoteType> {
         let store: BoxedNoteStore<crate::NoteType> = match self.notestoretype {
             NoteStoreType::InMemory => Box::new(InMemoryStore::new()),
             NoteStoreType::PostgreSQL => {
-                let db_options = CONFIGURATION.database.as_ref().expect("When notestoretype is set to PostgreSQL, you must configure the keys under database").options();
+                let database_settings = CONFIGURATION.database
+                    .as_ref()
+                    .expect("When notestoretype is set to PostgreSQL, you must configure the keys under database");
+                let db_options = if random_db {
+                    let db_name = Uuid::new_v4().to_string();
+                    let db_options = database_settings.options_without_db();
+                    let mut connection = PgConnection::connect_with(&db_options)
+                        .await
+                        .expect("Failed to connect to Postgres");
+                    connection
+                        .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
+                        .await
+                        .expect("Failed to create database.");
+                    db_options.database(&db_name)
+                } else {
+                    database_settings.options()
+                };
                 Box::new(PostgreSQLStoreBuilder::new(db_options).build().await)
             }
         };

@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 
 use notegraf::NoteLocator;
 use serde_json::{json, Value};
@@ -75,4 +75,43 @@ async fn note_retrive() {
     assert_eq!(response["next"], Value::Null);
     assert_eq!(response["title"], "title");
     assert_eq!(response["note_inner"], "## body text");
+}
+
+#[tokio::test]
+async fn note_delete() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    client
+        .get(&format!(
+            "{}/api/v1/note/{}",
+            &app.address,
+            loc1.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    client
+        .delete(&format!(
+            "{}/api/v1/note/{}",
+            &app.address,
+            loc1.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+    let response = client
+        .get(&format!(
+            "{}/api/v1/note/{}",
+            &app.address,
+            loc1.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
