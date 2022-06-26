@@ -1,5 +1,43 @@
 {
   "db": "PostgreSQL",
+  "0dba13e5ae77834be905ec25f12343345d09f8c425eaa7fd56e655d4a1399b19": {
+    "query": "\n            SELECT note.id, cr.current_revision AS \"current_revision?\"\n            FROM note\n            LEFT JOIN current_revision cr on cr.id = note.id\n            WHERE note.id = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "current_revision?",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "1736db8057b031c583330340d5d314d78c00021530ab4c80913694fceaf3642d": {
+    "query": "DELETE FROM current_revision WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "48cc6184afab137bd0af08dc212267350a46794f132c72159247998f450a974e": {
     "query": "\n                SELECT current_revision\n                FROM current_revision\n                WHERE id = $1\n                ",
     "describe": {
@@ -66,6 +104,27 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "ae8d495aab9478759badbc14dc00c0834d956ec077f8ad46848a13c8e214ab7e": {
+    "query": "\n            SELECT id\n            FROM current_revision\n            WHERE id = $1 AND current_revision = $2\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false
+      ]
     }
   },
   "b57a6af836daa89d5f143fd4e6c7437f85e384388a762a921e0726aae091910e": {
@@ -295,6 +354,19 @@
         false,
         false
       ]
+    }
+  },
+  "f883de81cbcfe22edee8c2fcccd8f86420e0c32baf63a3e529a0e6e8c4d1da80": {
+    "query": "DELETE FROM current_revision WHERE id = $1 AND current_revision = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": []
     }
   }
 }

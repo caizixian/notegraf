@@ -1,4 +1,5 @@
 //! Core types of Notegraf.
+use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadata;
 use crate::notetype::NoteType;
 use serde::ser::SerializeStruct;
@@ -44,6 +45,11 @@ impl NoteID {
     pub fn to_uuid(&self) -> Option<Uuid> {
         Uuid::parse_str(&self.id).ok()
     }
+
+    pub fn try_to_uuid(&self) -> Result<Uuid, NoteStoreError> {
+        self.to_uuid()
+            .ok_or_else(|| NoteStoreError::NotUuid(self.id.clone()))
+    }
 }
 
 impl Display for NoteID {
@@ -71,6 +77,11 @@ impl Revision {
 
     pub fn to_uuid(&self) -> Option<Uuid> {
         Uuid::parse_str(&self.revision).ok()
+    }
+
+    pub fn try_to_uuid(&self) -> Result<Uuid, NoteStoreError> {
+        self.to_uuid()
+            .ok_or_else(|| NoteStoreError::NotUuid(self.revision.clone()))
     }
 }
 

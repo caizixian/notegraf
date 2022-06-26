@@ -4,7 +4,7 @@ use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
 use sqlx::postgres::{PgConnectOptions, PgQueryResult};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{query, query_as, PgPool, Postgres, Transaction};
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::path::Path;
@@ -188,7 +188,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         transaction: &mut Transaction<'_, Postgres>,
         id: Uuid,
     ) -> Result<PostgreSQLNoteRaw, NoteStoreError> {
-        let res = sqlx::query_as!(
+        let res = query_as!(
             PostgreSQLNoteRaw,
             r#"
             SELECT
@@ -234,7 +234,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         id: Uuid,
         revision: Uuid,
     ) -> Result<PostgreSQLNoteRaw, NoteStoreError> {
-        let res = sqlx::query_as!(
+        let res = query_as!(
             PostgreSQLNoteRaw,
             r#"
             SELECT
@@ -294,14 +294,11 @@ impl<T: NoteType> PostgreSQLStore<T> {
             Err(e) => return Err(NoteStoreError::NoteInnerError(e.to_string())),
         }
         .iter()
-        .map(|x| {
-            x.to_uuid()
-                .ok_or_else(|| NoteStoreError::NotUuid(x.clone().into()))
-        })
+        .map(|x| x.try_to_uuid())
         .collect::<Result<Vec<Uuid>, NoteStoreError>>()?;
         let tags: Vec<String> = metadata.tags.iter().cloned().collect();
         let note_inner: String = note_inner.clone().into();
-        sqlx::query!(
+        query!(
             r#"
             INSERT INTO
                 revision(
@@ -338,7 +335,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         id: Uuid,
         revision: Uuid,
     ) -> sqlx::Result<PgQueryResult> {
-        sqlx::query!(
+        query!(
             r#"
             INSERT INTO current_revision (id, current_revision)
             VALUES ($1, $2)
@@ -356,7 +353,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         transaction: &mut Transaction<'_, Postgres>,
         id: Uuid,
     ) -> Result<bool, NoteStoreError> {
-        let res = sqlx::query!(
+        let res = query!(
             r#"
             SELECT id
             FROM note
@@ -377,6 +374,107 @@ impl<T: NoteType> PostgreSQLStore<T> {
             }
         }
     }
+
+    async fn is_current(
+        transaction: &mut Transaction<'_, Postgres>,
+        loc: &NoteLocator,
+    ) -> Result<bool, NoteStoreError> {
+        let (id, revision) = loc.unpack();
+        if revision.is_none() {
+            let id = id.try_to_uuid()?;
+            return Self::noteid_exist(transaction, id).await;
+        }
+        let res = query!(
+            r#"
+            SELECT id
+            FROM current_revision
+            WHERE id = $1 AND current_revision = $2
+            "#,
+            id.try_to_uuid()?,
+            revision.unwrap().try_to_uuid()?
+        )
+        .fetch_one(transaction)
+        .await;
+        match res {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if matches!(e, sqlx::Error::RowNotFound) {
+                    Ok(false)
+                } else {
+                    Err(NoteStoreError::PostgreSQLError(e))
+                }
+            }
+        }
+    }
+
+    async fn delete_revision(
+        mut transaction: Transaction<'_, Postgres>,
+        loc: &NoteLocator,
+    ) -> Result<(), NoteStoreError> {
+        let query_result = match loc {
+            NoteLocator::Current(id) => {
+                query!(
+                    r#"DELETE FROM current_revision WHERE id = $1"#,
+                    id.try_to_uuid()?
+                )
+                .execute(&mut transaction)
+                .await?
+            }
+            NoteLocator::Specific(id, revision) => {
+                query!(
+                    r#"DELETE FROM current_revision WHERE id = $1 AND current_revision = $2"#,
+                    id.try_to_uuid()?,
+                    revision.try_to_uuid()?
+                )
+                .execute(&mut transaction)
+                .await?
+            }
+        };
+        if query_result.rows_affected() != 1 {
+            transaction
+                .rollback()
+                .await
+                .map_err(NoteStoreError::PostgreSQLError)?;
+            match loc {
+                NoteLocator::Current(id) => Err(NoteStoreError::NoteNotExist(id.clone())),
+                NoteLocator::Specific(id, revision) => Err(NoteStoreError::RevisionNotExist(
+                    id.clone(),
+                    revision.clone(),
+                )),
+            }
+        } else {
+            transaction
+                .commit()
+                .await
+                .map_err(NoteStoreError::PostgreSQLError)?;
+            Ok(())
+        }
+    }
+
+    async fn is_deleted(&self, id: Uuid) -> Result<bool, NoteStoreError> {
+        // NULL not correctly inferred by sqlx https://github.com/launchbadge/sqlx/issues/367
+        let res = query!(
+            r#"
+            SELECT note.id, cr.current_revision AS "current_revision?"
+            FROM note
+            LEFT JOIN current_revision cr on cr.id = note.id
+            WHERE note.id = $1
+            "#,
+            id
+        )
+        .fetch_one(&self.db_pool)
+        .await;
+        match res {
+            Ok(row) => Ok(row.current_revision.is_none()),
+            Err(e) => {
+                if matches!(e, sqlx::Error::RowNotFound) {
+                    Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+                } else {
+                    Err(NoteStoreError::PostgreSQLError(e))
+                }
+            }
+        }
+    }
 }
 
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
@@ -390,7 +488,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             let note_id = Self::get_new_noteid();
             let revision = Self::get_new_revision();
             let mut transaction = self.db_pool.begin().await?;
-            sqlx::query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
+            query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
                 .execute(&mut transaction)
                 .await?;
             Self::insert_revision(
@@ -421,18 +519,12 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             let mut transaction = self.db_pool.begin().await?;
             let note = match loc {
                 NoteLocator::Current(ref i) => {
-                    let id = i
-                        .to_uuid()
-                        .ok_or_else(|| NoteStoreError::NotUuid(i.clone().into()))?;
+                    let id = i.try_to_uuid()?;
                     Self::get_note_current(&mut transaction, id).await?
                 }
                 NoteLocator::Specific(ref i, ref r) => {
-                    let id = i
-                        .to_uuid()
-                        .ok_or_else(|| NoteStoreError::NotUuid(i.clone().into()))?;
-                    let revision = r
-                        .to_uuid()
-                        .ok_or_else(|| NoteStoreError::NotUuid(r.clone().into()))?;
+                    let id = i.try_to_uuid()?;
+                    let revision = r.try_to_uuid()?;
                     Self::get_note_specific(&mut transaction, id, revision).await?
                 }
             };
@@ -455,7 +547,36 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let (id, rev) = loc.unpack();
+            if !Self::is_current(&mut transaction, loc).await? {
+                return Err(NoteStoreError::DeleteOldRevision(
+                    id.clone(),
+                    rev.unwrap().clone(),
+                ));
+            }
+            let note = match loc {
+                NoteLocator::Current(n) => {
+                    Self::get_note_current(&mut transaction, n.try_to_uuid()?).await?
+                }
+                NoteLocator::Specific(n, r) => {
+                    Self::get_note_specific(&mut transaction, n.try_to_uuid()?, r.try_to_uuid()?)
+                        .await?
+                }
+            };
+
+            if !note.branches.unwrap_or_default().is_empty() {
+                return Err(NoteStoreError::HasBranches(id.clone()));
+            }
+            if !note.references.unwrap_or_default().is_empty() {
+                return Err(NoteStoreError::HasReferences(id.clone()));
+            }
+            if note.next.is_some() && note.prev.is_some() {
+                // FIXME
+            }
+            Self::delete_revision(transaction, loc).await
+        })
     }
 
     fn get_current_revision<'a>(
@@ -463,12 +584,9 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>> {
         Box::pin(async move {
-            let id = loc
-                .get_id()
-                .to_uuid()
-                .ok_or_else(|| NoteStoreError::NotUuid(loc.get_id().clone().into()))?;
+            let id = loc.get_id().try_to_uuid()?;
             let mut transaction = self.db_pool.begin().await?;
-            let res = sqlx::query!(
+            let res = query!(
                 r#"
                 SELECT current_revision
                 FROM current_revision
@@ -592,5 +710,37 @@ mod tests {
     #[tokio::test]
     async fn new_note_retrieve() {
         common_tests::new_note_retrieve(get_store().await).await;
+    }
+
+    #[tokio::test]
+    async fn delete_note_specific() {
+        let store: PostgreSQLStore<PlainNote> = get_store().await;
+        let loc1 = store
+            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+            .await
+            .unwrap();
+        assert!(!store
+            .is_deleted(loc1.get_id().try_to_uuid().unwrap())
+            .await
+            .unwrap());
+        store.delete_note(&loc1).await.unwrap();
+        assert!(store
+            .is_deleted(loc1.get_id().try_to_uuid().unwrap())
+            .await
+            .unwrap());
+    }
+
+    #[tokio::test]
+    async fn delete_note_current() {
+        let store: PostgreSQLStore<PlainNote> = get_store().await;
+        let loc1 = store
+            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+            .await
+            .unwrap();
+        store.delete_note(&loc1.current()).await.unwrap();
+        assert!(store
+            .is_deleted(loc1.get_id().try_to_uuid().unwrap())
+            .await
+            .unwrap());
     }
 }
