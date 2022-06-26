@@ -1,9 +1,10 @@
 use crate::NoteType;
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use notegraf::errors::NoteStoreError;
+use notegraf::notemetadata::NoteMetadata;
 use notegraf::notestore::BoxedNoteStore;
 use notegraf::{NoteLocator, NoteSerializable};
-use serde_json::json;
+use serde::Deserialize;
 
 async fn get_note_by_locator(
     store: web::Data<BoxedNoteStore<NoteType>>,
@@ -11,7 +12,7 @@ async fn get_note_by_locator(
 ) -> impl Responder {
     let result = store.as_ref().get_note(loc).await;
     match result {
-        Ok(note) => HttpResponse::Ok().json(json!(NoteSerializable::all_fields(note))),
+        Ok(note) => HttpResponse::Ok().json(NoteSerializable::all_fields(note)),
         Err(e) => {
             if let NoteStoreError::NoteNotExist(n) = e {
                 info!("Attempted to get a note by id \"{}\", but not found", &n);
@@ -57,6 +58,34 @@ async fn get_note_specific(
     get_note_by_locator(store, &loc).await
 }
 
+#[derive(Deserialize)]
+struct NewNoteData {
+    title: String,
+    note_inner: String,
+    metadata: Option<NoteMetadata>,
+}
+
+#[post("/note")]
+#[instrument(skip(store, note))]
+async fn new_note(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    note: web::Json<NewNoteData>,
+) -> impl Responder {
+    let note = note.into_inner();
+    let res = store
+        .new_note(note.title, NoteType::from(note.note_inner), note.metadata)
+        .await;
+    match res {
+        Ok(loc) => HttpResponse::Ok().json(loc),
+        Err(e) => {
+            error!("Note store internal error {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_note_current).service(get_note_specific);
+    cfg.service(get_note_current)
+        .service(get_note_specific)
+        .service(new_note);
 }

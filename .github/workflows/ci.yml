@@ -24,6 +24,9 @@ jobs:
 
   test:
     name: Test Suite
+    strategy:
+      matrix:
+        notestore: [ "InMemory", "PostgreSQL" ]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -42,7 +45,7 @@ jobs:
     env:
       NOTEGRAF_PORT: "8000" # not used for test
       NOTEGRAF_DEBUG: "true"
-      NOTEGRAF_NOTESTORETYPE: "InMemory"
+      NOTEGRAF_NOTESTORETYPE: ${{ matrix.notestore }}
       NOTEGRAF_DATABASE_HOST: "localhost"
       NOTEGRAF_DATABASE_PORT: "5432"
       NOTEGRAF_DATABASE_USERNAME: "postgres"
@@ -95,6 +98,9 @@ jobs:
 
   coverage:
     name: Code coverage
+    strategy:
+      matrix:
+        notestore: ["InMemory", "PostgreSQL"]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -113,7 +119,7 @@ jobs:
     env:
       NOTEGRAF_PORT: "8000" # not used for test
       NOTEGRAF_DEBUG: "true"
-      NOTEGRAF_NOTESTORETYPE: "InMemory"
+      NOTEGRAF_NOTESTORETYPE: ${{ matrix.notestore }}
       NOTEGRAF_DATABASE_HOST: "localhost"
       NOTEGRAF_DATABASE_PORT: "5432"
       NOTEGRAF_DATABASE_USERNAME: "postgres"
@@ -131,5 +137,5 @@ jobs:
           out-type: 'Html'
       - uses: actions/upload-artifact@v3
         with:
-          name: coverage-report-html
+          name: coverage-report-html-${{ matrix.notestore }}
           path: tarpaulin-report.html
