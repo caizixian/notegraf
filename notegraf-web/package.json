@@ -30,14 +30,18 @@
     "dompurify": "^2.3.8",
     "highlight.js": "^11.5.1",
     "katex": "^0.16.0",
+    "lodash": "^4.17.21",
     "marked": "^4.0.17",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.33.0",
     "react-router-dom": "^6.3.0"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.2",
     "@types/dompurify": "^2.3.3",
     "@types/katex": "^0.14.0",
+    "@types/lodash": "^4.14.182",
     "@types/marked": "^4.0.3",
     "@types/react": "^18.0.14",
     "@types/react-dom": "^18.0.5",

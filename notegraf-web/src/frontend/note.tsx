@@ -5,6 +5,7 @@ import "./app.css"
 import {Link} from "react-router-dom";
 
 export type Note = {
+    title: string,
     note_inner: string,
     id: string,
     revision: string,
@@ -33,6 +34,9 @@ type NoteComponentProps = {
 export function NoteComponent(props: NoteComponentProps) {
     return (
         <article className="note border m-1 p-1">
+            <Link to={`/note/${props.note.id}/`} className={"underline"}>
+                {props.note.title ? <h1>{props.note.title}</h1> : <h1 className={"italic text-gray-500"}>no title</h1>}
+            </Link>
             {props.showPrevNext &&
                 <div>
                     {props.note.prev != null && <Link to={`../${props.note.prev}`} key={props.note.prev}
@@ -44,6 +48,10 @@ export function NoteComponent(props: NoteComponentProps) {
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>
                 <p>Modified at: {props.note.metadata.modified_at}</p>
+                <Link to={`/note/${props.note.id}/revision/${props.note.revision}`}
+                      className={"underline text-blue-500"}>
+                    Permalink
+                </Link>
             </details>
             <div dangerouslySetInnerHTML={{
                 __html: sanitize(marked(props.note.note_inner))

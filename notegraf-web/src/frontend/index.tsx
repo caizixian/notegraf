@@ -1,13 +1,16 @@
 import * as React from "react";
 import {createRoot} from "react-dom/client";
 import {NoteSequence} from "./note_sequence";
-import {BrowserRouter, Outlet, Route, Routes} from "react-router-dom";
+import {BrowserRouter, NavLink, Outlet, Route, Routes} from "react-router-dom";
 import "./markdown.tsx";
+import {NewNoteForm} from "./new_note";
 
 function App() {
     return (
-        <div className={"h-screen bg-white dark:bg-slate-800 dark:text-white"}>
-            <h1>Notegraf</h1>
+        <div className={"min-h-screen bg-white dark:bg-slate-800 dark:text-white"}>
+            <nav className={"flex w-full bg-gray-500"}>
+                <NavLink to={"/note"}>New Note</NavLink>
+            </nav>
             <Outlet/>
         </div>
     );
@@ -16,7 +19,6 @@ function App() {
 function Notes() {
     return (
         <div>
-            <h1>Note Sequence View</h1>
             <Outlet/>
         </div>
     );
@@ -30,13 +32,8 @@ root.render(
             <Routes>
                 <Route path="/" element={<App/>}>
                     <Route path="note" element={<Notes/>}>
-                        <Route
-                            index
-                            element={
-                                <p>Probably a search bar here</p>
-                            }
-                        />
-                        <Route path=":anchorNoteID" element={<NoteSequence/>}></Route>
+                        <Route index element={<NewNoteForm/>}/>
+                        <Route path=":anchorNoteID" element={<NoteSequence/>}/>
                     </Route>
                 </Route>
                 <Route
