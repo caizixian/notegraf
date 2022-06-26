@@ -15,31 +15,23 @@ pub struct Settings {
     pub port: u16,
     pub debug: bool,
     notestoretype: NoteStoreType,
-    populateinmemorystore: bool,
-    populatepostgresqlstore: bool,
+    populatetestdata: bool,
     pub otlpendpoint: Option<String>,
 }
 
 impl Settings {
     pub async fn get_note_store(&self) -> BoxedNoteStore<crate::NoteType> {
-        match self.notestoretype {
-            NoteStoreType::InMemory => {
-                let store: BoxedNoteStore<crate::NoteType> = Box::new(InMemoryStore::new());
-                if cfg!(feature = "notetype_markdown") && self.populateinmemorystore {
-                    notegraf::notestore::util::populate_test_data(&store).await;
-                }
-                store
-            }
+        let store: BoxedNoteStore<crate::NoteType> = match self.notestoretype {
+            NoteStoreType::InMemory => Box::new(InMemoryStore::new()),
             NoteStoreType::PostgreSQL => {
                 let db_options = CONFIGURATION.database.as_ref().expect("When notestoretype is set to PostgreSQL, you must configure the keys under database").options();
-                let store: BoxedNoteStore<crate::NoteType> =
-                    Box::new(PostgreSQLStoreBuilder::new(db_options).build().await);
-                if cfg!(feature = "notetype_markdown") && self.populatepostgresqlstore {
-                    notegraf::notestore::util::populate_test_data(&store).await;
-                }
-                store
+                Box::new(PostgreSQLStoreBuilder::new(db_options).build().await)
             }
+        };
+        if cfg!(feature = "notetype_markdown") && self.populatetestdata {
+            notegraf::notestore::util::populate_test_data(&store).await;
         }
+        store
     }
 }
 
@@ -82,8 +74,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let config = config::Config::builder()
         .set_default("debug", false)?
         .set_default("host", "localhost")?
-        .set_default("populateinmemorystore", true)?
-        .set_default("populatepostgresqlstore", false)?
+        .set_default("populatetestdata", false)?
         .add_source(config::File::with_name("configuration").required(false))
         .add_source(
             config::Environment::default()
