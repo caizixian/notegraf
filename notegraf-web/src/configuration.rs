@@ -1,7 +1,8 @@
 use notegraf::notestore::BoxedNoteStore;
 use notegraf::{InMemoryStore, PostgreSQLStoreBuilder};
 use sqlx::postgres::PgConnectOptions;
-use sqlx::{Connection, Executor, PgConnection};
+use sqlx::{ConnectOptions, Connection, Executor, PgConnection};
+use tracing::log::LevelFilter;
 use uuid::Uuid;
 
 #[derive(serde::Deserialize, Debug)]
@@ -22,14 +23,18 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub async fn get_note_store(&self, random_db: bool) -> BoxedNoteStore<crate::NoteType> {
+    pub async fn get_note_store(
+        &self,
+        random_db: bool,
+        log_statement_filter: LevelFilter,
+    ) -> BoxedNoteStore<crate::NoteType> {
         let store: BoxedNoteStore<crate::NoteType> = match self.notestoretype {
             NoteStoreType::InMemory => Box::new(InMemoryStore::new()),
             NoteStoreType::PostgreSQL => {
                 let database_settings = CONFIGURATION.database
                     .as_ref()
                     .expect("When notestoretype is set to PostgreSQL, you must configure the keys under database");
-                let db_options = if random_db {
+                let mut db_options = if random_db {
                     let db_name = Uuid::new_v4().to_string();
                     let db_options = database_settings.options_without_db();
                     let mut connection = PgConnection::connect_with(&db_options)
@@ -43,6 +48,7 @@ impl Settings {
                 } else {
                     database_settings.options()
                 };
+                db_options.log_statements(log_statement_filter);
                 Box::new(PostgreSQLStoreBuilder::new(db_options).build().await)
             }
         };

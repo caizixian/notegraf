@@ -20,7 +20,7 @@ pub fn get_otlp_tracer(configuration: &Settings) -> Option<Tracer> {
             trace::config().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",
                 format!(
-                    "goxidize{}",
+                    "notegraf{}",
                     if configuration.debug { "_debug" } else { "" }
                 ),
             )])),

@@ -33,7 +33,7 @@ type NoteComponentProps = {
 
 export function NoteComponent(props: NoteComponentProps) {
     return (
-        <article className="note border m-1 p-1">
+        <article className="note border my-0.5 px-1">
             <Link to={`/note/${props.note.id}/`} className={"underline"}>
                 {props.note.title ? <h1>{props.note.title}</h1> : <h1 className={"italic text-gray-500"}>no title</h1>}
             </Link>

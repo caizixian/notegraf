@@ -7,8 +7,8 @@ import {NewNoteForm} from "./new_note";
 
 function App() {
     return (
-        <div className={"min-h-screen bg-white dark:bg-slate-800 dark:text-white"}>
-            <nav className={"flex w-full bg-gray-500"}>
+        <div className={"min-h-screen bg-white dark:bg-slate-800 dark:text-white flex flex-col"}>
+            <nav className={"flex p-1 w-full bg-gray-500"}>
                 <NavLink to={"/note"}>New Note</NavLink>
             </nav>
             <Outlet/>
@@ -18,9 +18,7 @@ function App() {
 
 function Notes() {
     return (
-        <div>
-            <Outlet/>
-        </div>
+        <Outlet/>
     );
 }
 

@@ -67,12 +67,12 @@ export function NoteSequence() {
         return (<div>{error.toString()}</div>);
     }
 
-    return (<div className="note-sequence">
-        <label>
+    return (<div className="p-2">
+        <div>
             <input type="checkbox" id="recursiveLoad" name="recursiveLoad" checked={recursiveLoad}
                    onChange={handleCheckbox}/>
-            Recursive Load
-        </label>
+            <label htmlFor={"recursiveLoad"}>Recursive load?</label>
+        </div>
         {notes.map(note => (<NoteComponent note={note} key={note.id} showPrevNext={!recursiveLoad}></NoteComponent>))}
     </div>);
 }

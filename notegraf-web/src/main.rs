@@ -3,6 +3,7 @@ use notegraf_web::configuration::CONFIGURATION;
 use notegraf_web::startup::run;
 use notegraf_web::telemetry::{get_otlp_tracer, get_subscriber, init_tracing};
 use std::net::TcpListener;
+use tracing::log::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 
 lazy_static! {
@@ -25,7 +26,9 @@ async fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind(address)?;
     run(
         listener,
-        CONFIGURATION.get_note_store(false).await,
+        CONFIGURATION
+            .get_note_store(false, LevelFilter::Debug)
+            .await,
         CONFIGURATION.debug,
     )?
     .await?;
