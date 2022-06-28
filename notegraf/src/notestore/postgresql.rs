@@ -188,6 +188,8 @@ impl<T: NoteType> PostgreSQLStore<T> {
         transaction: &mut Transaction<'_, Postgres>,
         id: Uuid,
     ) -> Result<PostgreSQLNoteRaw, NoteStoreError> {
+        // Manual left join on current_revision used instead of the revision_is_current view
+        // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
         let res = query_as!(
             PostgreSQLNoteRaw,
             r#"
