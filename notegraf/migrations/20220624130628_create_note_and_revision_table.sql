@@ -15,7 +15,7 @@ CREATE TABLE revision
     text_searchable          tsvector GENERATED ALWAYS AS (to_tsvector('english', title || ' ' || note_inner)) STORED,
     parent                   uuid,
     FOREIGN KEY (parent) REFERENCES note (id),
-    prev                     uuid UNIQUE,
+    prev                     uuid,
     FOREIGN KEY (prev) REFERENCES note (id),
     referents                uuid[] NOT NULL,
     metadata_schema_version  bigint      NOT NULL,

@@ -1,6 +1,7 @@
 use super::PostgreSQLNote;
 use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadata;
+use crate::notestore::postgresql::get_new_revision;
 use crate::{NoteID, NoteLocator, NoteType};
 use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
@@ -8,6 +9,7 @@ use sqlx::{query, query_as, Postgres, Transaction};
 use std::collections::HashSet;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub(super) struct PostgreSQLNoteEditable<T> {
     pub(super) id: Uuid,
     pub(super) revision: Uuid,
@@ -114,27 +116,27 @@ pub(super) struct PostgreSQLNoteRowJoined {
 impl PostgreSQLNoteRowJoined {
     pub(super) fn into_note<T: NoteType>(self) -> PostgreSQLNote<T> {
         let note_inner: T = T::from(self.note_inner);
-        let parent: Option<NoteID> = self.parent.map(|x| x.to_string().into());
+        let parent: Option<NoteID> = self.parent.map(|x| x.into());
         let branches: HashSet<NoteID> = match self.branches {
-            Some(b) => HashSet::from_iter(b.iter().map(|x| x.to_string().into())),
+            Some(b) => HashSet::from_iter(b.iter().map(|x| x.into())),
             None => HashSet::new(),
         };
-        let prev: Option<NoteID> = self.prev.map(|x| x.to_string().into());
+        let prev: Option<NoteID> = self.prev.map(|x| x.into());
         let next: Option<NoteID> = match self.next {
             Some(n) => {
                 if n.is_empty() {
                     None
                 } else {
                     assert_eq!(n.len(), 1);
-                    Some(n[0].to_string().into())
+                    Some(n[0].into())
                 }
             }
             None => None,
         };
         let referents: HashSet<NoteID> =
-            HashSet::from_iter(self.referents.iter().map(|x| x.to_string().into()));
+            HashSet::from_iter(self.referents.iter().map(|x| x.into()));
         let references: HashSet<NoteID> = match self.references {
-            Some(r) => HashSet::from_iter(r.iter().map(|x| x.to_string().into())),
+            Some(r) => HashSet::from_iter(r.iter().map(|x| x.into())),
             None => HashSet::new(),
         };
         let metadata = NoteMetadata {
@@ -147,8 +149,8 @@ impl PostgreSQLNoteRowJoined {
         PostgreSQLNote {
             title: self.title,
             note_inner,
-            id: self.id.to_string().into(),
-            revision: self.revision.to_string().into(),
+            id: self.id.into(),
+            revision: self.revision.into(),
             parent,
             branches,
             prev,
@@ -186,14 +188,14 @@ async fn get_note_current(
                 revision.metadata_tags,
                 revision.metadata_custom_metadata
             FROM revision
-            LEFT JOIN current_revision ON revision.id = current_revision.id
+            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
             -- https://stackoverflow.com/a/29245753
             -- indexes are bound to operators, and the indexed expression must be to the left of
             -- the operator
             LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
-            WHERE revision.id = $1 AND current_revision.current_revision IS NOT NULL
+            WHERE revision.id = $1 AND cr.current_revision IS NOT NULL
             GROUP BY revision.revision
             "#,
             id,
@@ -201,7 +203,7 @@ async fn get_note_current(
         .fetch_one(transaction)
         .await;
     if let Err(sqlx::Error::RowNotFound) = res {
-        Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+        Err(NoteStoreError::NoteNotExist(id.into()))
     } else {
         res.map_err(NoteStoreError::PostgreSQLError)
     }
@@ -247,10 +249,78 @@ async fn get_note_specific(
         .fetch_one(transaction)
         .await;
     if let Err(sqlx::Error::RowNotFound) = res {
-        Err(NoteStoreError::RevisionNotExist(
-            id.to_string().into(),
-            revision.to_string().into(),
-        ))
+        Err(NoteStoreError::RevisionNotExist(id.into(), revision.into()))
+    } else {
+        res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
+async fn get_row_current(
+    transaction: &mut Transaction<'_, Postgres>,
+    id: Uuid,
+) -> Result<PostgreSQLNoteRow, NoteStoreError> {
+    let res = query_as!(
+        PostgreSQLNoteRow,
+        r#"
+            SELECT
+                revision.revision,
+                revision.id,
+                revision.title,
+                revision.note_inner,
+                revision.parent,
+                revision.prev,
+                revision.referents,
+                revision.metadata_schema_version,
+                revision.metadata_created_at,
+                revision.metadata_modified_at,
+                revision.metadata_tags,
+                revision.metadata_custom_metadata
+            FROM revision
+            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
+            WHERE revision.id = $1 AND cr.current_revision IS NOT NULL
+            "#,
+        id,
+    )
+    .fetch_one(transaction)
+    .await;
+    if let Err(sqlx::Error::RowNotFound) = res {
+        Err(NoteStoreError::NoteNotExist(id.into()))
+    } else {
+        res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
+async fn get_row_specific(
+    transaction: &mut Transaction<'_, Postgres>,
+    id: Uuid,
+    revision: Uuid,
+) -> Result<PostgreSQLNoteRow, NoteStoreError> {
+    let res = query_as!(
+        PostgreSQLNoteRow,
+        r#"
+            SELECT
+                revision,
+                id,
+                title,
+                note_inner,
+                parent,
+                prev,
+                referents,
+                metadata_schema_version,
+                metadata_created_at,
+                metadata_modified_at,
+                metadata_tags,
+                metadata_custom_metadata
+            FROM revision
+            WHERE id = $1 AND revision = $2
+            "#,
+        id,
+        revision
+    )
+    .fetch_one(transaction)
+    .await;
+    if let Err(sqlx::Error::RowNotFound) = res {
+        Err(NoteStoreError::NoteNotExist(id.into()))
     } else {
         res.map_err(NoteStoreError::PostgreSQLError)
     }
@@ -264,6 +334,17 @@ pub(super) async fn get_note_by_loc(
     match revision {
         Some(r) => get_note_specific(transaction, id, r).await,
         None => get_note_current(transaction, id).await,
+    }
+}
+
+async fn get_row_by_loc(
+    transaction: &mut Transaction<'_, Postgres>,
+    loc: &NoteLocator,
+) -> Result<PostgreSQLNoteRow, NoteStoreError> {
+    let (id, revision) = loc.unpack_uuid()?;
+    match revision {
+        Some(r) => get_row_specific(transaction, id, r).await,
+        None => get_row_current(transaction, id).await,
     }
 }
 
@@ -298,10 +379,7 @@ pub(super) async fn insert_revision<T: NoteType>(
     .execute(transaction)
     .await
     .map_err(NoteStoreError::PostgreSQLError)?;
-    Ok(NoteLocator::Specific(
-        row.id.to_string().into(),
-        row.revision.to_string().into(),
-    ))
+    Ok(NoteLocator::Specific(row.id.into(), row.revision.into()))
 }
 
 pub(super) async fn upsert_current_revision(
@@ -442,7 +520,73 @@ pub(super) async fn is_deleted(
         Ok(row) => Ok(row.current_revision.is_none()),
         Err(e) => {
             if matches!(e, sqlx::Error::RowNotFound) {
-                Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+                Err(NoteStoreError::NoteNotExist(id.into()))
+            } else {
+                Err(NoteStoreError::PostgreSQLError(e))
+            }
+        }
+    }
+}
+
+pub(super) async fn update_note_helper<F, T>(
+    transaction: &mut Transaction<'_, Postgres>,
+    loc: &NoteLocator,
+    op: F,
+) -> Result<NoteLocator, NoteStoreError>
+where
+    F: FnOnce(&PostgreSQLNoteEditable<T>) -> Result<PostgreSQLNoteEditable<T>, NoteStoreError>,
+    T: NoteType,
+{
+    let (id, rev) = loc.unpack_uuid()?;
+    let is_resurrecting = is_deleted(transaction, id).await?;
+    let old_note_row: PostgreSQLNoteRow = if is_resurrecting || is_current(transaction, loc).await?
+    {
+        get_row_by_loc(transaction, loc).await?
+    } else {
+        return Err(NoteStoreError::UpdateOldRevision(
+            id.into(),
+            rev.unwrap().into(),
+        ));
+    };
+    let old_note: PostgreSQLNoteEditable<T> = old_note_row.into();
+    let new_revision = get_new_revision();
+    let mut updated_note = op(&old_note)?;
+    updated_note.revision = new_revision;
+    updated_note.metadata = updated_note.metadata.on_update_note();
+    if is_resurrecting {
+        // If a note previously has a prev note, we will clear the attribute, in case the prev
+        // note now has a next
+        // Similarly for branches
+        updated_note.parent = None;
+        updated_note.prev = None;
+    }
+    let new_loc = insert_revision(transaction, updated_note).await?;
+    upsert_current_revision(transaction, id, new_revision).await?;
+    Ok(new_loc)
+}
+
+pub(super) async fn get_revisions(
+    transaction: &mut Transaction<'_, Postgres>,
+    loc: &NoteLocator,
+) -> Result<Vec<Uuid>, NoteStoreError> {
+    let id = loc.get_id().try_to_uuid()?;
+    let res = query!(
+        r#"
+            SELECT array_agg(revision) AS revisions
+            FROM revision
+            WHERE id = $1
+            "#,
+        id,
+    )
+    .fetch_one(transaction)
+    .await;
+    match res {
+        Ok(row) => row
+            .revisions
+            .ok_or_else(|| NoteStoreError::NoteNotExist(id.into())),
+        Err(e) => {
+            if matches!(e, sqlx::Error::RowNotFound) {
+                Err(NoteStoreError::NoteNotExist(id.into()))
             } else {
                 Err(NoteStoreError::PostgreSQLError(e))
             }

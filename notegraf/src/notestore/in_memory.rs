@@ -431,8 +431,8 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             })
     }
 
-    fn append_note(&mut self, last: &NoteLocator, next: &NoteID) -> Result<(), NoteStoreError> {
-        self.update_note_helper(last, |old_note| {
+    fn append_note(&mut self, last: &NoteID, next: &NoteID) -> Result<(), NoteStoreError> {
+        self.update_note_helper(&NoteLocator::Current(last.clone()), |old_note| {
             let mut note = old_note.clone();
             if note.next.is_some() {
                 return Err(NoteStoreError::ExistingNext(note.id, next.clone()));
@@ -443,8 +443,8 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(())
     }
 
-    fn add_branch(&mut self, parent: &NoteLocator, child: &NoteID) -> Result<(), NoteStoreError> {
-        self.update_note_helper(parent, |old_note| {
+    fn add_branch(&mut self, parent: &NoteID, child: &NoteID) -> Result<(), NoteStoreError> {
+        self.update_note_helper(&NoteLocator::Current(parent.clone()), |old_note| {
             let mut note = old_note.clone();
             note.branches.insert(child.clone());
             Ok(note)
@@ -567,7 +567,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 
     fn append_note<'a>(
         &'a self,
-        last: &'a NoteLocator,
+        last: &'a NoteID,
         next: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
@@ -578,7 +578,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 
     fn add_branch<'a>(
         &'a self,
-        parent: &'a NoteLocator,
+        parent: &'a NoteID,
         child: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
@@ -753,8 +753,14 @@ mod tests {
             .new_note("".to_owned(), PlainNote::new("Head".into()), None)
             .await
             .unwrap();
-        store.append_note(&loc3, loc2.get_id()).await.unwrap();
-        store.append_note(&loc2, loc1.get_id()).await.unwrap();
+        store
+            .append_note(&loc3.get_id(), loc2.get_id())
+            .await
+            .unwrap();
+        store
+            .append_note(&loc2.get_id(), loc1.get_id())
+            .await
+            .unwrap();
         store.delete_note(&loc2.current()).await.unwrap();
         assert_eq!(
             &store

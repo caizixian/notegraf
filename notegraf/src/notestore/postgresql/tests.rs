@@ -59,6 +59,16 @@ async fn new_note_retrieve() {
 }
 
 #[tokio::test]
+async fn update_note() {
+    common_tests::update_note(get_store().await).await;
+}
+
+#[tokio::test]
+async fn add_branch() {
+    common_tests::add_branch(get_store().await).await;
+}
+
+#[tokio::test]
 async fn delete_note_specific() {
     let store: PostgreSQLStore<PlainNote> = get_store().await;
     let loc1 = store
@@ -88,4 +98,14 @@ async fn delete_note_current() {
         .is_deleted(loc1.get_id().try_to_uuid().unwrap())
         .await
         .unwrap());
+}
+
+#[tokio::test]
+async fn delete_note_with_branches() {
+    common_tests::delete_note_with_branches(get_store().await).await;
+}
+
+#[tokio::test]
+async fn delete_middle_note_sequence() {
+    common_tests::delete_middle_note_sequence(get_store().await).await;
 }

@@ -15,6 +15,14 @@ use queries::*;
 #[cfg(test)]
 mod tests;
 
+fn get_new_noteid() -> Uuid {
+    Uuid::new_v4()
+}
+
+fn get_new_revision() -> Uuid {
+    Uuid::new_v4()
+}
+
 pub struct PostgreSQLStoreBuilder<T> {
     db_options: PgConnectOptions,
     _phantom: PhantomData<T>,
@@ -113,14 +121,7 @@ pub struct PostgreSQLStore<T> {
 }
 
 impl<T: NoteType> PostgreSQLStore<T> {
-    fn get_new_noteid() -> Uuid {
-        Uuid::new_v4()
-    }
-
-    fn get_new_revision() -> Uuid {
-        Uuid::new_v4()
-    }
-
+    #[cfg(test)]
     async fn is_deleted(&self, id: Uuid) -> Result<bool, NoteStoreError> {
         let mut transaction = self.db_pool.begin().await?;
         is_deleted(&mut transaction, id).await
@@ -135,8 +136,8 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         metadata: Option<NoteMetadata>,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
-            let note_id = Self::get_new_noteid();
-            let revision = Self::get_new_revision();
+            let note_id = get_new_noteid();
+            let revision = get_new_revision();
             let mut transaction = self.db_pool.begin().await?;
             query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
                 .execute(&mut transaction)
@@ -153,10 +154,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             insert_revision(&mut transaction, n).await?;
             upsert_current_revision(&mut transaction, note_id, revision).await?;
             transaction.commit().await?;
-            Ok(NoteLocator::Specific(
-                note_id.to_string().into(),
-                revision.to_string().into(),
-            ))
+            Ok(NoteLocator::Specific(note_id.into(), revision.into()))
         })
     }
 
@@ -178,7 +176,25 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         note_inner: Option<T>,
         note_metadata: Option<NoteMetadata>,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let new_loc = update_note_helper(&mut transaction, loc, |old_note| {
+                let mut note = old_note.clone();
+                if let Some(t) = title {
+                    note.title = t;
+                }
+                if let Some(n) = note_inner {
+                    note.note_inner = n;
+                }
+                if let Some(m) = note_metadata {
+                    note.metadata = m;
+                }
+                Ok(note)
+            })
+            .await?;
+            transaction.commit().await?;
+            Ok(new_loc)
+        })
     }
 
     fn delete_note<'a>(
@@ -194,15 +210,24 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                     rev.unwrap().clone(),
                 ));
             }
-            let note = get_note_by_loc(&mut transaction, loc).await?;
-            if !note.branches.unwrap_or_default().is_empty() {
+            let note: PostgreSQLNote<T> = get_note_by_loc(&mut transaction, loc).await?.into_note();
+            if !note.branches.is_empty() {
                 return Err(NoteStoreError::HasBranches(id.clone()));
             }
-            if !note.references.unwrap_or_default().is_empty() {
+            if !note.references.is_empty() {
                 return Err(NoteStoreError::HasReferences(id.clone()));
             }
             if note.next.is_some() && note.prev.is_some() {
-                // FIXME
+                update_note_helper::<_, T>(
+                    &mut transaction,
+                    &NoteLocator::Current(note.next.unwrap()),
+                    |old_note| {
+                        let mut new_note = old_note.clone();
+                        new_note.prev = Some(note.prev.unwrap().to_uuid().unwrap());
+                        Ok(new_note)
+                    },
+                )
+                .await?;
             }
             delete_revision(transaction, loc).await
         })
@@ -227,7 +252,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             .await;
             match res {
                 Ok(row) => {
-                    return Ok(row.current_revision.to_string().into());
+                    return Ok(row.current_revision.into());
                 }
                 Err(e) => {
                     if !matches!(e, sqlx::Error::RowNotFound) {
@@ -237,9 +262,9 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             }
             let ever_existed = noteid_exist(&mut transaction, id).await?;
             if ever_existed {
-                Err(NoteStoreError::NoteDeleted(id.to_string().into()))
+                Err(NoteStoreError::NoteDeleted(id.into()))
             } else {
-                Err(NoteStoreError::NoteNotExist(id.to_string().into()))
+                Err(NoteStoreError::NoteNotExist(id.into()))
             }
         })
     }
@@ -248,33 +273,75 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            get_revisions(&mut transaction, loc)
+                .await
+                .map(|x| x.iter().map(|y| y.into()).collect())
+        })
     }
 
     fn append_note<'a>(
         &'a self,
-        last: &'a NoteLocator,
+        last: &'a NoteID,
         next: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let last_note: PostgreSQLNote<T> =
+                get_note_by_loc(&mut transaction, &NoteLocator::Current(last.clone()))
+                    .await?
+                    .into_note();
+            let last_note_next = last_note.get_next();
+            if let Some(n) = last_note_next {
+                transaction.rollback().await?;
+                return Err(NoteStoreError::ExistingNext(last.clone(), n));
+            }
+            update_note_helper::<_, T>(
+                &mut transaction,
+                &NoteLocator::Current(next.clone()),
+                |old_note| {
+                    let mut note = old_note.clone();
+                    note.prev = Some(last.to_uuid().unwrap());
+                    Ok(note)
+                },
+            )
+            .await?;
+            transaction.commit().await?;
+            Ok(())
+        })
     }
 
     fn add_branch<'a>(
         &'a self,
-        parent: &'a NoteLocator,
+        parent: &'a NoteID,
         child: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            update_note_helper::<_, T>(
+                &mut transaction,
+                &NoteLocator::Current(child.clone()),
+                |old_note| {
+                    let mut note = old_note.clone();
+                    note.parent = Some(parent.to_uuid().unwrap());
+                    Ok(note)
+                },
+            )
+            .await?;
+            transaction.commit().await?;
+            Ok(())
+        })
     }
 
-    fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {
-        todo!()
+    fn backup(&self, _path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {
+        unimplemented!("Please use PostgreSQL's own backup utilities.")
     }
 
-    fn restore<P: AsRef<Path>>(path: P) -> Result<Self, NoteStoreError>
+    fn restore<P: AsRef<Path>>(_path: P) -> Result<Self, NoteStoreError>
     where
         Self: Sized,
     {
-        todo!()
+        unimplemented!("Please use PostgreSQL's own restore utilities.")
     }
 }

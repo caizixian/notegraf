@@ -37,6 +37,18 @@ impl From<&str> for NoteID {
     }
 }
 
+impl From<Uuid> for NoteID {
+    fn from(id: Uuid) -> NoteID {
+        NoteID::new(id.to_string())
+    }
+}
+
+impl From<&Uuid> for NoteID {
+    fn from(id: &Uuid) -> NoteID {
+        NoteID::new(id.to_string())
+    }
+}
+
 impl NoteID {
     pub fn new(id: String) -> Self {
         NoteID { id }
@@ -112,6 +124,18 @@ impl From<String> for Revision {
 impl From<&str> for Revision {
     fn from(revision: &str) -> Revision {
         Revision::new(revision.to_owned())
+    }
+}
+
+impl From<&Uuid> for Revision {
+    fn from(revision: &Uuid) -> Revision {
+        Revision::new(revision.to_string())
+    }
+}
+
+impl From<Uuid> for Revision {
+    fn from(revision: Uuid) -> Revision {
+        Revision::new(revision.to_string())
     }
 }
 

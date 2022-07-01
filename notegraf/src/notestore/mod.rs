@@ -7,7 +7,6 @@ use futures::future::BoxFuture;
 use std::path::Path;
 
 mod in_memory;
-#[allow(unused_variables, dead_code)]
 mod postgresql;
 #[cfg(test)]
 mod tests;
@@ -93,13 +92,13 @@ where
     /// Append a note to the last (or only) note in a sequence
     fn append_note<'a>(
         &'a self,
-        last: &'a NoteLocator,
+        last: &'a NoteID,
         next: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Add a branch to a note
     fn add_branch<'a>(
         &'a self,
-        parent: &'a NoteLocator,
+        parent: &'a NoteID,
         child: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.

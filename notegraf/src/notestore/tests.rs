@@ -120,13 +120,16 @@ pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
         .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
         .await
         .unwrap();
-    store.add_branch(&loc2, loc1.get_id()).await.unwrap();
     assert!(!store
-        .get_note(&loc2) // This points to an old revision
+        .get_note(&loc2.current())
         .await
         .unwrap()
         .get_branches()
         .contains(loc1.get_id()));
+    store
+        .add_branch(&loc2.get_id(), loc1.get_id())
+        .await
+        .unwrap();
     assert!(store
         .get_note(&loc2.current())
         .await
@@ -144,7 +147,10 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
         .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
         .await
         .unwrap();
-    store.add_branch(&loc2, loc1.get_id()).await.unwrap();
+    store
+        .add_branch(&loc2.get_id(), loc1.get_id())
+        .await
+        .unwrap();
     assert!(store
         .get_note(&loc2.current())
         .await
@@ -170,8 +176,14 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
         .new_note("".to_owned(), PlainNote::new("Head".into()), None)
         .await
         .unwrap();
-    store.append_note(&loc3, loc2.get_id()).await.unwrap();
-    store.append_note(&loc2, loc1.get_id()).await.unwrap();
+    store
+        .append_note(&loc3.get_id(), loc2.get_id())
+        .await
+        .unwrap();
+    store
+        .append_note(&loc2.get_id(), loc1.get_id())
+        .await
+        .unwrap();
     store.delete_note(&loc2.current()).await.unwrap();
     assert_eq!(
         &store

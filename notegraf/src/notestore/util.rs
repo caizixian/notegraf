@@ -26,7 +26,10 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         )
         .await
         .unwrap();
-    store.append_note(&loc1, loc2.get_id()).await.unwrap();
+    store
+        .append_note(loc1.get_id(), loc2.get_id())
+        .await
+        .unwrap();
     let loc3 = store
         .new_note(
             "".to_owned(),
@@ -36,5 +39,8 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         )
         .await
         .unwrap();
-    store.append_note(&loc2, loc3.get_id()).await.unwrap();
+    store
+        .append_note(loc2.get_id(), loc3.get_id())
+        .await
+        .unwrap();
 }
