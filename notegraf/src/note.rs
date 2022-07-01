@@ -275,6 +275,15 @@ impl NoteLocator {
         (self.get_id(), self.get_revision())
     }
 
+    /// Return a ([`Uuid`], [`Uuid`]) tuple.
+    pub fn unpack_uuid(&self) -> Result<(Uuid, Option<Uuid>), NoteStoreError> {
+        let (id, revision) = self.unpack();
+        Ok((
+            id.try_to_uuid()?,
+            revision.map(|x| x.try_to_uuid()).transpose()?,
+        ))
+    }
+
     /// Get a locator to point at a specific revision of the same note.
     pub fn at_revision(&self, r: &Revision) -> Self {
         NoteLocator::Specific(self.get_id().clone(), r.clone())

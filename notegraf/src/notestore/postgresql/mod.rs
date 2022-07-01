@@ -166,18 +166,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
-            let note = match loc {
-                NoteLocator::Current(ref i) => {
-                    let id = i.try_to_uuid()?;
-                    get_note_current(&mut transaction, id).await?
-                }
-                NoteLocator::Specific(ref i, ref r) => {
-                    let id = i.try_to_uuid()?;
-                    let revision = r.try_to_uuid()?;
-                    get_note_specific(&mut transaction, id, revision).await?
-                }
-            };
-            let note: PostgreSQLNote<T> = note.into_note();
+            let note: PostgreSQLNote<T> = get_note_by_loc(&mut transaction, loc).await?.into_note();
             Ok(Box::new(note) as Box<dyn Note<T>>)
         })
     }
@@ -205,15 +194,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                     rev.unwrap().clone(),
                 ));
             }
-            let note = match loc {
-                NoteLocator::Current(n) => {
-                    get_note_current(&mut transaction, n.try_to_uuid()?).await?
-                }
-                NoteLocator::Specific(n, r) => {
-                    get_note_specific(&mut transaction, n.try_to_uuid()?, r.try_to_uuid()?).await?
-                }
-            };
-
+            let note = get_note_by_loc(&mut transaction, loc).await?;
             if !note.branches.unwrap_or_default().is_empty() {
                 return Err(NoteStoreError::HasBranches(id.clone()));
             }

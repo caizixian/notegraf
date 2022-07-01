@@ -67,8 +67,33 @@ where
     }
 }
 
+impl<T> From<PostgreSQLNoteRow> for PostgreSQLNoteEditable<T>
+where
+    T: NoteType,
+{
+    fn from(n: PostgreSQLNoteRow) -> Self {
+        let metadata = NoteMetadata {
+            schema_version: n.metadata_schema_version as u64,
+            created_at: n.metadata_created_at,
+            modified_at: n.metadata_modified_at,
+            tags: HashSet::from_iter(n.metadata_tags.iter().cloned()),
+            custom_metadata: n.metadata_custom_metadata,
+        };
+        let note_inner: T = T::from(n.note_inner);
+        PostgreSQLNoteEditable {
+            id: n.id,
+            revision: n.revision,
+            title: n.title,
+            note_inner,
+            parent: n.parent,
+            prev: n.prev,
+            metadata,
+        }
+    }
+}
+
 #[derive(sqlx::FromRow)]
-pub(super) struct PostgreSQLNoteQueryJoined {
+pub(super) struct PostgreSQLNoteRowJoined {
     pub(super) revision: Uuid,
     pub(super) id: Uuid,
     pub(super) title: String,
@@ -86,7 +111,7 @@ pub(super) struct PostgreSQLNoteQueryJoined {
     pub(super) metadata_custom_metadata: serde_json::Value,
 }
 
-impl PostgreSQLNoteQueryJoined {
+impl PostgreSQLNoteRowJoined {
     pub(super) fn into_note<T: NoteType>(self) -> PostgreSQLNote<T> {
         let note_inner: T = T::from(self.note_inner);
         let parent: Option<NoteID> = self.parent.map(|x| x.to_string().into());
@@ -135,14 +160,14 @@ impl PostgreSQLNoteQueryJoined {
     }
 }
 
-pub(super) async fn get_note_current(
+async fn get_note_current(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
-) -> Result<PostgreSQLNoteQueryJoined, NoteStoreError> {
+) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
     // Manual left join on current_revision used instead of the revision_is_current view
     // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
     let res = query_as!(
-            PostgreSQLNoteQueryJoined,
+            PostgreSQLNoteRowJoined,
             r#"
             SELECT
                 revision.revision,
@@ -182,13 +207,13 @@ pub(super) async fn get_note_current(
     }
 }
 
-pub(super) async fn get_note_specific(
+async fn get_note_specific(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
     revision: Uuid,
-) -> Result<PostgreSQLNoteQueryJoined, NoteStoreError> {
+) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
     let res = query_as!(
-            PostgreSQLNoteQueryJoined,
+            PostgreSQLNoteRowJoined,
             r#"
             SELECT
                 revision.revision,
@@ -228,6 +253,17 @@ pub(super) async fn get_note_specific(
         ))
     } else {
         res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
+pub(super) async fn get_note_by_loc(
+    transaction: &mut Transaction<'_, Postgres>,
+    loc: &NoteLocator,
+) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
+    let (id, revision) = loc.unpack_uuid()?;
+    match revision {
+        Some(r) => get_note_specific(transaction, id, r).await,
+        None => get_note_current(transaction, id).await,
     }
 }
 
@@ -317,9 +353,8 @@ pub(super) async fn is_current(
     transaction: &mut Transaction<'_, Postgres>,
     loc: &NoteLocator,
 ) -> Result<bool, NoteStoreError> {
-    let (id, revision) = loc.unpack();
+    let (id, revision) = loc.unpack_uuid()?;
     if revision.is_none() {
-        let id = id.try_to_uuid()?;
         return noteid_exist(transaction, id).await;
     }
     let res = query!(
@@ -328,8 +363,8 @@ pub(super) async fn is_current(
             FROM current_revision
             WHERE id = $1 AND current_revision = $2
             "#,
-        id.try_to_uuid()?,
-        revision.unwrap().try_to_uuid()?
+        id,
+        revision.unwrap()
     )
     .fetch_one(transaction)
     .await;
@@ -349,23 +384,21 @@ pub(super) async fn delete_revision(
     mut transaction: Transaction<'_, Postgres>,
     loc: &NoteLocator,
 ) -> Result<(), NoteStoreError> {
-    let query_result = match loc {
-        NoteLocator::Current(id) => {
+    let (id, revision) = loc.unpack_uuid()?;
+    let query_result = match revision {
+        Some(r) => {
             query!(
-                r#"DELETE FROM current_revision WHERE id = $1"#,
-                id.try_to_uuid()?
+                r#"DELETE FROM current_revision WHERE id = $1 AND current_revision = $2"#,
+                id,
+                r
             )
             .execute(&mut transaction)
             .await?
         }
-        NoteLocator::Specific(id, revision) => {
-            query!(
-                r#"DELETE FROM current_revision WHERE id = $1 AND current_revision = $2"#,
-                id.try_to_uuid()?,
-                revision.try_to_uuid()?
-            )
-            .execute(&mut transaction)
-            .await?
+        None => {
+            query!(r#"DELETE FROM current_revision WHERE id = $1"#, id)
+                .execute(&mut transaction)
+                .await?
         }
     };
     if query_result.rows_affected() != 1 {
