@@ -3,6 +3,7 @@ import {createRoot} from "react-dom/client";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import {NoteSequence} from "./routes/note_sequence";
 import {NewNoteForm} from "./routes/new_note";
+import {EditNoteForm} from "./routes/edit_note";
 import {App} from "./routes/app";
 import {Notes} from "./routes/notes";
 import "./utils/markdown.tsx";
@@ -19,6 +20,7 @@ root.render(
                         <Route index element={<NewNoteForm/>}/>
                         <Route path=":anchorNoteID">
                             <Route index element={<NoteSequence/>}/>
+                            <Route path="edit" element={<EditNoteForm/>}/>
                         </Route>
                     </Route>
                 </Route>

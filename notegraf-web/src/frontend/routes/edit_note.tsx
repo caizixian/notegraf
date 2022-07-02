@@ -1,32 +1,30 @@
+import {useNavigate, useParams} from "react-router-dom";
 import * as React from "react";
+import {useEffect, useState} from "react";
 import {useForm} from "react-hook-form";
-import {useNavigate} from "react-router-dom";
 import {incrementCounter, useLocalStorage} from "../utils/autosave";
-import {postNote} from "../api";
+import {getNote, updateNote} from "../api";
+import {Note} from "../note";
+import {isValidJSON} from "./new_note";
 
-export function isValidJSON(s: string): boolean {
-    try {
-        JSON.parse(s);
-    } catch (e) {
-        return false;
-    }
-    return true;
+type EditNoteInnerProps = {
+    note: Note
 }
 
-export function NewNoteForm() {
+function EditNoteInner(props: EditNoteInnerProps) {
     const {register, watch, setValue, handleSubmit} = useForm();
     const navigate = useNavigate();
-    useLocalStorage("autosave.note.new", watch, setValue, {
-        title: "",
-        note_inner: "",
-        metadata_tags: "",
-        metadata_custom_metadata: "{}"
+    useLocalStorage(`autosave.note.edit.${props.note.id}`, watch, setValue, {
+        title: props.note.title,
+        note_inner: props.note.note_inner,
+        metadata_tags: props.note.metadata.tags.join(", "),
+        metadata_custom_metadata: JSON.stringify(props.note.metadata.custom_metadata)
     }, 5000);
 
     const onSubmit = async (data: any) => {
         try {
-            let res = await postNote(data);
-            localStorage.removeItem("autosave.note.new");
+            let res = await updateNote(props.note.id, data);
+            localStorage.removeItem(`autosave.note.edit.${props.note.id}`);
             incrementCounter();
             navigate(`/note/${res["Specific"][0]}`);
         } catch (e: any) {
@@ -40,7 +38,7 @@ export function NewNoteForm() {
                 <label htmlFor={"title"}>Title</label>
                 <input className={"form-input dark:bg-slate-800 w-full"} id={"title"} placeholder={"Title"}
                        type={"text"} {...register("title")} />
-                <input type="submit" className={"rounded-md bg-sky-500 block p-1"} value={"Create"}/>
+                <input type="submit" className={"rounded-md bg-sky-500 block p-1"} value={"Update"}/>
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"tags"}>Tags</label>
@@ -58,4 +56,36 @@ export function NewNoteForm() {
             </div>
         </form>
     );
+}
+
+export function EditNoteForm() {
+    let {anchorNoteID} = useParams();
+    const [note, setNote] = useState<any>(null);
+    const [error, setError] = useState<any>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        async function fetchNote() {
+            try {
+                const note = await getNote(anchorNoteID as string);
+                setNote(note);
+                setIsLoaded(true);
+            } catch (e) {
+                setError(e);
+                setIsLoaded(true);
+            }
+        }
+
+        fetchNote();
+    }, [anchorNoteID]);
+
+
+    if (!isLoaded) {
+        return (<div>Loading...</div>);
+    }
+    if (error) {
+        return (<div>{error.toString()}</div>);
+    }
+
+    return (<EditNoteInner note={note}/>);
 }

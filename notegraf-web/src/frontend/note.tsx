@@ -1,8 +1,9 @@
 import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import "./app.css"
+import {deleteNote} from "./api";
 
 export type Note = {
     title: string,
@@ -28,18 +29,29 @@ type NoteMetadata = {
 
 type NoteComponentProps = {
     note: Note,
-    showPrevNext: boolean
+    showPrevNext: boolean,
+    setError: any
 }
 
 type NoteControlProps = {
     id: string
+    setError: any
 }
 
 function NoteControls(props: NoteControlProps) {
+    const navigate = useNavigate();
+
     const onEdit = () => {
+        navigate(`/note/${props.id}/edit`);
     }
 
-    const onDelete = () => {
+    const onDelete = async () => {
+        try {
+            await deleteNote(props.id);
+            navigate("/note");
+        } catch (e) {
+            props.setError(e);
+        }
     }
 
     return (
@@ -67,7 +79,7 @@ export function NoteComponent(props: NoteComponentProps) {
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
-            <NoteControls id={props.note.id}/>
+            <NoteControls id={props.note.id} setError={props.setError}/>
             <details className={"border-b border-gray-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>

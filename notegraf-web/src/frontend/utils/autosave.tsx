@@ -2,6 +2,8 @@ import {debounce} from "lodash";
 import * as React from "react";
 import {useEffect, useState} from "react";
 
+var autoSaveCounter = 0;
+
 function getStorageValue(key: string, defaultValue: any): any {
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -12,14 +14,22 @@ function getStorageValue(key: string, defaultValue: any): any {
     }
 }
 
+export function incrementCounter() {
+    autoSaveCounter++;
+}
+
 export function useLocalStorage(key: string, watch: any, setValue: any, defaultValue: any, debounceMS: number): any {
     const [value, _] = useState(() => {
         return getStorageValue(key, defaultValue);
     });
 
     const watchedValues = watch();
+    const currentCounter = autoSaveCounter;
 
     useEffect(debounce(() => {
+        if (autoSaveCounter > currentCounter) {
+            return;
+        }
         localStorage.setItem(key, JSON.stringify(watchedValues));
     }, debounceMS), [key, watchedValues]);
 

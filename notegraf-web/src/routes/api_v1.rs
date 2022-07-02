@@ -123,6 +123,49 @@ async fn new_note(
     }
 }
 
+#[post("/note/{note_id}/revision")]
+#[instrument(
+    skip(store, note),
+    fields(
+        note_id = %params.0
+    )
+)]
+async fn update_note(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    params: web::Path<(String,)>,
+    note: web::Json<NewNoteData>,
+) -> impl Responder {
+    let (note_id,) = params.into_inner();
+    let loc = NoteLocator::Current(note_id.into());
+    let note = note.into_inner();
+    let res = serde_json::from_str(&note.metadata_custom_metadata);
+    if let Err(e) = res {
+        return HttpResponse::BadRequest().body(e.to_string());
+    }
+    let custom_metadata = res.unwrap();
+    let tags: HashSet<String> = HashSet::from_iter(
+        note.metadata_tags
+            .split(',')
+            .into_iter()
+            .map(|tag| tag.trim().to_owned()),
+    );
+    let res = store
+        .update_note(
+            &loc,
+            Some(note.title),
+            Some(NoteType::from(note.note_inner)),
+            NoteMetadataEditable {
+                custom_metadata: Some(custom_metadata),
+                tags: Some(tags),
+            },
+        )
+        .await;
+    match res {
+        Ok(loc) => HttpResponse::Ok().json(loc),
+        Err(e) => notestore_error_handler(&e),
+    }
+}
+
 #[get("/note/{note_id}")]
 #[instrument(
     skip(store, params),
@@ -143,5 +186,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_note_current)
         .service(get_note_specific)
         .service(new_note)
-        .service(delete_note_current);
+        .service(delete_note_current)
+        .service(update_note);
 }
