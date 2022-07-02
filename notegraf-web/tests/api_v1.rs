@@ -62,7 +62,11 @@ async fn update_note_helper(
     note_inner: &str,
 ) -> NoteLocator {
     client
-        .post(&format!("{}/api/v1/note/{}/revision", address, loc.get_id()))
+        .post(&format!(
+            "{}/api/v1/note/{}/revision",
+            address,
+            loc.get_id()
+        ))
         .json(&json!({
             "title": title.to_owned(),
             "note_inner": note_inner.to_owned(),
