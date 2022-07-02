@@ -1,10 +1,11 @@
 use crate::NoteType;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use notegraf::errors::NoteStoreError;
-use notegraf::notemetadata::NoteMetadata;
+use notegraf::notemetadata::NoteMetadataEditable;
 use notegraf::notestore::BoxedNoteStore;
 use notegraf::{NoteLocator, NoteSerializable};
 use serde::Deserialize;
+use std::collections::HashSet;
 
 fn notestore_error_handler(e: &NoteStoreError) -> HttpResponse {
     match e {
@@ -84,7 +85,8 @@ async fn get_note_specific(
 struct NewNoteData {
     title: String,
     note_inner: String,
-    metadata: Option<NoteMetadata>,
+    metadata_tags: String,
+    metadata_custom_metadata: String,
 }
 
 #[post("/note")]
@@ -94,8 +96,26 @@ async fn new_note(
     note: web::Json<NewNoteData>,
 ) -> impl Responder {
     let note = note.into_inner();
+    let res = serde_json::from_str(&note.metadata_custom_metadata);
+    if let Err(e) = res {
+        return HttpResponse::BadRequest().body(e.to_string());
+    }
+    let custom_metadata = res.unwrap();
+    let tags: HashSet<String> = HashSet::from_iter(
+        note.metadata_tags
+            .split(',')
+            .into_iter()
+            .map(|tag| tag.trim().to_owned()),
+    );
     let res = store
-        .new_note(note.title, NoteType::from(note.note_inner), note.metadata)
+        .new_note(
+            note.title,
+            NoteType::from(note.note_inner),
+            NoteMetadataEditable {
+                custom_metadata: Some(custom_metadata),
+                tags: Some(tags),
+            },
+        )
         .await;
     match res {
         Ok(loc) => HttpResponse::Ok().json(loc),

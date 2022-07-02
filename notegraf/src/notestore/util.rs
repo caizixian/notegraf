@@ -1,4 +1,4 @@
-use crate::notemetadata::NoteMetadata;
+use crate::notemetadata::NoteMetadataEditable;
 use crate::notestore::BoxedNoteStore;
 use crate::MarkdownNote;
 use std::collections::HashSet;
@@ -9,7 +9,7 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         .new_note(
             "A big sequence!".to_owned(),
             "# Sequence1\nbody1".into(),
-            None,
+            NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
@@ -17,12 +17,12 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         .new_note(
             "".to_owned(),
             "## Code testing\n`inline code`\n```python\na = [1, 2, 3, 4]\nfor n in a:\n    print(n)\n```\n".into(),
-            Some(NoteMetadata {
-                tags: HashSet::from_iter(
+            NoteMetadataEditable {
+                tags: Some(HashSet::from_iter(
                     vec!["tag1".to_owned(), "tag2".to_owned()].iter().cloned(),
-                ),
-                ..Default::default()
-            }),
+                )),
+                custom_metadata: None
+            },
         )
         .await
         .unwrap();
@@ -35,7 +35,7 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
             "".to_owned(),
             "## Math testing\n```math\n\\frac{1}{2}\n```\n\nInline math `${\\frac{1}{2}}$`\n"
                 .into(),
-            None,
+            NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();

@@ -1,5 +1,5 @@
 use crate::errors::NoteStoreError;
-use crate::notemetadata::NoteMetadata;
+use crate::notemetadata::{NoteMetadata, NoteMetadataEditable};
 use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use sqlx::postgres::PgConnectOptions;
@@ -131,7 +131,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         &self,
         title: String,
         note_inner: T,
-        metadata: Option<NoteMetadata>,
+        metadata: NoteMetadataEditable,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let note_id = get_new_noteid();
@@ -147,7 +147,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 note_inner,
                 prev: None,
                 parent: None,
-                metadata: metadata.unwrap_or_default(),
+                metadata: NoteMetadata::from_editable(metadata),
             };
             insert_revision(&mut transaction, n).await?;
             upsert_current_revision(&mut transaction, note_id, revision).await?;
@@ -172,7 +172,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         loc: &'a NoteLocator,
         title: Option<String>,
         note_inner: Option<T>,
-        note_metadata: Option<NoteMetadata>,
+        note_metadata: NoteMetadataEditable,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
@@ -184,9 +184,8 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 if let Some(n) = note_inner {
                     note.note_inner = n;
                 }
-                if let Some(m) = note_metadata {
-                    note.metadata = m;
-                }
+
+                note.metadata = note.metadata.apply_editable(note_metadata);
                 Ok(note)
             })
             .await?;

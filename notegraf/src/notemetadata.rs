@@ -38,10 +38,46 @@ impl NoteMetadata {
             custom_metadata: self.custom_metadata.clone(),
         }
     }
+
+    pub fn from_editable(m: NoteMetadataEditable) -> Self {
+        let mut nm = NoteMetadata::default();
+        m.apply(&mut nm);
+        nm
+    }
+
+    pub fn apply_editable(mut self, m: NoteMetadataEditable) -> Self {
+        m.apply(&mut self);
+        self
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NoteMetadataEditable {
+    pub tags: Option<HashSet<String>>,
+    pub custom_metadata: Option<serde_json::Value>,
+}
+
+impl NoteMetadataEditable {
+    pub fn apply(self, n: &mut NoteMetadata) {
+        if let Some(t) = self.tags {
+            n.tags = t;
+        }
+        if let Some(c) = self.custom_metadata {
+            n.custom_metadata = c;
+        }
+    }
+
+    pub fn unchanged() -> Self {
+        NoteMetadataEditable {
+            tags: None,
+            custom_metadata: None,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::notemetadata::NoteMetadataEditable;
     use crate::{InMemoryStore, NoteStore, PlainNote};
     use std::option::Option::None;
 
@@ -49,7 +85,11 @@ mod tests {
     async fn update_note_tags() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+            .new_note(
+                "".to_owned(),
+                PlainNote::new("Foo".into()),
+                NoteMetadataEditable::unchanged(),
+            )
             .await
             .unwrap();
         let rev1 = loc1.get_revision().unwrap();
@@ -58,10 +98,14 @@ mod tests {
             .await
             .unwrap()
             .get_metadata();
-        let mut new_metadata = metadata1.clone();
-        new_metadata.tags.insert("my_tag".to_owned());
+        let mut tags = metadata1.tags.clone();
+        tags.insert("my_tag".to_owned());
+        let new_metadata = NoteMetadataEditable {
+            tags: Some(tags),
+            custom_metadata: None,
+        };
         let loc2 = store
-            .update_note(&loc1, None, None, Some(new_metadata))
+            .update_note(&loc1, None, None, new_metadata)
             .await
             .unwrap();
         let rev2 = loc2.get_revision().unwrap();

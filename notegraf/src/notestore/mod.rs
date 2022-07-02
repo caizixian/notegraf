@@ -1,7 +1,7 @@
 //! Storage backends of notes.
 use crate::errors::NoteStoreError;
 use crate::note::*;
-use crate::notemetadata::NoteMetadata;
+use crate::notemetadata::NoteMetadataEditable;
 use crate::notetype::NoteType;
 use futures::future::BoxFuture;
 use std::path::Path;
@@ -32,7 +32,7 @@ where
         &self,
         title: String,
         note_inner: T,
-        metadata: Option<NoteMetadata>,
+        metadata: NoteMetadataEditable,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>>;
     /// Get a note.
     ///
@@ -62,7 +62,7 @@ where
         loc: &'a NoteLocator,
         title: Option<String>,
         note_inner: Option<T>,
-        note_metadata: Option<NoteMetadata>,
+        note_metadata: NoteMetadataEditable,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Delete a note.
     ///

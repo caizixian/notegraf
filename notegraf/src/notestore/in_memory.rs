@@ -1,7 +1,7 @@
 //! In-memory storage of notes
 use crate::errors::NoteStoreError;
 use crate::note::NoteLocator;
-use crate::notemetadata::NoteMetadata;
+use crate::notemetadata::{NoteMetadata, NoteMetadataEditable};
 use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
@@ -295,7 +295,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         &mut self,
         title: String,
         note_inner: T,
-        metadata: Option<NoteMetadata>,
+        metadata: NoteMetadataEditable,
     ) -> Result<NoteLocator, NoteStoreError> {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision(&id);
@@ -306,7 +306,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             revision: revision.clone(),
             branches: Default::default(),
             next: None,
-            metadata: metadata.unwrap_or_default(),
+            metadata: NoteMetadata::from_editable(metadata),
             _phantom: PhantomData,
         };
         assert!(!self.notes.contains_key(&id));
@@ -364,7 +364,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         loc: &NoteLocator,
         title: Option<String>,
         note_inner: Option<T>,
-        note_metadata: Option<NoteMetadata>,
+        note_metadata: NoteMetadataEditable,
     ) -> Result<NoteLocator, NoteStoreError> {
         self.update_note_helper(loc, |old_note| {
             let mut note = old_note.clone();
@@ -374,9 +374,8 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             if let Some(n) = note_inner {
                 note.note_inner = n.into();
             }
-            if let Some(m) = note_metadata {
-                note.metadata = m;
-            }
+
+            note.metadata = note.metadata.apply_editable(note_metadata);
             Ok(note)
         })
     }
@@ -513,7 +512,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         &self,
         title: String,
         note_inner: T,
-        metadata: Option<NoteMetadata>,
+        metadata: NoteMetadataEditable,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
@@ -536,7 +535,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         loc: &'a NoteLocator,
         title: Option<String>,
         note_inner: Option<T>,
-        note_metadata: Option<NoteMetadata>,
+        note_metadata: NoteMetadataEditable,
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
@@ -637,11 +636,19 @@ mod tests {
     async fn backup() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
         let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+            .new_note(
+                "".to_owned(),
+                PlainNote::new("Foo".into()),
+                NoteMetadataEditable::unchanged(),
+            )
             .await
             .unwrap();
         let loc2 = store
-            .new_note("".to_owned(), PlainNote::new("Bar".into()), None)
+            .new_note(
+                "".to_owned(),
+                PlainNote::new("Bar".into()),
+                NoteMetadataEditable::unchanged(),
+            )
             .await
             .unwrap();
 

@@ -16,7 +16,9 @@ async fn new_note() {
         .post(&format!("{}/api/v1/note", &app.address))
         .json(&json!({
             "title": "My title",
-            "note_inner": "# Hey Markdown Note\n## H2"
+            "note_inner": "# Hey Markdown Note\n## H2",
+            "metadata_tags": "",
+            "metadata_custom_metadata": "null"
         }))
         .send()
         .await
@@ -40,7 +42,9 @@ async fn create_note_helper(
         .post(&format!("{}/api/v1/note", address))
         .json(&json!({
             "title": title.to_owned(),
-            "note_inner": note_inner.to_owned()
+            "note_inner": note_inner.to_owned(),
+            "metadata_tags": "",
+            "metadata_custom_metadata": "null"
         }))
         .send()
         .await

@@ -1,4 +1,5 @@
 use crate::errors::NoteStoreError;
+use crate::notemetadata::NoteMetadataEditable;
 use crate::{NoteLocator, NoteStore, PlainNote};
 use std::option::Option::None;
 
@@ -12,11 +13,19 @@ async fn is_deleted(
 
 pub(super) async fn unique_id(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Foo".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .new_note("".to_owned(), PlainNote::new("Bar".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Bar".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     assert_ne!(loc1.get_id(), loc2.get_id());
@@ -24,7 +33,11 @@ pub(super) async fn unique_id(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
     let loc = store
-        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Foo".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let rev = loc.get_revision().unwrap();
@@ -41,7 +54,11 @@ pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
 pub(super) async fn new_note_retrieve(store: impl NoteStore<PlainNote>) {
     let note_inner = PlainNote::new("Foo".into());
     let loc = store
-        .new_note("".to_owned(), note_inner.clone(), None)
+        .new_note(
+            "".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -60,7 +77,11 @@ pub(super) async fn new_note_retrieve(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Foo".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let rev1 = loc1.get_revision().unwrap();
@@ -77,7 +98,12 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
         .get_metadata()
         .modified_at;
     let loc2 = store
-        .update_note(&loc1, None, Some(PlainNote::new("Foo1".into())), None)
+        .update_note(
+            &loc1,
+            None,
+            Some(PlainNote::new("Foo1".into())),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let rev2 = loc2.get_revision().unwrap();
@@ -128,11 +154,19 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Branch".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Parent".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     assert!(!store
@@ -155,7 +189,11 @@ pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn delete_note_specific(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Note".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store.delete_note(&loc1).await.unwrap();
@@ -164,7 +202,11 @@ pub(super) async fn delete_note_specific(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn delete_note_current(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Note".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store.delete_note(&loc1.current()).await.unwrap();
@@ -177,11 +219,19 @@ pub(super) async fn delete_note_current(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Branch".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .new_note("".to_owned(), PlainNote::new("Parent".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Parent".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store
@@ -202,11 +252,20 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
 
 pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Foo".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .update_note(&loc1, None, Some(PlainNote::new("Foo1".into())), None)
+        .update_note(
+            &loc1,
+            None,
+            Some(PlainNote::new("Foo1".into())),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store.delete_note(&loc1.current()).await.unwrap();
@@ -220,7 +279,7 @@ pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
             &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
             None,
             Some(last_inner),
-            None,
+            NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
@@ -236,15 +295,27 @@ pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
 
 pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Tail".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Middle".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc3 = store
-        .new_note("".to_owned(), PlainNote::new("Head".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Head".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store
@@ -278,15 +349,27 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
 
 pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>) {
     let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Tail".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc2 = store
-        .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Middle".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     let loc3 = store
-        .new_note("".to_owned(), PlainNote::new("Head".into()), None)
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Head".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     store
@@ -330,7 +413,7 @@ pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>)
             &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
             None,
             Some(last_inner),
-            None,
+            NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
