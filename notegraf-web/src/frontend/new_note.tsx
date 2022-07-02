@@ -58,9 +58,9 @@ export function NewNoteForm() {
                 <input className={"form-input dark:bg-slate-800 w-full"} id={"custom_metadata"} placeholder={"{}"}
                        type={"text"} {...register("metadata_custom_metadata", {validate: isValidJSON})} />
             </div>
-            <div className={"flex-1"}>
+            <div className={"flex-1 flex"}>
                 <textarea required={true} autoFocus={true} id={"note_inner"}
-                          className={"form-textarea dark:bg-slate-800 w-full h-full"} {...register("note_inner")}></textarea>
+                          className={"form-textarea dark:bg-slate-800 flex-1"} {...register("note_inner")}></textarea>
             </div>
         </form>
     );
