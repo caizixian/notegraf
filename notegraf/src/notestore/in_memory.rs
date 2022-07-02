@@ -428,21 +428,18 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     /// Get all revisions of a note with actual notes
     fn get_revisions(&self, loc: &NoteLocator) -> Result<Revisions<T>, NoteStoreError> {
         let id = loc.get_id();
-        let notes: Vec<(Revision, InMemoryNoteStored<T>)> = self
+        let notes: Vec<InMemoryNoteStored<T>> = self
             .notes
             .get(id)
             .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
             .map(|rs| {
-                // rs.to_owned().into_iter() triggers clippy::unnecessary_to_owned
-                // rs.iter().cloned() doesn't work because clone is called on a tuple of references
-                let mut v: Vec<(Revision, InMemoryNoteStored<T>)> =
-                    rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
-                v.sort_by_key(|(_, n)| n.metadata.modified_at);
+                let mut v: Vec<InMemoryNoteStored<T>> = rs.values().cloned().collect();
+                v.sort_by_key(|n| n.metadata.modified_at);
                 v
             })?;
         notes
             .into_iter()
-            .map(|(_, n)| {
+            .map(|n| {
                 self.compute_stored_note(n)
                     .map(|n_computed| Box::new(n_computed) as Box<dyn Note<T>>)
             })
