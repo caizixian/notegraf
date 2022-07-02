@@ -565,7 +565,7 @@ where
     Ok(new_loc)
 }
 
-pub(super) async fn get_revisions(
+pub(super) async fn get_revisions_to_delete(
     transaction: &mut Transaction<'_, Postgres>,
     loc: &NoteLocator,
 ) -> Result<Vec<Uuid>, NoteStoreError> {

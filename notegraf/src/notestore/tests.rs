@@ -21,7 +21,10 @@ pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
         .unwrap();
     let rev = loc.get_revision().unwrap();
     assert_eq!(
-        &store.get_current_revision(&loc.current()).await.unwrap(),
+        &store
+            .get_current_revision_to_delete(&loc.current())
+            .await
+            .unwrap(),
         rev
     );
 }
@@ -70,7 +73,10 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
         .unwrap();
     let rev2 = loc2.get_revision().unwrap();
     assert_ne!(rev1, rev2);
-    assert_eq!(&store.get_current_revision(&loc1).await.unwrap(), rev2);
+    assert_eq!(
+        &store.get_current_revision_to_delete(&loc1).await.unwrap(),
+        rev2
+    );
     assert_eq!(
         store
             .get_note(&loc1.current())
@@ -106,7 +112,7 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
         created1
     );
     assert_eq!(
-        store.get_revisions(&loc1).await.unwrap(),
+        store.get_revisions_to_delete(&loc1).await.unwrap(),
         vec![rev2.clone(), rev1.clone()]
     )
 }

@@ -15,6 +15,8 @@ pub mod util;
 pub use in_memory::InMemoryStore;
 pub use postgresql::{PostgreSQLStore, PostgreSQLStoreBuilder};
 
+pub type Revisions<T> = Vec<(Revision, Box<dyn Note<T>>)>;
+
 /// An abstraction for storage backends.
 pub trait NoteStore<T>
 where
@@ -78,17 +80,25 @@ where
     /// Get the current revision of a note.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_current_revision<'a>(
+    fn get_current_revision_to_delete<'a>(
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>>;
     /// Get all revisions of a note, in the order from newer to older.
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_revisions<'a>(
+    fn get_revisions_to_delete<'a>(
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>>;
+    /// Get all revisions of a note, in the order from older (smaller timestamp) to newer (larger
+    /// timestamp).
+    ///
+    /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
+    fn get_revisions<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>>;
     /// Append a note to the last (or only) note in a sequence
     fn append_note<'a>(
         &'a self,

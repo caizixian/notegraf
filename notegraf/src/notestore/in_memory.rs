@@ -2,6 +2,7 @@
 use crate::errors::NoteStoreError;
 use crate::note::NoteLocator;
 use crate::notemetadata::NoteMetadata;
+use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
@@ -25,8 +26,6 @@ pub struct InMemoryNoteStored<T> {
     metadata: NoteMetadata,
     _phantom: PhantomData<T>,
 }
-
-type RevisionsOfNote<T> = Vec<(Revision, InMemoryNoteStored<T>)>;
 
 #[derive(Debug, Clone)]
 struct InMemoryNoteComputed<T> {
@@ -142,7 +141,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     fn is_current(&self, loc: &NoteLocator) -> Result<bool, NoteStoreError> {
         if let Some(r) = loc.get_revision() {
             // If the argument is a specific revision, then compare it with the current revision
-            let current_rev = self.get_current_revision(loc)?;
+            let current_rev = self.get_current_revision_to_delete(loc)?;
             Ok(&current_rev == r)
         } else {
             // Otherwise, it's current as long as the note is not deleted
@@ -214,23 +213,6 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(NoteLocator::Specific(id.clone(), new_revision))
     }
 
-    /// Get all revisions of a note with actual notes
-    fn get_revisions_with_note(
-        &self,
-        loc: &NoteLocator,
-    ) -> Result<Vec<(Revision, InMemoryNoteStored<T>)>, NoteStoreError> {
-        let id = loc.get_id();
-        self.notes
-            .get(id)
-            .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
-            .map(|rs| {
-                let mut v: Vec<(Revision, InMemoryNoteStored<T>)> =
-                    rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
-                v.sort_by_key(|(_, n)| n.metadata.modified_at);
-                v
-            })
-    }
-
     fn get_note_by_revision(
         &self,
         id: &NoteID,
@@ -250,7 +232,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         if let Some(r) = rev {
             self.get_note_by_revision(id, r)
         } else {
-            self.get_note_by_revision(id, &self.get_current_revision(loc)?)
+            self.get_note_by_revision(id, &self.get_current_revision_to_delete(loc)?)
         }
     }
 
@@ -323,28 +305,35 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(NoteLocator::Specific(id, revision))
     }
 
-    fn get_note(&self, loc: &NoteLocator) -> Result<Box<dyn Note<T>>, NoteStoreError> {
-        let note_stored = self.get_note_stored(loc)?;
-        let note_inner = T::from(note_stored.note_inner);
+    fn compute_stored_note(
+        &self,
+        s: InMemoryNoteStored<T>,
+    ) -> Result<InMemoryNoteComputed<T>, NoteStoreError> {
+        let note_inner = T::from(s.note_inner);
         let referents = note_inner
             .get_referents()
             .map_err(|e| NoteStoreError::ParseError(format!("{:?}", e)))?;
-        let references = self.get_references(&note_stored.id);
-        let parent = self.get_parent(&note_stored.id);
-        let prev = self.get_prev(&note_stored.id);
-        Ok(Box::new(InMemoryNoteComputed {
-            title: note_stored.title,
+        let references = self.get_references(&s.id);
+        let parent = self.get_parent(&s.id);
+        let prev = self.get_prev(&s.id);
+        Ok(InMemoryNoteComputed {
+            title: s.title,
             note_inner,
-            id: note_stored.id,
-            revision: note_stored.revision,
+            id: s.id,
+            revision: s.revision,
             parent,
-            branches: note_stored.branches,
+            branches: s.branches,
             prev,
-            next: note_stored.next,
+            next: s.next,
             referents,
             references,
-            metadata: note_stored.metadata,
-        }))
+            metadata: s.metadata,
+        })
+    }
+
+    fn get_note(&self, loc: &NoteLocator) -> Result<Box<dyn Note<T>>, NoteStoreError> {
+        let note_stored = self.get_note_stored(loc)?;
+        Ok(Box::new(self.compute_stored_note(note_stored)?) as Box<dyn Note<T>>)
     }
 
     fn update_note(
@@ -403,7 +392,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn get_current_revision(&self, loc: &NoteLocator) -> Result<Revision, NoteStoreError> {
+    fn get_current_revision_to_delete(
+        &self,
+        loc: &NoteLocator,
+    ) -> Result<Revision, NoteStoreError> {
         let id = loc.get_id();
         if let Some(r) = self.current_revision.get(id) {
             Ok(r.clone())
@@ -414,7 +406,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn get_revisions(&self, loc: &NoteLocator) -> Result<Vec<Revision>, NoteStoreError> {
+    fn get_revisions_to_delete(&self, loc: &NoteLocator) -> Result<Vec<Revision>, NoteStoreError> {
         let id = loc.get_id();
         self.notes
             .get(id)
@@ -429,6 +421,30 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                 let revs: Vec<Revision> = v.iter().map(|(r, _)| r.clone()).collect();
                 revs
             })
+    }
+
+    /// Get all revisions of a note with actual notes
+    fn get_revisions(&self, loc: &NoteLocator) -> Result<Revisions<T>, NoteStoreError> {
+        let id = loc.get_id();
+        let notes: Vec<(Revision, InMemoryNoteStored<T>)> = self
+            .notes
+            .get(id)
+            .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
+            .map(|rs| {
+                // rs.to_owned().into_iter() triggers clippy::unnecessary_to_owned
+                // rs.iter().cloned() doesn't work because clone is called on a tuple of references
+                let mut v: Vec<(Revision, InMemoryNoteStored<T>)> =
+                    rs.iter().map(|(r, n)| (r.clone(), n.clone())).collect();
+                v.sort_by_key(|(_, n)| n.metadata.modified_at);
+                v
+            })?;
+        notes
+            .into_iter()
+            .map(|(r, n)| {
+                self.compute_stored_note(n)
+                    .map(|n_computed| (r, Box::new(n_computed) as Box<dyn Note<T>>))
+            })
+            .collect()
     }
 
     fn append_note(&mut self, last: &NoteID, next: &NoteID) -> Result<(), NoteStoreError> {
@@ -480,16 +496,6 @@ impl<T: NoteType> InMemoryStore<T> {
         InMemoryStore {
             ims: RwLock::new(InMemoryStoreInner::new()),
         }
-    }
-
-    pub fn get_revisions_with_note<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<RevisionsOfNote<T>, NoteStoreError>> {
-        Box::pin(async move {
-            let ims = self.ims.read().await;
-            ims.get_revisions_with_note(loc)
-        })
     }
 }
 
@@ -545,20 +551,30 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn get_current_revision<'a>(
+    fn get_current_revision_to_delete<'a>(
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
-            ims.get_current_revision(loc)
+            ims.get_current_revision_to_delete(loc)
+        })
+    }
+
+    fn get_revisions_to_delete<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_revisions_to_delete(loc)
         })
     }
 
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>> {
+    ) -> BoxFuture<'a, Result<Vec<(Revision, Box<dyn Note<T>>)>, NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_revisions(loc)
@@ -708,9 +724,9 @@ mod tests {
             .await
             .unwrap();
         store.delete_note(&loc1.current()).await.unwrap();
-        let revisions = store.get_revisions_with_note(&loc1).await.unwrap();
+        let revisions = store.get_revisions(&loc1).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
-        let last_inner = PlainNote::from(last_note.note_inner.clone());
+        let last_inner = last_note.get_note_inner();
         assert_eq!(last_inner, PlainNote::new("Foo1".into()));
         assert_eq!(last_revision, loc2.get_revision().unwrap());
         store
@@ -785,9 +801,9 @@ mod tests {
             NoteStoreError::NoteDeleted(_)
         ));
 
-        let revisions = store.get_revisions_with_note(&loc2).await.unwrap();
+        let revisions = store.get_revisions(&loc2).await.unwrap();
         let (last_revision, last_note) = revisions.last().unwrap();
-        let last_inner = PlainNote::from(last_note.note_inner.clone());
+        let last_inner = last_note.get_note_inner();
         assert_eq!(last_inner, PlainNote::new("Middle".into()));
         store
             .update_note(
