@@ -148,8 +148,8 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
     );
     let revisions = store.get_revisions(&loc1).await.unwrap();
     assert_eq!(revisions.len(), 2);
-    assert_eq!(revisions[0].0, rev1.clone());
-    assert_eq!(revisions[1].0, rev2.clone());
+    assert_eq!(revisions[0].get_revision(), rev1.clone());
+    assert_eq!(revisions[1].get_revision(), rev2.clone());
 }
 
 pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
@@ -270,13 +270,13 @@ pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
         .unwrap();
     store.delete_note(&loc1.current()).await.unwrap();
     let revisions = store.get_revisions(&loc1).await.unwrap();
-    let (last_revision, last_note) = revisions.last().unwrap();
+    let last_note = revisions.last().unwrap();
     let last_inner = last_note.get_note_inner();
     assert_eq!(last_inner, PlainNote::new("Foo1".into()));
-    assert_eq!(last_revision, loc2.get_revision().unwrap());
+    assert_eq!(&last_note.get_revision(), loc2.get_revision().unwrap());
     store
         .update_note(
-            &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
+            &NoteLocator::Specific(loc1.get_id().clone(), last_note.get_revision()),
             None,
             Some(last_inner),
             NoteMetadataEditable::unchanged(),
@@ -405,12 +405,12 @@ pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>)
     ));
 
     let revisions = store.get_revisions(&loc2).await.unwrap();
-    let (last_revision, last_note) = revisions.last().unwrap();
+    let last_note = revisions.last().unwrap();
     let last_inner = last_note.get_note_inner();
     assert_eq!(last_inner, PlainNote::new("Middle".into()));
     store
         .update_note(
-            &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
+            &NoteLocator::Specific(loc2.get_id().clone(), last_note.get_revision()),
             None,
             Some(last_inner),
             NoteMetadataEditable::unchanged(),

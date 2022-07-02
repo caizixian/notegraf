@@ -442,9 +442,9 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             })?;
         notes
             .into_iter()
-            .map(|(r, n)| {
+            .map(|(_, n)| {
                 self.compute_stored_note(n)
-                    .map(|n_computed| (r, Box::new(n_computed) as Box<dyn Note<T>>))
+                    .map(|n_computed| Box::new(n_computed) as Box<dyn Note<T>>)
             })
             .collect()
     }
@@ -556,7 +556,7 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<(Revision, Box<dyn Note<T>>)>, NoteStoreError>> {
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_revisions(loc)

@@ -1,5 +1,6 @@
 use crate::errors::NoteStoreError;
 use crate::notemetadata::{NoteMetadata, NoteMetadataEditable};
+use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use sqlx::postgres::PgConnectOptions;
@@ -10,7 +11,6 @@ use std::path::Path;
 use uuid::Uuid;
 
 mod queries;
-use crate::notestore::Revisions;
 use queries::*;
 
 #[cfg(test)]
@@ -240,12 +240,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 get_revisions(&mut transaction, loc.get_id().try_to_uuid()?).await?;
             Ok(notes
                 .into_iter()
-                .map(|n| {
-                    (
-                        n.revision.into(),
-                        Box::new(n.into_note()) as Box<dyn Note<T>>,
-                    )
-                })
+                .map(|n| Box::new(n.into_note()) as Box<dyn Note<T>>)
                 .collect())
         })
     }

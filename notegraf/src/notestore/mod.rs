@@ -15,7 +15,7 @@ pub mod util;
 pub use in_memory::InMemoryStore;
 pub use postgresql::{PostgreSQLStore, PostgreSQLStoreBuilder};
 
-pub type Revisions<T> = Vec<(Revision, Box<dyn Note<T>>)>;
+pub type Revisions<T> = Vec<Box<dyn Note<T>>>;
 
 /// An abstraction for storage backends.
 pub trait NoteStore<T>
