@@ -1,7 +1,7 @@
 import * as React from "react";
 import {useForm} from "react-hook-form";
 import {useNavigate} from "react-router-dom";
-import {useLocalStorage} from "./autosave";
+import {useLocalStorage} from "../utils/autosave";
 
 function isValidJSON(s: string): boolean {
     try {

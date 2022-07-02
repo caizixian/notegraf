@@ -1,8 +1,8 @@
 import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
-import "./app.css"
 import {Link} from "react-router-dom";
+import "./app.css"
 
 export type Note = {
     title: string,
@@ -31,9 +31,32 @@ type NoteComponentProps = {
     showPrevNext: boolean
 }
 
+type NoteControlProps = {
+    id: string
+}
+
+function NoteControls(props: NoteControlProps) {
+    const onEdit = () => {
+    }
+
+    const onDelete = () => {
+    }
+
+    return (
+        <div className={"flex gap-1 my-1"}>
+            <button onClick={onEdit} className={"rounded-md bg-sky-500 block p-1"}>
+                Edit
+            </button>
+            <button onClick={onDelete} className={"rounded-md bg-red-500 block p-1"}>
+                Delete
+            </button>
+        </div>
+    )
+}
+
 export function NoteComponent(props: NoteComponentProps) {
     return (
-        <article className="note border my-0.5 px-1">
+        <article className="note border my-0.5 p-1">
             <Link to={`/note/${props.note.id}/`} className={"underline decoration-blue-500"}>
                 {props.note.title ? <h1>{props.note.title}</h1> : <h1 className={"italic text-gray-500"}>no title</h1>}
             </Link>
@@ -44,6 +67,7 @@ export function NoteComponent(props: NoteComponentProps) {
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
+            <NoteControls id={props.note.id}/>
             <details className={"border-b border-gray-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>

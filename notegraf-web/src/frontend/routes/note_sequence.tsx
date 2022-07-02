@@ -1,8 +1,8 @@
-import './app.css';
 import * as React from "react";
 import {useEffect, useState} from "react";
-import {Note, NoteComponent} from "./note"
 import {useParams, useSearchParams} from "react-router-dom";
+import {Note, NoteComponent} from "../note"
+import '../app.css';
 
 async function fetchNote(noteID: string): Promise<Note> {
     const response = await fetch(`/api/v1/note/${noteID}`);
