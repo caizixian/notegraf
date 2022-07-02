@@ -270,18 +270,6 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         })
     }
 
-    fn get_revisions_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>> {
-        Box::pin(async move {
-            let mut transaction = self.db_pool.begin().await?;
-            get_revisions_to_delete(&mut transaction, loc)
-                .await
-                .map(|x| x.iter().map(|y| y.into()).collect())
-        })
-    }
-
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,

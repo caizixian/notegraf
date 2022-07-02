@@ -609,32 +609,3 @@ where
     upsert_current_revision(transaction, id, new_revision).await?;
     Ok(new_loc)
 }
-
-pub(super) async fn get_revisions_to_delete(
-    transaction: &mut Transaction<'_, Postgres>,
-    loc: &NoteLocator,
-) -> Result<Vec<Uuid>, NoteStoreError> {
-    let id = loc.get_id().try_to_uuid()?;
-    let res = query!(
-        r#"
-            SELECT array_agg(revision) AS revisions
-            FROM revision
-            WHERE id = $1
-            "#,
-        id,
-    )
-    .fetch_one(transaction)
-    .await;
-    match res {
-        Ok(row) => row
-            .revisions
-            .ok_or_else(|| NoteStoreError::NoteNotExist(id.into())),
-        Err(e) => {
-            if matches!(e, sqlx::Error::RowNotFound) {
-                Err(NoteStoreError::NoteNotExist(id.into()))
-            } else {
-                Err(NoteStoreError::PostgreSQLError(e))
-            }
-        }
-    }
-}

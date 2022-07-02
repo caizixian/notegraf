@@ -84,13 +84,6 @@ where
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revision, NoteStoreError>>;
-    /// Get all revisions of a note, in the order from newer to older.
-    ///
-    /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_revisions_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>>;
     /// Get all revisions of a note, in the order from older (smaller timestamp) to newer (larger
     /// timestamp).
     ///

@@ -4,7 +4,6 @@ use crate::note::NoteLocator;
 use crate::notemetadata::NoteMetadata;
 use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
-use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -406,23 +405,6 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn get_revisions_to_delete(&self, loc: &NoteLocator) -> Result<Vec<Revision>, NoteStoreError> {
-        let id = loc.get_id();
-        self.notes
-            .get(id)
-            .ok_or_else(|| NoteStoreError::NoteNotExist(id.clone()))
-            .map(|rs| {
-                let mut v: Vec<(Revision, DateTime<Utc>)> = rs
-                    .iter()
-                    .map(|(r, n)| (r.clone(), n.metadata.modified_at))
-                    .collect();
-                // Newer to older. In other words, larger timestamps to smaller timestamps
-                v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
-                let revs: Vec<Revision> = v.iter().map(|(r, _)| r.clone()).collect();
-                revs
-            })
-    }
-
     /// Get all revisions of a note with actual notes
     fn get_revisions(&self, loc: &NoteLocator) -> Result<Revisions<T>, NoteStoreError> {
         let id = loc.get_id();
@@ -558,16 +540,6 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_current_revision_to_delete(loc)
-        })
-    }
-
-    fn get_revisions_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<Revision>, NoteStoreError>> {
-        Box::pin(async move {
-            let ims = self.ims.read().await;
-            ims.get_revisions_to_delete(loc)
         })
     }
 

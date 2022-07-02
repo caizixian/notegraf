@@ -111,10 +111,10 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
             .created_at,
         created1
     );
-    assert_eq!(
-        store.get_revisions_to_delete(&loc1).await.unwrap(),
-        vec![rev2.clone(), rev1.clone()]
-    )
+    let revisions = store.get_revisions(&loc1).await.unwrap();
+    assert_eq!(revisions.len(), 2);
+    assert_eq!(revisions[0].0, rev1.clone());
+    assert_eq!(revisions[1].0, rev2.clone());
 }
 
 pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
