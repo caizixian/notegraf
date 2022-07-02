@@ -77,13 +77,6 @@ where
     /// Need to check for dangling references.
     fn delete_note<'a>(&'a self, loc: &'a NoteLocator)
         -> BoxFuture<'a, Result<(), NoteStoreError>>;
-    /// Get the current revision of a note.
-    ///
-    /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
-    fn get_current_revision_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Revision, NoteStoreError>>;
     /// Get all revisions of a note, in the order from older (smaller timestamp) to newer (larger
     /// timestamp).
     ///
@@ -92,6 +85,13 @@ where
         &'a self,
         loc: &'a NoteLocator,
     ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>>;
+    /// Get the current revision of a note.
+    ///
+    /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
+    fn get_current_revision<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Option<Revision>, NoteStoreError>>;
     /// Append a note to the last (or only) note in a sequence
     fn append_note<'a>(
         &'a self,

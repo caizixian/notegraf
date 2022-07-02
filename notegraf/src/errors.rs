@@ -7,8 +7,6 @@ use crate::{NoteID, Revision};
 pub enum NoteStoreError {
     #[error("note `{0}` doesn't exist")]
     NoteNotExist(NoteID),
-    #[error("note `{0}` is deleted, revision needed if resurrecting a deleted note")]
-    NoteDeleted(NoteID),
     #[error("note `{0}` already exists")]
     NoteIDConflict(NoteID),
     #[error("revision`{1}` of note `{0}` doesn't exist")]

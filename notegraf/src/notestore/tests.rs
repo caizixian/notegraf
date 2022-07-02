@@ -1,6 +1,14 @@
 use crate::errors::NoteStoreError;
-use crate::{NoteStore, PlainNote};
+use crate::{NoteLocator, NoteStore, PlainNote};
 use std::option::Option::None;
+
+async fn is_deleted(
+    store: &impl NoteStore<PlainNote>,
+    loc: &NoteLocator,
+) -> Result<bool, NoteStoreError> {
+    let cr = store.get_current_revision(loc).await?;
+    Ok(cr.is_none())
+}
 
 pub(super) async fn unique_id(store: impl NoteStore<PlainNote>) {
     let loc1 = store
@@ -22,8 +30,9 @@ pub(super) async fn new_note_revision(store: impl NoteStore<PlainNote>) {
     let rev = loc.get_revision().unwrap();
     assert_eq!(
         &store
-            .get_current_revision_to_delete(&loc.current())
+            .get_current_revision(&loc.current())
             .await
+            .unwrap()
             .unwrap(),
         rev
     );
@@ -74,7 +83,7 @@ pub(super) async fn update_note(store: impl NoteStore<PlainNote>) {
     let rev2 = loc2.get_revision().unwrap();
     assert_ne!(rev1, rev2);
     assert_eq!(
-        &store.get_current_revision_to_delete(&loc1).await.unwrap(),
+        &store.get_current_revision(&loc1).await.unwrap().unwrap(),
         rev2
     );
     assert_eq!(
@@ -144,6 +153,28 @@ pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
         .contains(loc1.get_id()));
 }
 
+pub(super) async fn delete_note_specific(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+        .await
+        .unwrap();
+    store.delete_note(&loc1).await.unwrap();
+    assert!(is_deleted(&store, &loc1).await.unwrap());
+}
+
+pub(super) async fn delete_note_current(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
+        .await
+        .unwrap();
+    store.delete_note(&loc1.current()).await.unwrap();
+    assert!(is_deleted(&store, &loc1).await.unwrap());
+    assert!(matches!(
+        store.get_current_revision(&loc1).await.ok().unwrap(),
+        None
+    ));
+}
+
 pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) {
     let loc1 = store
         .new_note("".to_owned(), PlainNote::new("Branch".into()), None)
@@ -208,5 +239,77 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
             .get_next()
             .unwrap(),
         loc1.get_id()
+    );
+}
+
+pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
+        .await
+        .unwrap();
+    let loc2 = store
+        .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
+        .await
+        .unwrap();
+    let loc3 = store
+        .new_note("".to_owned(), PlainNote::new("Head".into()), None)
+        .await
+        .unwrap();
+    store
+        .append_note(&loc3.get_id(), loc2.get_id())
+        .await
+        .unwrap();
+    store
+        .append_note(&loc2.get_id(), loc1.get_id())
+        .await
+        .unwrap();
+    store.delete_note(&loc2.current()).await.unwrap();
+    assert_eq!(
+        &store
+            .get_note(&loc1.current())
+            .await
+            .unwrap()
+            .get_prev()
+            .unwrap(),
+        loc3.get_id()
+    );
+    assert_eq!(
+        &store
+            .get_note(&loc3.current())
+            .await
+            .unwrap()
+            .get_next()
+            .unwrap(),
+        loc1.get_id()
+    );
+    assert!(matches!(
+        &store.get_current_revision(&loc2).await.ok().unwrap(),
+        None
+    ));
+
+    let revisions = store.get_revisions(&loc2).await.unwrap();
+    let (last_revision, last_note) = revisions.last().unwrap();
+    let last_inner = last_note.get_note_inner();
+    assert_eq!(last_inner, PlainNote::new("Middle".into()));
+    store
+        .update_note(
+            &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
+            None,
+            Some(last_inner),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .get_note(&loc2.current())
+            .await
+            .unwrap()
+            .get_note_inner(),
+        PlainNote::new("Middle".into())
+    );
+    assert_eq!(
+        store.get_note(&loc2.current()).await.unwrap().get_next(),
+        None
     );
 }

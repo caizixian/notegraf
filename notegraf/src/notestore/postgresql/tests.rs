@@ -70,34 +70,12 @@ async fn add_branch() {
 
 #[tokio::test]
 async fn delete_note_specific() {
-    let store: PostgreSQLStore<PlainNote> = get_store().await;
-    let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
-        .await
-        .unwrap();
-    assert!(!store
-        .is_deleted(loc1.get_id().try_to_uuid().unwrap())
-        .await
-        .unwrap());
-    store.delete_note(&loc1).await.unwrap();
-    assert!(store
-        .is_deleted(loc1.get_id().try_to_uuid().unwrap())
-        .await
-        .unwrap());
+    common_tests::delete_note_specific(get_store().await).await;
 }
 
 #[tokio::test]
 async fn delete_note_current() {
-    let store: PostgreSQLStore<PlainNote> = get_store().await;
-    let loc1 = store
-        .new_note("".to_owned(), PlainNote::new("Note".into()), None)
-        .await
-        .unwrap();
-    store.delete_note(&loc1.current()).await.unwrap();
-    assert!(store
-        .is_deleted(loc1.get_id().try_to_uuid().unwrap())
-        .await
-        .unwrap());
+    common_tests::delete_note_current(get_store().await).await;
 }
 
 #[tokio::test]
@@ -108,4 +86,9 @@ async fn delete_note_with_branches() {
 #[tokio::test]
 async fn delete_middle_note_sequence() {
     common_tests::delete_middle_note_sequence(get_store().await).await;
+}
+
+#[tokio::test]
+async fn resurrect_note_in_sequence() {
+    common_tests::resurrect_note_in_sequence(get_store().await).await;
 }

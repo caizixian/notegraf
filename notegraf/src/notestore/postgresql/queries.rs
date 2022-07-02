@@ -111,6 +111,7 @@ pub(super) struct PostgreSQLNoteRowJoined {
     pub(super) metadata_modified_at: DateTime<Utc>,
     pub(super) metadata_tags: Vec<String>,
     pub(super) metadata_custom_metadata: serde_json::Value,
+    pub(super) is_current: bool,
 }
 
 impl PostgreSQLNoteRowJoined {
@@ -158,6 +159,7 @@ impl PostgreSQLNoteRowJoined {
             referents,
             references,
             metadata,
+            is_current: self.is_current,
         }
     }
 }
@@ -186,7 +188,8 @@ async fn get_note_current(
                 revision.metadata_created_at,
                 revision.metadata_modified_at,
                 revision.metadata_tags,
-                revision.metadata_custom_metadata
+                revision.metadata_custom_metadata,
+                cr.current_revision IS NOT NULL AS "is_current!"
             FROM revision
             LEFT JOIN current_revision cr on revision.revision = cr.current_revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
@@ -196,7 +199,7 @@ async fn get_note_current(
             -- the operator
             LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
             WHERE revision.id = $1 AND cr.current_revision IS NOT NULL
-            GROUP BY revision.revision
+            GROUP BY revision.revision, cr.current_revision
             "#,
             id,
         )
@@ -232,8 +235,10 @@ async fn get_note_specific(
                 revision.metadata_created_at,
                 revision.metadata_modified_at,
                 revision.metadata_tags,
-                revision.metadata_custom_metadata
+                revision.metadata_custom_metadata,
+                cr.current_revision IS NOT NULL AS "is_current!"
             FROM revision
+            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
             -- https://stackoverflow.com/a/29245753
@@ -241,7 +246,7 @@ async fn get_note_specific(
             -- the operator
             LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
             WHERE revision.id = $1 AND revision.revision = $2
-            GROUP BY revision.revision
+            GROUP BY revision.revision, cr.current_revision
             "#,
             id,
             revision
@@ -277,8 +282,10 @@ pub(super) async fn get_revisions(
                 revision.metadata_created_at,
                 revision.metadata_modified_at,
                 revision.metadata_tags,
-                revision.metadata_custom_metadata
+                revision.metadata_custom_metadata,
+                cr.current_revision IS NOT NULL AS "is_current!"
             FROM revision
+            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
             LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
             LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
             -- https://stackoverflow.com/a/29245753
@@ -286,7 +293,7 @@ pub(super) async fn get_revisions(
             -- the operator
             LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
             WHERE revision.id = $1
-            GROUP BY revision.revision
+            GROUP BY revision.revision, cr.current_revision
             ORDER BY revision.metadata_modified_at ASC
             "#,
             id
@@ -545,7 +552,7 @@ pub(super) async fn delete_revision(
     }
 }
 
-pub(super) async fn is_deleted(
+async fn is_deleted(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
 ) -> Result<bool, NoteStoreError> {

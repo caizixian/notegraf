@@ -32,6 +32,7 @@ struct InMemoryNoteComputed<T> {
     note_inner: T,
     id: NoteID,
     revision: Revision,
+    is_current: bool,
     parent: Option<NoteID>,
     branches: HashSet<NoteID>,
     prev: Option<NoteID>,
@@ -88,6 +89,10 @@ where
     fn get_metadata(&self) -> NoteMetadata {
         self.metadata.clone()
     }
+
+    fn is_current(&self) -> bool {
+        self.is_current
+    }
 }
 
 /// In-memory storage.
@@ -140,8 +145,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     fn is_current(&self, loc: &NoteLocator) -> Result<bool, NoteStoreError> {
         if let Some(r) = loc.get_revision() {
             // If the argument is a specific revision, then compare it with the current revision
-            let current_rev = self.get_current_revision_to_delete(loc)?;
-            Ok(&current_rev == r)
+            let current_rev = self.get_current_revision(loc)?;
+            if let Some(cr) = current_rev {
+                Ok(&cr == r)
+            } else {
+                Ok(false)
+            }
         } else {
             // Otherwise, it's current as long as the note is not deleted
             Ok(!self.is_deleted(loc)?)
@@ -231,7 +240,15 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         if let Some(r) = rev {
             self.get_note_by_revision(id, r)
         } else {
-            self.get_note_by_revision(id, &self.get_current_revision_to_delete(loc)?)
+            let cr = self.get_current_revision(loc)?;
+            if let Some(r) = cr {
+                self.get_note_by_revision(id, &r)
+            } else {
+                Err(NoteStoreError::RevisionNotExist(
+                    id.clone(),
+                    Revision::new("current".to_owned()),
+                ))
+            }
         }
     }
 
@@ -315,11 +332,18 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let references = self.get_references(&s.id);
         let parent = self.get_parent(&s.id);
         let prev = self.get_prev(&s.id);
+        let current_revision = self.get_current_revision(&NoteLocator::Current(s.id.clone()))?;
+        let is_current = if let Some(r) = current_revision {
+            s.revision == r
+        } else {
+            false
+        };
         Ok(InMemoryNoteComputed {
             title: s.title,
             note_inner,
             id: s.id,
             revision: s.revision,
+            is_current,
             parent,
             branches: s.branches,
             prev,
@@ -391,15 +415,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         }
     }
 
-    fn get_current_revision_to_delete(
-        &self,
-        loc: &NoteLocator,
-    ) -> Result<Revision, NoteStoreError> {
+    fn get_current_revision(&self, loc: &NoteLocator) -> Result<Option<Revision>, NoteStoreError> {
         let id = loc.get_id();
         if let Some(r) = self.current_revision.get(id) {
-            Ok(r.clone())
+            Ok(Some(r.clone()))
         } else if self.notes.contains_key(id) {
-            Err(NoteStoreError::NoteDeleted(id.clone()))
+            Ok(None)
         } else {
             Err(NoteStoreError::NoteNotExist(id.clone()))
         }
@@ -533,16 +554,6 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         })
     }
 
-    fn get_current_revision_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Revision, NoteStoreError>> {
-        Box::pin(async move {
-            let ims = self.ims.read().await;
-            ims.get_current_revision_to_delete(loc)
-        })
-    }
-
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,
@@ -550,6 +561,16 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.get_revisions(loc)
+        })
+    }
+
+    fn get_current_revision<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Option<Revision>, NoteStoreError>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.get_current_revision(loc)
         })
     }
 
@@ -655,27 +676,13 @@ mod tests {
     #[tokio::test]
     async fn delete_note_specific() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
-            .await
-            .unwrap();
-        store.delete_note(&loc1).await.unwrap();
-        assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
+        common_tests::delete_note_specific(store).await;
     }
 
     #[tokio::test]
     async fn delete_note_current() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Note".into()), None)
-            .await
-            .unwrap();
-        store.delete_note(&loc1.current()).await.unwrap();
-        assert!(store.ims.read().await.is_deleted(&loc1).unwrap());
-        assert!(matches!(
-            store.ims.read().await.is_current(&loc1).err().unwrap(),
-            NoteStoreError::NoteDeleted(_)
-        ));
+        common_tests::delete_note_current(store).await;
     }
 
     #[tokio::test]
@@ -729,74 +736,6 @@ mod tests {
     #[tokio::test]
     async fn resurrect_note_in_sequence() {
         let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Tail".into()), None)
-            .await
-            .unwrap();
-        let loc2 = store
-            .new_note("".to_owned(), PlainNote::new("Middle".into()), None)
-            .await
-            .unwrap();
-        let loc3 = store
-            .new_note("".to_owned(), PlainNote::new("Head".into()), None)
-            .await
-            .unwrap();
-        store
-            .append_note(&loc3.get_id(), loc2.get_id())
-            .await
-            .unwrap();
-        store
-            .append_note(&loc2.get_id(), loc1.get_id())
-            .await
-            .unwrap();
-        store.delete_note(&loc2.current()).await.unwrap();
-        assert_eq!(
-            &store
-                .get_note(&loc1.current())
-                .await
-                .unwrap()
-                .get_prev()
-                .unwrap(),
-            loc3.get_id()
-        );
-        assert_eq!(
-            &store
-                .get_note(&loc3.current())
-                .await
-                .unwrap()
-                .get_next()
-                .unwrap(),
-            loc1.get_id()
-        );
-        assert!(matches!(
-            store.ims.read().await.is_current(&loc2).err().unwrap(),
-            NoteStoreError::NoteDeleted(_)
-        ));
-
-        let revisions = store.get_revisions(&loc2).await.unwrap();
-        let (last_revision, last_note) = revisions.last().unwrap();
-        let last_inner = last_note.get_note_inner();
-        assert_eq!(last_inner, PlainNote::new("Middle".into()));
-        store
-            .update_note(
-                &NoteLocator::Specific(loc2.get_id().clone(), last_revision.clone()),
-                None,
-                Some(last_inner),
-                None,
-            )
-            .await
-            .unwrap();
-        assert_eq!(
-            store
-                .get_note(&loc2.current())
-                .await
-                .unwrap()
-                .get_note_inner(),
-            PlainNote::new("Middle".into())
-        );
-        assert_eq!(
-            store.get_note(&loc2.current()).await.unwrap().get_next(),
-            None
-        );
+        common_tests::resurrect_note_in_sequence(store).await;
     }
 }

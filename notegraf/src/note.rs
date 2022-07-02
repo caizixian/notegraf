@@ -151,6 +151,8 @@ impl From<Uuid> for Revision {
 /// Note properties (parent, branches, prev, next, references) reflect the current global view
 /// of a note store, and relationship between notes (which are represented by their respective
 /// latest revision).
+///
+/// Helper properties (is_current) reflects the status of the revision with respect to the note
 pub trait Note<T: NoteType>: Debug {
     fn get_title(&self) -> String;
     fn get_note_inner(&self) -> T;
@@ -166,6 +168,7 @@ pub trait Note<T: NoteType>: Debug {
     fn get_references(&self) -> HashSet<NoteID>;
     fn get_referents(&self) -> HashSet<NoteID>;
     fn get_metadata(&self) -> NoteMetadata;
+    fn is_current(&self) -> bool;
 }
 
 pub enum NoteField {

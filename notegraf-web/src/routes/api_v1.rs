@@ -9,7 +9,6 @@ use serde::Deserialize;
 fn notestore_error_handler(e: &NoteStoreError) -> HttpResponse {
     match e {
         NoteStoreError::NoteNotExist(_) => HttpResponse::NotFound().body(e.to_string()),
-        NoteStoreError::NoteDeleted(_) => HttpResponse::NotFound().body(e.to_string()),
         NoteStoreError::NoteIDConflict(_) => HttpResponse::Conflict().body(e.to_string()),
         NoteStoreError::RevisionNotExist(_, _) => HttpResponse::NotFound().body(e.to_string()),
         NoteStoreError::IOError(_) => {

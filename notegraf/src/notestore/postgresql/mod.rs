@@ -42,6 +42,7 @@ struct PostgreSQLNote<T> {
     referents: HashSet<NoteID>,
     references: HashSet<NoteID>,
     metadata: NoteMetadata,
+    is_current: bool,
 }
 
 impl<T> Note<T> for PostgreSQLNote<T>
@@ -91,6 +92,10 @@ where
     fn get_metadata(&self) -> NoteMetadata {
         self.metadata.clone()
     }
+
+    fn is_current(&self) -> bool {
+        self.is_current
+    }
 }
 
 impl<T: NoteType> PostgreSQLStoreBuilder<T> {
@@ -119,14 +124,6 @@ impl<T: NoteType> PostgreSQLStoreBuilder<T> {
 pub struct PostgreSQLStore<T> {
     db_pool: PgPool,
     _phantom: PhantomData<T>,
-}
-
-impl<T: NoteType> PostgreSQLStore<T> {
-    #[cfg(test)]
-    async fn is_deleted(&self, id: Uuid) -> Result<bool, NoteStoreError> {
-        let mut transaction = self.db_pool.begin().await?;
-        is_deleted(&mut transaction, id).await
-    }
 }
 
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
@@ -234,42 +231,6 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         })
     }
 
-    fn get_current_revision_to_delete<'a>(
-        &'a self,
-        loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Revision, NoteStoreError>> {
-        Box::pin(async move {
-            let id = loc.get_id().try_to_uuid()?;
-            let mut transaction = self.db_pool.begin().await?;
-            let res = query!(
-                r#"
-                SELECT current_revision
-                FROM current_revision
-                WHERE id = $1
-                "#,
-                id
-            )
-            .fetch_one(&mut transaction)
-            .await;
-            match res {
-                Ok(row) => {
-                    return Ok(row.current_revision.into());
-                }
-                Err(e) => {
-                    if !matches!(e, sqlx::Error::RowNotFound) {
-                        return Err(NoteStoreError::PostgreSQLError(e));
-                    }
-                }
-            }
-            let ever_existed = noteid_exist(&mut transaction, id).await?;
-            if ever_existed {
-                Err(NoteStoreError::NoteDeleted(id.into()))
-            } else {
-                Err(NoteStoreError::NoteNotExist(id.into()))
-            }
-        })
-    }
-
     fn get_revisions<'a>(
         &'a self,
         loc: &'a NoteLocator,
@@ -287,6 +248,42 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                     )
                 })
                 .collect())
+        })
+    }
+
+    fn get_current_revision<'a>(
+        &'a self,
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Option<Revision>, NoteStoreError>> {
+        Box::pin(async move {
+            let id = loc.get_id().try_to_uuid()?;
+            let mut transaction = self.db_pool.begin().await?;
+            let res = query!(
+                r#"
+                SELECT
+                    note.id,
+                    cr.current_revision AS "current_revision?"
+                FROM note
+                LEFT JOIN current_revision cr on cr.id = note.id
+                WHERE note.id = $1
+                "#,
+                id
+            )
+            .fetch_one(&mut transaction)
+            .await;
+            match res {
+                Ok(row) => {
+                    let cr: Option<Uuid> = row.current_revision;
+                    Ok(cr.map(|x| x.into()))
+                }
+                Err(e) => {
+                    if matches!(e, sqlx::Error::RowNotFound) {
+                        Err(NoteStoreError::NoteNotExist(id.into()))
+                    } else {
+                        Err(NoteStoreError::PostgreSQLError(e))
+                    }
+                }
+            }
         })
     }
 
