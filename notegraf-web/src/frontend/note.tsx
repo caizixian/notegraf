@@ -34,7 +34,7 @@ type NoteComponentProps = {
 export function NoteComponent(props: NoteComponentProps) {
     return (
         <article className="note border my-0.5 px-1">
-            <Link to={`/note/${props.note.id}/`} className={"underline"}>
+            <Link to={`/note/${props.note.id}/`} className={"underline decoration-blue-500"}>
                 {props.note.title ? <h1>{props.note.title}</h1> : <h1 className={"italic text-gray-500"}>no title</h1>}
             </Link>
             {props.showPrevNext &&
@@ -44,10 +44,12 @@ export function NoteComponent(props: NoteComponentProps) {
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
-            <details>
+            <details className={"border-b border-gray-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>
                 <p>Modified at: {props.note.metadata.modified_at}</p>
+                <p>Tags: {props.note.metadata.tags.join(", ")}</p>
+                <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
                 <Link to={`/note/${props.note.id}/revision/${props.note.revision}`}
                       className={"underline text-blue-500"}>
                     Permalink
