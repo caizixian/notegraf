@@ -267,26 +267,6 @@
       "nullable": []
     }
   },
-  "7be1b79cfdfa7cc2bcbb76f6070bcdec44f26aedba5b984e4e7059ca87559eef": {
-    "query": "\n            SELECT array_agg(revision) AS revisions\n            FROM revision\n            WHERE id = $1\n            ",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "revisions",
-          "type_info": "UuidArray"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "993d4cef0950217b0e95ac7ca25fea164768809cf6ffb979543cb9ae58517970": {
     "query": "INSERT INTO note(id) VALUES ($1)",
     "describe": {
@@ -297,6 +277,110 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "a54edc5adcf54ec0104c2a9173d7473bcfac84af0b132e802bc9d974397fec73": {
+    "query": "\n            SELECT\n                revision.revision,\n                revision.id,\n                revision.title,\n                revision.note_inner,\n                revision.parent,\n                array_remove(array_agg(revision1.id), NULL) AS branches,\n                revision.prev,\n                array_remove(array_agg(revision2.id), NULL) AS next,\n                revision.referents,\n                array_remove(array_agg(revision3.id), NULL) AS \"references\",\n                revision.metadata_schema_version,\n                revision.metadata_created_at,\n                revision.metadata_modified_at,\n                revision.metadata_tags,\n                revision.metadata_custom_metadata\n            FROM revision\n            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id\n            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id\n            -- https://stackoverflow.com/a/29245753\n            -- indexes are bound to operators, and the indexed expression must be to the left of\n            -- the operator\n            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]\n            WHERE revision.id = $1\n            GROUP BY revision.revision\n            ORDER BY revision.metadata_modified_at ASC\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "revision",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "note_inner",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "parent",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 5,
+          "name": "branches",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 6,
+          "name": "prev",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "next",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "referents",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 9,
+          "name": "references",
+          "type_info": "UuidArray"
+        },
+        {
+          "ordinal": 10,
+          "name": "metadata_schema_version",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 11,
+          "name": "metadata_created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 12,
+          "name": "metadata_modified_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 13,
+          "name": "metadata_tags",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 14,
+          "name": "metadata_custom_metadata",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        null,
+        false,
+        null,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "ae8d495aab9478759badbc14dc00c0834d956ec077f8ad46848a13c8e214ab7e": {
