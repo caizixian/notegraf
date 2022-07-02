@@ -183,6 +183,7 @@ pub enum NoteField {
     References,
     Referents,
     Metadata,
+    IsCurrent,
 }
 
 pub struct NoteFieldSelector {
@@ -209,6 +210,7 @@ impl Default for NoteFieldSelector {
             NoteField::References,
             NoteField::Referents,
             NoteField::Metadata,
+            NoteField::IsCurrent,
         ])
     }
 }
@@ -261,6 +263,9 @@ where
                 }
                 NoteField::Metadata => {
                     s.serialize_field("metadata", &self.n.get_metadata())?;
+                }
+                NoteField::IsCurrent => {
+                    s.serialize_field("is_current", &self.n.is_current())?;
                 }
             }
         }
