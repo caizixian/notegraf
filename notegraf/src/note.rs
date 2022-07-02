@@ -144,6 +144,13 @@ impl From<Uuid> for Revision {
 /// Note properties can be stored as is by the storage backend, but can also be computed.
 /// Expensive computation can be cached, but it's the storage's responsibility to keep the cache
 /// coherent.
+///
+/// Revision properties (title, note_inner, id, revision, referents, metadata) are immutable for a
+/// given revision.
+///
+/// Note properties (parent, branches, prev, next, references) reflect the current global view
+/// of a note store, and relationship between notes (which are represented by their respective
+/// latest revision).
 pub trait Note<T: NoteType>: Debug {
     fn get_title(&self) -> String;
     fn get_note_inner(&self) -> T;

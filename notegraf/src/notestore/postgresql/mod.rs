@@ -10,6 +10,7 @@ use std::path::Path;
 use uuid::Uuid;
 
 mod queries;
+use crate::notestore::Revisions;
 use queries::*;
 
 #[cfg(test)]
@@ -283,9 +284,22 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
 
     fn get_revisions<'a>(
         &'a self,
-        _loc: &'a NoteLocator,
-    ) -> BoxFuture<'a, Result<Vec<(Revision, Box<dyn Note<T>>)>, NoteStoreError>> {
-        todo!()
+        loc: &'a NoteLocator,
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let notes: Vec<PostgreSQLNoteRowJoined> =
+                get_revisions(&mut transaction, loc.get_id().try_to_uuid()?).await?;
+            Ok(notes
+                .into_iter()
+                .map(|n| {
+                    (
+                        n.revision.into(),
+                        Box::new(n.into_note()) as Box<dyn Note<T>>,
+                    )
+                })
+                .collect())
+        })
     }
 
     fn append_note<'a>(

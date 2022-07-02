@@ -255,6 +255,51 @@ async fn get_note_specific(
     }
 }
 
+pub(super) async fn get_revisions(
+    transaction: &mut Transaction<'_, Postgres>,
+    id: Uuid,
+) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
+    let res = query_as!(
+            PostgreSQLNoteRowJoined,
+            r#"
+            SELECT
+                revision.revision,
+                revision.id,
+                revision.title,
+                revision.note_inner,
+                revision.parent,
+                array_remove(array_agg(revision1.id), NULL) AS branches,
+                revision.prev,
+                array_remove(array_agg(revision2.id), NULL) AS next,
+                revision.referents,
+                array_remove(array_agg(revision3.id), NULL) AS "references",
+                revision.metadata_schema_version,
+                revision.metadata_created_at,
+                revision.metadata_modified_at,
+                revision.metadata_tags,
+                revision.metadata_custom_metadata
+            FROM revision
+            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
+            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
+            -- https://stackoverflow.com/a/29245753
+            -- indexes are bound to operators, and the indexed expression must be to the left of
+            -- the operator
+            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
+            WHERE revision.id = $1
+            GROUP BY revision.revision
+            ORDER BY revision.metadata_modified_at ASC
+            "#,
+            id
+        )
+        .fetch_all(transaction)
+        .await;
+    if let Err(sqlx::Error::RowNotFound) = res {
+        Err(NoteStoreError::NoteNotExist(id.into()))
+    } else {
+        res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
 async fn get_row_current(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
