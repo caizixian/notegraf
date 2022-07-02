@@ -200,6 +200,40 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
     ));
 }
 
+pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
+        .await
+        .unwrap();
+    let loc2 = store
+        .update_note(&loc1, None, Some(PlainNote::new("Foo1".into())), None)
+        .await
+        .unwrap();
+    store.delete_note(&loc1.current()).await.unwrap();
+    let revisions = store.get_revisions(&loc1).await.unwrap();
+    let (last_revision, last_note) = revisions.last().unwrap();
+    let last_inner = last_note.get_note_inner();
+    assert_eq!(last_inner, PlainNote::new("Foo1".into()));
+    assert_eq!(last_revision, loc2.get_revision().unwrap());
+    store
+        .update_note(
+            &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
+            None,
+            Some(last_inner),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .get_note(&loc1.current())
+            .await
+            .unwrap()
+            .get_note_inner(),
+        PlainNote::new("Foo1".into())
+    );
+}
+
 pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>) {
     let loc1 = store
         .new_note("".to_owned(), PlainNote::new("Tail".into()), None)

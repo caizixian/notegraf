@@ -620,20 +620,17 @@ mod tests {
 
     #[tokio::test]
     async fn unique_id() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::unique_id(store).await;
+        common_tests::unique_id(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn new_note_revision() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::new_note_revision(store).await;
+        common_tests::new_note_revision(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn new_note_retrieve() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::new_note_retrieve(store).await;
+        common_tests::new_note_retrieve(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
@@ -663,79 +660,41 @@ mod tests {
 
     #[tokio::test]
     async fn update_note() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::update_note(store).await;
+        common_tests::update_note(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn add_branch() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::add_branch(store).await;
+        common_tests::add_branch(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn delete_note_specific() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::delete_note_specific(store).await;
+        common_tests::delete_note_specific(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn delete_note_current() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::delete_note_current(store).await;
+        common_tests::delete_note_current(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn delete_note_with_branches() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::delete_note_with_branches(store).await;
+        common_tests::delete_note_with_branches(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn resurrect_deleted_note() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        let loc1 = store
-            .new_note("".to_owned(), PlainNote::new("Foo".into()), None)
-            .await
-            .unwrap();
-        let loc2 = store
-            .update_note(&loc1, None, Some(PlainNote::new("Foo1".into())), None)
-            .await
-            .unwrap();
-        store.delete_note(&loc1.current()).await.unwrap();
-        let revisions = store.get_revisions(&loc1).await.unwrap();
-        let (last_revision, last_note) = revisions.last().unwrap();
-        let last_inner = last_note.get_note_inner();
-        assert_eq!(last_inner, PlainNote::new("Foo1".into()));
-        assert_eq!(last_revision, loc2.get_revision().unwrap());
-        store
-            .update_note(
-                &NoteLocator::Specific(loc1.get_id().clone(), last_revision.clone()),
-                None,
-                Some(last_inner),
-                None,
-            )
-            .await
-            .unwrap();
-        assert_eq!(
-            store
-                .get_note(&loc1.current())
-                .await
-                .unwrap()
-                .get_note_inner(),
-            PlainNote::new("Foo1".into())
-        );
+        common_tests::resurrect_deleted_note(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn delete_middle_note_sequence() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::delete_middle_note_sequence(store).await;
+        common_tests::delete_middle_note_sequence(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
     async fn resurrect_note_in_sequence() {
-        let store: InMemoryStore<PlainNote> = InMemoryStore::new();
-        common_tests::resurrect_note_in_sequence(store).await;
+        common_tests::resurrect_note_in_sequence(InMemoryStore::new()).await;
     }
 }

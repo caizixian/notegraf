@@ -84,6 +84,11 @@ async fn delete_note_with_branches() {
 }
 
 #[tokio::test]
+async fn resurrect_deleted_note() {
+    common_tests::resurrect_deleted_note(get_store().await).await;
+}
+
+#[tokio::test]
 async fn delete_middle_note_sequence() {
     common_tests::delete_middle_note_sequence(get_store().await).await;
 }
