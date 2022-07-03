@@ -2,7 +2,6 @@ import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link, useNavigate} from "react-router-dom";
-import "./app.css"
 import {deleteNote} from "./api";
 
 export type Note = {
@@ -56,10 +55,10 @@ function NoteControls(props: NoteControlProps) {
 
     return (
         <div className={"flex gap-1 my-1"}>
-            <button onClick={onEdit} className={"rounded-md bg-sky-500 block p-1"}>
+            <button onClick={onEdit} className={"ng-button bg-sky-500"}>
                 Edit
             </button>
-            <button onClick={onDelete} className={"rounded-md bg-red-500 block p-1"}>
+            <button onClick={onDelete} className={"ng-button bg-red-500"}>
                 Delete
             </button>
         </div>
