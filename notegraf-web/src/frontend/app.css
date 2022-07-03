@@ -6,30 +6,42 @@
 @tailwind components;
 @tailwind utilities;
 
-article h1 {
-    @apply text-4xl;
+@layer base {
+    h1 {
+        @apply text-4xl;
+    }
+
+    h2 {
+        @apply text-3xl;
+    }
+
+    h3 {
+        @apply text-2xl;
+    }
+
+    h4 {
+        @apply text-xl;
+    }
+
+    h5 {
+        @apply text-lg;
+    }
+
+    p {
+        @apply text-base;
+    }
 }
 
-article h2 {
-    @apply text-3xl;
-}
+@layer components {
+    .ng-button {
+        @apply rounded-md block px-4 py-2 font-semibold text-sm shadow-sm;
+    }
 
-article h3 {
-    @apply text-2xl;
-}
+    .ng-button-primary {
+        @apply bg-sky-600 hover:bg-sky-700;
+    }
 
-article h4 {
-    @apply text-xl;
-}
-
-article h5 {
-    @apply text-lg;
-}
-
-article p {
-    @apply text-base;
-}
-
-.ng-button {
-    @apply rounded-md block p-1;
+    .ng-button-danger {
+        @apply bg-red-600 hover:bg-red-700;
+    }
 }
