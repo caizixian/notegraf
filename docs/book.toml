@@ -1,0 +1,6 @@
+[book]
+authors = ["Zixian Cai"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Notegraf Documentation"
