@@ -139,3 +139,20 @@ jobs:
         with:
           name: coverage-report-html-${{ matrix.notestore }}
           path: tarpaulin-report.html
+
+  frontend_test:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3.3.0
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: './notegraf-web/package-lock.json'
+      - run: npm install
+        working-directory: ./notegraf-web
+      - run: npx tsc --noEmit
+        working-directory: ./notegraf-web
