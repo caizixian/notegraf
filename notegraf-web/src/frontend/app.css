@@ -29,3 +29,7 @@ article h5 {
 article p {
     @apply text-base;
 }
+
+.ng-button {
+    @apply rounded-md block p-1;
+}

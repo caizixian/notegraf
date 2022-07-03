@@ -38,23 +38,23 @@ export function NewNoteForm() {
         <form className={"p-2 flex flex-col flex-1"} onSubmit={handleSubmit(onSubmit)}>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"title"}>Title</label>
-                <input className={"form-input dark:bg-slate-800 w-full"} id={"title"} placeholder={"Title"}
+                <input className={"form-input bg-transparent w-full"} id={"title"} placeholder={"Title"}
                        type={"text"} {...register("title")} />
-                <input type="submit" className={"rounded-md bg-sky-500 block p-1"} value={"Create"}/>
+                <input type="submit" className={"ng-button bg-sky-500"} value={"Create"}/>
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"tags"}>Tags</label>
-                <input className={"form-input dark:bg-slate-800 w-full"} id={"tags"} placeholder={"comma separated"}
+                <input className={"form-input bg-transparent w-full"} id={"tags"} placeholder={"comma separated"}
                        type={"text"} {...register("metadata_tags")} />
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"custom_metadata"}>Custom metadata</label>
-                <input className={"form-input dark:bg-slate-800 w-full"} id={"custom_metadata"} placeholder={"{}"}
+                <input className={"form-input bg-transparent w-full"} id={"custom_metadata"} placeholder={"{}"}
                        type={"text"} {...register("metadata_custom_metadata", {validate: isValidJSON})} />
             </div>
             <div className={"flex-1 flex"}>
                 <textarea required={true} autoFocus={true} id={"note_inner"}
-                          className={"form-textarea dark:bg-slate-800 flex-1"} {...register("note_inner")}></textarea>
+                          className={"form-textarea bg-transparent flex-1"} {...register("note_inner")}></textarea>
             </div>
         </form>
     );

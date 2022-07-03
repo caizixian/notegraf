@@ -3,7 +3,6 @@ import {useEffect, useState} from "react";
 import {useParams, useSearchParams} from "react-router-dom";
 import {Note, NoteComponent} from "../note"
 import {getNote} from "../api";
-import '../app.css';
 
 async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): Promise<Note[]> {
     let notes: Note[] = [];
