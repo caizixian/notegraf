@@ -40,7 +40,7 @@ export function NewNoteForm() {
                 <label htmlFor={"title"}>Title</label>
                 <input className={"form-input bg-transparent w-full"} id={"title"} placeholder={"Title"}
                        type={"text"} {...register("title")} />
-                <input type="submit" className={"ng-button bg-sky-500"} value={"Create"}/>
+                <input type="submit" className={"ng-button ng-button-primary"} value={"Create"}/>
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"tags"}>Tags</label>

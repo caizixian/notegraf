@@ -55,10 +55,10 @@ function NoteControls(props: NoteControlProps) {
 
     return (
         <div className={"flex gap-1 my-1"}>
-            <button onClick={onEdit} className={"ng-button bg-sky-500"}>
+            <button onClick={onEdit} className={"ng-button ng-button-primary"}>
                 Edit
             </button>
-            <button onClick={onDelete} className={"ng-button bg-red-500"}>
+            <button onClick={onDelete} className={"ng-button ng-button-danger"}>
                 Delete
             </button>
         </div>
