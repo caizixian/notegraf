@@ -102,7 +102,7 @@ export function NoteComponent(props: NoteComponentProps) {
             <div className={"flex justify-center"}>
                 {/* remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none */}
                 <article
-                    className={"overflow-hidden prose dark:prose-invert md:prose-lg lg:prose-xl xl:prose-2xl"}
+                    className={"overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl"}
                     dangerouslySetInnerHTML={{
                         __html: sanitize(marked(props.note.note_inner))
                     }}/>
