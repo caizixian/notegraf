@@ -20,6 +20,14 @@ export async function getNoteSpecific(noteID: string, revision: string): Promise
     return response.json();
 }
 
+export async function getNoteRevisions(noteID: string): Promise<Note[]> {
+    const response = await fetch(`/api/v1/note/${noteID}/revision`);
+    if (!response.ok) {
+        throw new Error(response.statusText);
+    }
+    return response.json();
+}
+
 export async function deleteNote(noteID: string) {
     const response = await fetch(`/api/v1/note/${noteID}`, {
         method: "DELETE"

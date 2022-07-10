@@ -2,19 +2,19 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
 import {Note, NoteComponent} from "../note"
-import {getNoteSpecific} from "../api";
+import {getNoteRevisions} from "../api";
 
-export function SpecificNote() {
-    let {anchorNoteID, revision} = useParams();
-    const [note, setNote] = useState<any>(null);
+export function NoteRevisions() {
+    let {anchorNoteID} = useParams();
+    const [notes, setNotes] = useState<any>(null);
     const [error, setError] = useState<any>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
-        async function fetchNoteSepcific() {
+        async function fetchNoteRevisions() {
             try {
-                const note: Note = await getNoteSpecific(anchorNoteID as string, revision as string);
-                setNote(note);
+                const notes: Note[] = await getNoteRevisions(anchorNoteID as string);
+                setNotes(notes);
                 setIsLoaded(true);
             } catch (e) {
                 setError(e);
@@ -22,8 +22,8 @@ export function SpecificNote() {
             }
         }
 
-        fetchNoteSepcific();
-    }, [anchorNoteID, revision]);
+        fetchNoteRevisions();
+    }, [anchorNoteID]);
 
     if (!isLoaded) {
         return (<div>Loading...</div>);
@@ -33,7 +33,7 @@ export function SpecificNote() {
     }
 
     return (<div className="p-2">
-        <NoteComponent note={note} key={note.id} showPrevNext={false}
-                       setError={setError} disableControl={true}></NoteComponent>
+        {notes.map((note: Note) => (<NoteComponent note={note} key={note.id} showPrevNext={false}
+                                                   setError={setError} disableControl={true}></NoteComponent>))}
     </div>);
 }
