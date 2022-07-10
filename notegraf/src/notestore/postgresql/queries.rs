@@ -173,7 +173,7 @@ fn get_note_query(conditions: Vec<String>, orders: Vec<String>) -> String {
     let orderby_clause = if orders.is_empty() {
         "".to_string()
     } else {
-        "ORDER BY ".to_owned() + &conditions.join(", ")
+        "ORDER BY ".to_owned() + &orders.join(", ")
     };
     // Manual left join on current_revision used instead of the revision_is_current view
     // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
