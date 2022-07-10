@@ -164,47 +164,68 @@ impl PostgreSQLNoteRowJoined {
     }
 }
 
+fn get_note_query(conditions: Vec<String>, orders: Vec<String>) -> String {
+    let where_clause = if conditions.is_empty() {
+        "".to_string()
+    } else {
+        "WHERE ".to_owned() + &conditions.join(" AND ")
+    };
+    let orderby_clause = if orders.is_empty() {
+        "".to_string()
+    } else {
+        "ORDER BY ".to_owned() + &conditions.join(", ")
+    };
+    // Manual left join on current_revision used instead of the revision_is_current view
+    // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
+    format!(
+        r#"
+        SELECT
+            revision.revision,
+            revision.id,
+            revision.title,
+            revision.note_inner,
+            revision.parent,
+            array_remove(array_agg(revision1.id), NULL) AS branches,
+            revision.prev,
+            array_remove(array_agg(revision2.id), NULL) AS next,
+            revision.referents,
+            array_remove(array_agg(revision3.id), NULL) AS "references",
+            revision.metadata_schema_version,
+            revision.metadata_created_at,
+            revision.metadata_modified_at,
+            revision.metadata_tags,
+            revision.metadata_custom_metadata,
+            cr.current_revision IS NOT NULL AS is_current
+        FROM revision
+        LEFT JOIN current_revision cr on revision.revision = cr.current_revision
+        LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
+        LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
+        -- https://stackoverflow.com/a/29245753
+        -- indexes are bound to operators, and the indexed expression must be to the left of
+        -- the operator
+        LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
+        {}
+        GROUP BY revision.revision, cr.current_revision
+        {}
+        "#,
+        where_clause, orderby_clause
+    )
+}
+
 async fn get_note_current(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
 ) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
-    // Manual left join on current_revision used instead of the revision_is_current view
-    // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
-    let res = query_as!(
-            PostgreSQLNoteRowJoined,
-            r#"
-            SELECT
-                revision.revision,
-                revision.id,
-                revision.title,
-                revision.note_inner,
-                revision.parent,
-                array_remove(array_agg(revision1.id), NULL) AS branches,
-                revision.prev,
-                array_remove(array_agg(revision2.id), NULL) AS next,
-                revision.referents,
-                array_remove(array_agg(revision3.id), NULL) AS "references",
-                revision.metadata_schema_version,
-                revision.metadata_created_at,
-                revision.metadata_modified_at,
-                revision.metadata_tags,
-                revision.metadata_custom_metadata,
-                cr.current_revision IS NOT NULL AS "is_current!"
-            FROM revision
-            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
-            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
-            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            -- https://stackoverflow.com/a/29245753
-            -- indexes are bound to operators, and the indexed expression must be to the left of
-            -- the operator
-            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
-            WHERE revision.id = $1 AND cr.current_revision IS NOT NULL
-            GROUP BY revision.revision, cr.current_revision
-            "#,
-            id,
-        )
-        .fetch_one(transaction)
-        .await;
+    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![
+            "revision.id = $1".to_owned(),
+            "cr.current_revision IS NOT NULL".to_owned(),
+        ],
+        vec![],
+    ))
+    .bind(id)
+    .fetch_one(transaction)
+    .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
     } else {
@@ -217,42 +238,17 @@ async fn get_note_specific(
     id: Uuid,
     revision: Uuid,
 ) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
-    let res = query_as!(
-            PostgreSQLNoteRowJoined,
-            r#"
-            SELECT
-                revision.revision,
-                revision.id,
-                revision.title,
-                revision.note_inner,
-                revision.parent,
-                array_remove(array_agg(revision1.id), NULL) AS branches,
-                revision.prev,
-                array_remove(array_agg(revision2.id), NULL) AS next,
-                revision.referents,
-                array_remove(array_agg(revision3.id), NULL) AS "references",
-                revision.metadata_schema_version,
-                revision.metadata_created_at,
-                revision.metadata_modified_at,
-                revision.metadata_tags,
-                revision.metadata_custom_metadata,
-                cr.current_revision IS NOT NULL AS "is_current!"
-            FROM revision
-            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
-            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
-            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            -- https://stackoverflow.com/a/29245753
-            -- indexes are bound to operators, and the indexed expression must be to the left of
-            -- the operator
-            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
-            WHERE revision.id = $1 AND revision.revision = $2
-            GROUP BY revision.revision, cr.current_revision
-            "#,
-            id,
-            revision
-        )
-        .fetch_one(transaction)
-        .await;
+    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![
+            "revision.id = $1".to_owned(),
+            "revision.revision = $2".to_owned(),
+        ],
+        vec![],
+    ))
+    .bind(id)
+    .bind(revision)
+    .fetch_one(transaction)
+    .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::RevisionNotExist(id.into(), revision.into()))
     } else {
@@ -264,42 +260,13 @@ pub(super) async fn get_revisions(
     transaction: &mut Transaction<'_, Postgres>,
     id: Uuid,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
-    let res = query_as!(
-            PostgreSQLNoteRowJoined,
-            r#"
-            SELECT
-                revision.revision,
-                revision.id,
-                revision.title,
-                revision.note_inner,
-                revision.parent,
-                array_remove(array_agg(revision1.id), NULL) AS branches,
-                revision.prev,
-                array_remove(array_agg(revision2.id), NULL) AS next,
-                revision.referents,
-                array_remove(array_agg(revision3.id), NULL) AS "references",
-                revision.metadata_schema_version,
-                revision.metadata_created_at,
-                revision.metadata_modified_at,
-                revision.metadata_tags,
-                revision.metadata_custom_metadata,
-                cr.current_revision IS NOT NULL AS "is_current!"
-            FROM revision
-            LEFT JOIN current_revision cr on revision.revision = cr.current_revision
-            LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
-            LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
-            -- https://stackoverflow.com/a/29245753
-            -- indexes are bound to operators, and the indexed expression must be to the left of
-            -- the operator
-            LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
-            WHERE revision.id = $1
-            GROUP BY revision.revision, cr.current_revision
-            ORDER BY revision.metadata_modified_at ASC
-            "#,
-            id
-        )
-        .fetch_all(transaction)
-        .await;
+    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec!["revision.id = $1".to_owned()],
+        vec!["revision.metadata_modified_at ASC".to_owned()],
+    ))
+    .bind(id)
+    .fetch_all(transaction)
+    .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
     } else {
