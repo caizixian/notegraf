@@ -74,7 +74,7 @@ function NoteControls(props: NoteControlProps) {
 
 export function NoteComponent(props: NoteComponentProps) {
     return (
-        <article className="note border my-0.5 p-1">
+        <article className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-center"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
                 <h1>{props.note.title ? props.note.title :
@@ -88,7 +88,7 @@ export function NoteComponent(props: NoteComponentProps) {
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
             {props.disableControl || <NoteControls id={props.note.id} setError={props.setError}/>}
-            <details className={"border-b border-gray-500"}>
+            <details className={"border-b border-neutral-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>
                 <p>Modified at: {props.note.metadata.modified_at}</p>
