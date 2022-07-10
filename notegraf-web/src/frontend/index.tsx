@@ -9,6 +9,7 @@ import {Notes} from "./routes/notes";
 import "./utils/markdown.tsx";
 import "./app.css";
 import {SpecificNote} from "./routes/specific_note";
+import {NoteRevisions} from "./routes/note_revisions";
 
 const container = document.getElementById('app') as HTMLInputElement;
 const root = createRoot(container);
@@ -23,6 +24,7 @@ root.render(
                             <Route index element={<NoteSequence/>}/>
                             <Route path="edit" element={<EditNoteForm/>}/>
                             <Route path="revision">
+                                <Route index element={<NoteRevisions/>}/>
                                 <Route path=":revision" element={<SpecificNote/>}/>
                             </Route>
                         </Route>

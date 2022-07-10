@@ -34,6 +34,6 @@ export function SpecificNote() {
 
     return (<div className="p-2">
         <NoteComponent note={note} key={note.id} showPrevNext={false}
-                       setError={setError}></NoteComponent>
+                       setError={setError} disableControl={true}></NoteComponent>
     </div>);
 }

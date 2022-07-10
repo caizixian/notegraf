@@ -66,6 +66,6 @@ export function NoteSequence() {
             <label htmlFor={"recursiveLoad"}>Recursive load?</label>
         </div>
         {notes.map(note => (<NoteComponent note={note} key={note.id} showPrevNext={!recursiveLoad}
-                                           setError={setError}></NoteComponent>))}
+                                           setError={setError} disableControl={false}></NoteComponent>))}
     </div>);
 }
