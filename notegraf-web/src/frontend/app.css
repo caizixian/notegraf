@@ -6,32 +6,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-    h1 {
-        @apply text-4xl;
-    }
-
-    h2 {
-        @apply text-3xl;
-    }
-
-    h3 {
-        @apply text-2xl;
-    }
-
-    h4 {
-        @apply text-xl;
-    }
-
-    h5 {
-        @apply text-lg;
-    }
-
-    p {
-        @apply text-base;
-    }
-}
-
 @layer components {
     .ng-button {
         @apply rounded-md block px-4 py-2 font-semibold text-sm shadow-sm;
@@ -43,5 +17,9 @@
 
     .ng-button-danger {
         @apply bg-red-600 hover:bg-red-700;
+    }
+
+    pre code.hljs {
+        padding: 0;
     }
 }

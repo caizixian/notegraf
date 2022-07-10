@@ -74,10 +74,10 @@ function NoteControls(props: NoteControlProps) {
 
 export function NoteComponent(props: NoteComponentProps) {
     return (
-        <article className="note border border-neutral-500 my-0.5 p-1">
-            <div className={"flex items-center"}>
+        <div className="note border border-neutral-500 my-0.5 p-1">
+            <div className={"flex items-baseline"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <h1>{props.note.title ? props.note.title :
+                <h1 className={"text-4xl"}>{props.note.title ? props.note.title :
                     <span className={"italic text-gray-500"}>no title</span>}</h1>
             </div>
             {props.showPrevNext &&
@@ -99,9 +99,14 @@ export function NoteComponent(props: NoteComponentProps) {
                     Permalink
                 </Link>
             </details>
-            <div dangerouslySetInnerHTML={{
-                __html: sanitize(marked(props.note.note_inner))
-            }}/>
-        </article>
+            <div className={"flex justify-center"}>
+                {/* remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none */}
+                <article
+                    className={"overflow-hidden prose dark:prose-invert md:prose-lg lg:prose-xl xl:prose-2xl"}
+                    dangerouslySetInnerHTML={{
+                        __html: sanitize(marked(props.note.note_inner))
+                    }}/>
+            </div>
+        </div>
     );
 }
