@@ -3,6 +3,7 @@ import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link, useNavigate} from "react-router-dom";
 import {deleteNote} from "./api";
+import {LinkIcon} from "@heroicons/react/outline";
 
 export type Note = {
     title: string,
@@ -68,9 +69,11 @@ function NoteControls(props: NoteControlProps) {
 export function NoteComponent(props: NoteComponentProps) {
     return (
         <article className="note border my-0.5 p-1">
-            <Link to={`/note/${props.note.id}/`} className={"underline decoration-blue-500"}>
-                {props.note.title ? <h1>{props.note.title}</h1> : <h1 className={"italic text-gray-500"}>no title</h1>}
-            </Link>
+            <div className={"flex items-center"}>
+                <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
+                <h1>{props.note.title ? props.note.title :
+                    <span className={"italic text-gray-500"}>no title</span>}</h1>
+            </div>
             {props.showPrevNext &&
                 <div>
                     {props.note.prev != null && <Link to={`../${props.note.prev}`} key={props.note.prev}
