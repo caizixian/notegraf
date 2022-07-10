@@ -19,7 +19,7 @@ root.render(
             <Routes>
                 <Route path="/" element={<App/>}>
                     <Route path="note" element={<Notes/>}>
-                        <Route index element={<NewNoteForm/>}/>
+                        <Route path={"new"} element={<NewNoteForm/>}/>
                         <Route path=":anchorNoteID">
                             <Route index element={<NoteSequence/>}/>
                             <Route path="edit" element={<EditNoteForm/>}/>
