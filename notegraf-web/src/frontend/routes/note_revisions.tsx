@@ -48,7 +48,7 @@ export function NoteRevisions() {
                 </p>
             </div>))}
         </div>
-        <div className={"ml-1 basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
+        <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
             <NoteComponent note={notes.find((note: Note) => note.revision === revisionSelected)} showPrevNext={false}
                            disableControl={true} setError={setError}/>
         </div>
