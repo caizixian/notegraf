@@ -173,3 +173,33 @@ async fn note_update() {
     assert_eq!(response["title"], "New title");
     assert_eq!(response["note_inner"], "New body text");
 }
+
+#[tokio::test]
+async fn note_revisions() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc2 = update_note_helper(&client, &app.address, &loc1, "New title", "New body text").await;
+
+    let response = client
+        .get(&format!(
+            "{}/api/v1/note/{}/revision",
+            &app.address,
+            loc1.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(
+        response[0]["revision"],
+        loc1.get_revision().unwrap().as_ref()
+    );
+    assert_eq!(
+        response[1]["revision"],
+        loc2.get_revision().unwrap().as_ref()
+    );
+}

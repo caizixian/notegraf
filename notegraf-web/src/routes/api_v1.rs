@@ -123,9 +123,34 @@ async fn new_note(
     }
 }
 
+#[get("/note/{note_id}/revision")]
+#[instrument(
+    skip(store, params),
+    fields(
+        note_id = %params.0
+    )
+)]
+async fn get_revisions(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    params: web::Path<(String,)>,
+) -> impl Responder {
+    let (note_id,) = params.into_inner();
+    let loc = NoteLocator::Current(note_id.into());
+    let res = store.get_revisions(&loc).await;
+    if let Err(e) = res {
+        return notestore_error_handler(&e);
+    }
+    let revisions: Vec<NoteSerializable<NoteType>> = res
+        .unwrap()
+        .into_iter()
+        .map(|x| NoteSerializable::all_fields(x))
+        .collect();
+    return HttpResponse::Ok().json(revisions);
+}
+
 #[post("/note/{note_id}/revision")]
 #[instrument(
-    skip(store, note),
+    skip(store, params, note),
     fields(
         note_id = %params.0
     )
@@ -187,5 +212,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(get_note_specific)
         .service(new_note)
         .service(delete_note_current)
-        .service(update_note);
+        .service(update_note)
+        .service(get_revisions);
 }
