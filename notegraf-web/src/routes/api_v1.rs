@@ -145,7 +145,7 @@ async fn get_revisions(
         .into_iter()
         .map(|x| NoteSerializable::all_fields(x))
         .collect();
-    return HttpResponse::Ok().json(revisions);
+    HttpResponse::Ok().json(revisions)
 }
 
 #[post("/note/{note_id}/revision")]
