@@ -430,3 +430,65 @@ pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>)
         None
     );
 }
+
+pub(super) async fn search_recent(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    store
+        .new_note(
+            "".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("".into())).await.unwrap();
+    assert_eq!(notes[0].get_note_inner(), note_inner);
+    assert_eq!(notes.len(), 1);
+}
+
+pub(super) async fn search_fulltext(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    store
+        .new_note(
+            "hello world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("hello".into())).await.unwrap();
+    assert_eq!(notes[0].get_title(), "hello world");
+    assert_eq!(notes.len(), 1);
+    let notes = store.search(&("foo".into())).await.unwrap();
+    assert_eq!(notes.len(), 2);
+}
+
+pub(super) async fn search_nonexist(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    store
+        .new_note(
+            "hello world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("fizzbuzz".into())).await.unwrap();
+    assert_eq!(notes.len(), 0);
+}

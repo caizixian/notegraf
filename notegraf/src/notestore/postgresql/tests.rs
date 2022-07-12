@@ -97,3 +97,18 @@ async fn delete_middle_note_sequence() {
 async fn resurrect_note_in_sequence() {
     common_tests::resurrect_note_in_sequence(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_recent() {
+    common_tests::search_recent(get_store().await).await;
+}
+
+#[tokio::test]
+async fn search_fulltext() {
+    common_tests::search_fulltext(get_store().await).await;
+}
+
+#[tokio::test]
+async fn search_nonexist() {
+    common_tests::search_nonexist(get_store().await).await;
+}

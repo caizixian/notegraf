@@ -164,16 +164,43 @@ impl PostgreSQLNoteRowJoined {
     }
 }
 
-fn get_note_query(conditions: Vec<String>, orders: Vec<String>) -> String {
+fn get_note_query(
+    columns: Vec<String>,
+    joins: Vec<String>,
+    conditions: Vec<String>,
+    groupbys: Vec<String>,
+    orders: Vec<String>,
+    limit: Option<u64>,
+) -> String {
+    let select_clause = if columns.is_empty() {
+        "".to_string()
+    } else {
+        ",\n".to_owned() + &columns.join(",\n")
+    };
+    let join_clause = if joins.is_empty() {
+        "".to_string()
+    } else {
+        joins.join("\n")
+    };
     let where_clause = if conditions.is_empty() {
         "".to_string()
     } else {
         "WHERE ".to_owned() + &conditions.join(" AND ")
     };
+    let groupby_clause = if groupbys.is_empty() {
+        "".to_string()
+    } else {
+        ", ".to_owned() + &groupbys.join(", ")
+    };
     let orderby_clause = if orders.is_empty() {
         "".to_string()
     } else {
         "ORDER BY ".to_owned() + &orders.join(", ")
+    };
+    let limit_clause = if let Some(l) = limit {
+        format!("LIMIT {}", l)
+    } else {
+        "".to_string()
     };
     // Manual left join on current_revision used instead of the revision_is_current view
     // https://dba.stackexchange.com/questions/238087/group-by-on-view-queries
@@ -195,20 +222,23 @@ fn get_note_query(conditions: Vec<String>, orders: Vec<String>) -> String {
             revision.metadata_modified_at,
             revision.metadata_tags,
             revision.metadata_custom_metadata,
-            cr.current_revision IS NOT NULL AS is_current
-        FROM revision
-        LEFT JOIN current_revision cr on revision.revision = cr.current_revision
-        LEFT JOIN revision_only_current AS revision1 on revision1.parent = revision.id
-        LEFT JOIN revision_only_current AS revision2 on revision2.prev = revision.id
+            cr.current_revision IS NOT NULL AS is_current{}
+        FROM
+            revision
+        LEFT JOIN current_revision cr ON revision.revision = cr.current_revision
+        LEFT JOIN revision_only_current AS revision1 ON revision1.parent = revision.id
+        LEFT JOIN revision_only_current AS revision2 ON revision2.prev = revision.id
         -- https://stackoverflow.com/a/29245753
         -- indexes are bound to operators, and the indexed expression must be to the left of
         -- the operator
-        LEFT JOIN revision_only_current AS revision3 on revision3.referents @> ARRAY[revision.id]
+        LEFT JOIN revision_only_current AS revision3 ON revision3.referents @> ARRAY[revision.id]
         {}
-        GROUP BY revision.revision, cr.current_revision
+        {}
+        GROUP BY revision.revision, cr.current_revision{}
+        {}
         {}
         "#,
-        where_clause, orderby_clause
+        select_clause, join_clause, where_clause, groupby_clause, orderby_clause, limit_clause
     )
 }
 
@@ -217,11 +247,15 @@ async fn get_note_current(
     id: Uuid,
 ) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
     let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![],
+        vec![],
         vec![
             "revision.id = $1".to_owned(),
             "cr.current_revision IS NOT NULL".to_owned(),
         ],
         vec![],
+        vec![],
+        None,
     ))
     .bind(id)
     .fetch_one(transaction)
@@ -239,11 +273,15 @@ async fn get_note_specific(
     revision: Uuid,
 ) -> Result<PostgreSQLNoteRowJoined, NoteStoreError> {
     let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![],
+        vec![],
         vec![
             "revision.id = $1".to_owned(),
             "revision.revision = $2".to_owned(),
         ],
         vec![],
+        vec![],
+        None,
     ))
     .bind(id)
     .bind(revision)
@@ -261,14 +299,62 @@ pub(super) async fn get_revisions(
     id: Uuid,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
     let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![],
+        vec![],
         vec!["revision.id = $1".to_owned()],
+        vec![],
         vec!["revision.metadata_modified_at ASC".to_owned()],
+        None,
     ))
     .bind(id)
     .fetch_all(transaction)
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
+    } else {
+        res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
+pub(super) async fn get_recent(
+    transaction: &mut Transaction<'_, Postgres>,
+    limit: u64,
+) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
+    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec![],
+        vec![],
+        vec!["cr.current_revision IS NOT NULL".to_owned()],
+        vec![],
+        vec!["revision.metadata_created_at DESC".to_owned()],
+        Some(limit),
+    ))
+    .fetch_all(transaction)
+    .await;
+    if let Err(sqlx::Error::RowNotFound) = res {
+        Ok(vec![])
+    } else {
+        res.map_err(NoteStoreError::PostgreSQLError)
+    }
+}
+
+pub(super) async fn get_fulltext(
+    transaction: &mut Transaction<'_, Postgres>,
+    query: &str,
+    limit: u64,
+) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
+    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
+        vec!["ts_rank(revision.text_searchable, query.query) AS rank".to_string()],
+        vec!["JOIN to_tsquery($1) query ON revision.text_searchable @@ query.query".to_string()],
+        vec!["cr.current_revision IS NOT NULL".to_owned()],
+        vec!["query.query".to_owned()],
+        vec!["rank DESC".to_owned()],
+        Some(limit),
+    ))
+    .bind(query)
+    .fetch_all(transaction)
+    .await;
+    if let Err(sqlx::Error::RowNotFound) = res {
+        Ok(vec![])
     } else {
         res.map_err(NoteStoreError::PostgreSQLError)
     }
