@@ -7,6 +7,7 @@ use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
@@ -290,6 +291,30 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         None
     }
 
+    fn get_all_current_notes(&self) -> Vec<InMemoryNoteStored<T>> {
+        self.current_revision
+            .iter()
+            .map(|(id, revision)| self.get_note_by_revision(id, revision).unwrap())
+            .collect()
+    }
+
+    fn get_recent(&self, limit: u64) -> Vec<InMemoryNoteStored<T>> {
+        let mut notes = self.get_all_current_notes();
+        notes.sort_by_key(|n| Reverse(n.metadata.created_at));
+        notes.into_iter().take(limit as usize).collect()
+    }
+
+    fn get_fulltext(&self, query: &str, limit: u64) -> Vec<InMemoryNoteStored<T>> {
+        self.get_all_current_notes()
+            .into_iter()
+            .filter(|x| {
+                x.title.to_lowercase().contains(&query.to_lowercase())
+                    || x.note_inner.to_lowercase().contains(&query.to_lowercase())
+            })
+            .take(limit as usize)
+            .collect()
+    }
+
     // The methods above are helper methods
     // The methods below are to implement the NoteStore interface
     fn new_note(
@@ -468,6 +493,21 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(())
     }
 
+    fn search(&self, sr: &SearchRequest) -> Result<Revisions<T>, NoteStoreError> {
+        let notes = if sr.full_text.is_empty() {
+            self.get_recent(10)
+        } else {
+            self.get_fulltext(&sr.full_text, 10)
+        };
+        notes
+            .into_iter()
+            .map(|x| {
+                self.compute_stored_note(x)
+                    .map(|x_computed| Box::new(x_computed) as Box<dyn Note<T>>)
+            })
+            .collect()
+    }
+
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), NoteStoreError> {
         let p = path.as_ref().join("notegraf_in_memory.json");
 
@@ -595,9 +635,12 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
 
     fn search<'a>(
         &'a self,
-        _sr: &'a SearchRequest,
+        sr: &'a SearchRequest,
     ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
-        todo!()
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.search(sr)
+        })
     }
 
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {
@@ -708,5 +751,20 @@ mod tests {
     #[tokio::test]
     async fn resurrect_note_in_sequence() {
         common_tests::resurrect_note_in_sequence(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_recent() {
+        common_tests::search_recent(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_fulltext() {
+        common_tests::search_fulltext(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_nonexist() {
+        common_tests::search_nonexist(InMemoryStore::new()).await;
     }
 }
