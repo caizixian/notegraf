@@ -8,10 +8,12 @@ use std::path::Path;
 
 mod in_memory;
 mod postgresql;
+pub mod search;
 #[cfg(test)]
 mod tests;
 pub mod util;
 
+use crate::notestore::search::SearchRequest;
 pub use in_memory::InMemoryStore;
 pub use postgresql::{PostgreSQLStore, PostgreSQLStoreBuilder};
 
@@ -104,6 +106,13 @@ where
         parent: &'a NoteID,
         child: &'a NoteID,
     ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
+    /// Search for a note
+    ///
+    /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
+    fn search<'a>(
+        &'a self,
+        sr: &'a SearchRequest,
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.

@@ -2,6 +2,7 @@
 use crate::errors::NoteStoreError;
 use crate::note::NoteLocator;
 use crate::notemetadata::{NoteMetadata, NoteMetadataEditable};
+use crate::notestore::search::SearchRequest;
 use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
@@ -590,6 +591,13 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
             let mut ims = self.ims.write().await;
             ims.add_branch(parent, child)
         })
+    }
+
+    fn search<'a>(
+        &'a self,
+        _sr: &'a SearchRequest,
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
+        todo!()
     }
 
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {

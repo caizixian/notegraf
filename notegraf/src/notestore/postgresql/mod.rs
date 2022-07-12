@@ -11,6 +11,7 @@ use std::path::Path;
 use uuid::Uuid;
 
 mod queries;
+use crate::notestore::search::SearchRequest;
 use queries::*;
 
 #[cfg(test)]
@@ -331,6 +332,24 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             .await?;
             transaction.commit().await?;
             Ok(())
+        })
+    }
+
+    fn search<'a>(
+        &'a self,
+        sr: &'a SearchRequest,
+    ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            let notes: Vec<PostgreSQLNoteRowJoined> = if sr.full_text.is_empty() {
+                get_recent(&mut transaction, 10).await?
+            } else {
+                get_fulltext(&mut transaction, &sr.full_text, 10).await?
+            };
+            Ok(notes
+                .into_iter()
+                .map(|n| Box::new(n.into_note()) as Box<dyn Note<T>>)
+                .collect())
         })
     }
 
