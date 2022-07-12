@@ -18,8 +18,4 @@
     .ng-button-danger {
         @apply bg-red-600 hover:bg-red-700;
     }
-
-    pre code.hljs {
-        padding: 0;
-    }
 }

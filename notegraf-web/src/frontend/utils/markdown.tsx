@@ -36,4 +36,4 @@ function highlight(code: string, lang: string) {
 }
 
 // @ts-ignore
-marked.use({renderer, highlight: highlight, langPrefix: 'hljs language-'});
+marked.use({renderer, highlight: highlight});
