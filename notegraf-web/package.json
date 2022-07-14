@@ -28,7 +28,7 @@
   "homepage": "https://github.com/caizixian/notegraf",
   "dependencies": {
     "dompurify": "^2.3.9",
-    "highlight.js": "^11.5.1",
+    "highlight.js": "^11.6.0",
     "katex": "^0.16.0",
     "lodash": "^4.17.21",
     "marked": "^4.0.18",
