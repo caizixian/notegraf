@@ -32,7 +32,7 @@ tracing-log = "0.1"
 lazy_static = "1.4"
 opentelemetry = { version = "0.17", features = ["rt-tokio-current-thread"] }
 opentelemetry-otlp = "0.10"
-tokio = { version = "1.19", features = ["macros", "sync", "rt"] }
+tokio = { version = "1.20", features = ["macros", "sync", "rt"] }
 notegraf = {version = "0.1.0-alpha.2", path = "../notegraf"}
 sqlx = { version = "0.6", features = ["postgres"] }
 serde = "1.0"
