@@ -18,9 +18,6 @@ cargo build
 
 ## Setup Development Server
 
-First, you need a PostgreSQL server running on the same host.
-On macOS with Homebrew installed, simply `brew install postgresql`,
-
 Under `notegraf/notegraf-web`, create the following two files.
 
 ```
