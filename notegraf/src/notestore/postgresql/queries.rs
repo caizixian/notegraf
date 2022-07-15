@@ -342,6 +342,7 @@ pub(super) async fn get_fulltext(
     query: &str,
     limit: u64,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
+    let lexemes: Vec<&str> = query.split(' ').collect();
     let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
         vec!["ts_rank(revision.text_searchable, query.query) AS rank".to_string()],
         vec!["JOIN to_tsquery($1) query ON revision.text_searchable @@ query.query".to_string()],
@@ -350,7 +351,7 @@ pub(super) async fn get_fulltext(
         vec!["rank DESC".to_owned()],
         Some(limit),
     ))
-    .bind(query)
+    .bind(lexemes.join(" & "))
     .fetch_all(transaction)
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {

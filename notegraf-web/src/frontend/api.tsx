@@ -28,6 +28,14 @@ export async function getNoteRevisions(noteID: string): Promise<Note[]> {
     return response.json();
 }
 
+export async function searchNotes(query: string): Promise<Note[]> {
+    const response = await fetch("/api/v1/note?" + new URLSearchParams({query: query}));
+    if (!response.ok) {
+        throw new Error(response.statusText);
+    }
+    return response.json();
+}
+
 export async function deleteNote(noteID: string) {
     const response = await fetch(`/api/v1/note/${noteID}`, {
         method: "DELETE"

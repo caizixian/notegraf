@@ -214,9 +214,6 @@ async fn recent_notes() {
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
-        .json(&json!({
-            "query": ""
-        }))
         .send()
         .await
         .expect("Failed to execute request.")
@@ -245,9 +242,7 @@ async fn search_notes() {
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
-        .json(&json!({
-            "query": "fizz"
-        }))
+        .query(&[("query", "fizz")])
         .send()
         .await
         .expect("Failed to execute request.")
@@ -262,9 +257,7 @@ async fn search_notes() {
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
-        .json(&json!({
-            "query": "Buzz"
-        }))
+        .query(&[("query", "Buzz")])
         .send()
         .await
         .expect("Failed to execute request.")

@@ -209,23 +209,22 @@ async fn get_note_current(
 
 #[derive(Deserialize, Debug)]
 struct SearchQuery {
-    query: String,
+    query: Option<String>,
 }
 
 #[get("/note")]
-#[instrument(
-    skip(store, search),
-    fields(
-        query = %search.query
-    )
-)]
+#[instrument(skip(store, search))]
 async fn search(
     store: web::Data<BoxedNoteStore<NoteType>>,
-    search: web::Json<SearchQuery>,
+    search: web::Query<SearchQuery>,
 ) -> impl Responder {
     let search = search.into_inner();
     let query = search.query;
-    let res = store.search(&query.into()).await;
+    let res = if let Some(q) = query {
+        store.search(&q.into()).await
+    } else {
+        store.search(&"".to_owned().into()).await
+    };
     if let Err(e) = res {
         return notestore_error_handler(&e);
     }

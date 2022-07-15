@@ -10,6 +10,7 @@ import "./utils/markdown.tsx";
 import "./app.css";
 import {SpecificNote} from "./routes/specific_note";
 import {NoteRevisions} from "./routes/note_revisions";
+import {SearchResults} from "./routes/search_results";
 
 const container = document.getElementById('app') as HTMLInputElement;
 const root = createRoot(container);
@@ -19,6 +20,7 @@ root.render(
             <Routes>
                 <Route path="/" element={<App/>}>
                     <Route path="note" element={<Notes/>}>
+                        <Route index element={<SearchResults/>}/>
                         <Route path={"new"} element={<NewNoteForm/>}/>
                         <Route path=":anchorNoteID">
                             <Route index element={<NoteSequence/>}/>
