@@ -207,11 +207,41 @@ async fn get_note_current(
     get_note_by_locator(store, &loc).await
 }
 
+#[derive(Deserialize, Debug)]
+struct SearchQuery {
+    query: Option<String>,
+}
+
+#[get("/note")]
+#[instrument(skip(store, search))]
+async fn search(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    search: web::Query<SearchQuery>,
+) -> impl Responder {
+    let search = search.into_inner();
+    let query = search.query;
+    let res = if let Some(q) = query {
+        store.search(&q.into()).await
+    } else {
+        store.search(&"".to_owned().into()).await
+    };
+    if let Err(e) = res {
+        return notestore_error_handler(&e);
+    }
+    let revisions: Vec<NoteSerializable<NoteType>> = res
+        .unwrap()
+        .into_iter()
+        .map(|x| NoteSerializable::all_fields(x))
+        .collect();
+    HttpResponse::Ok().json(revisions)
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_note_current)
         .service(get_note_specific)
         .service(new_note)
         .service(delete_note_current)
         .service(update_note)
-        .service(get_revisions);
+        .service(get_revisions)
+        .service(search);
 }

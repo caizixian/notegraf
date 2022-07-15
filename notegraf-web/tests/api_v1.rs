@@ -203,3 +203,70 @@ async fn note_revisions() {
         loc2.get_revision().unwrap().as_ref()
     );
 }
+
+#[tokio::test]
+async fn recent_notes() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc2 = create_note_helper(&client, &app.address, "title2", "## body text").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+    assert_eq!(
+        response[1]["revision"],
+        loc1.get_revision().unwrap().as_ref()
+    );
+    // recent note comes first
+    assert_eq!(
+        response[0]["revision"],
+        loc2.get_revision().unwrap().as_ref()
+    );
+}
+
+#[tokio::test]
+async fn search_notes() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
+    let loc2 = create_note_helper(&client, &app.address, "bar", "buzz").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "fizz")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(
+        response[0]["revision"],
+        loc1.get_revision().unwrap().as_ref()
+    );
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "Buzz")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(
+        response[0]["revision"],
+        loc2.get_revision().unwrap().as_ref()
+    );
+}
