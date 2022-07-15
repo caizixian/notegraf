@@ -76,7 +76,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">1.</strong> Changelog</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">3.</strong> Changelog</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -135,7 +135,110 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="changelog"><a class="header" href="#changelog">Changelog</a></h1>
+                        <h1 id="docker-compose-recommended"><a class="header" href="#docker-compose-recommended">Docker Compose (recommended)</a></h1>
+<p>First, create a folder <code>notegraf</code>.
+Then, within that folder, create a <code>docker-compose.yml</code> file.</p>
+<pre><code class="language-console">notegraf
+└── notegraf_config.yml
+</code></pre>
+<pre><code class="language-yaml"># docker-compose.yml
+version: '3'
+services:
+  db:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: notegraf
+      LANG: C.UTF-8
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+  notegraf:
+    image: ghcr.io/caizixian/notegraf:master
+    restart: always
+    depends_on:
+      - &quot;db&quot;
+    ports:
+      - &quot;8000:8000&quot;
+    environment:
+      NOTEGRAF_HOST: &quot;0.0.0.0&quot;
+      NOTEGRAF_PORT: 8000
+      NOTEGRAF_NOTESTORETYPE: &quot;PostgreSQL&quot;
+      NOTEGRAF_DATABASE_HOST: &quot;db&quot;
+      NOTEGRAF_DATABASE_PORT: 5432
+      NOTEGRAF_DATABASE_USERNAME: postgres
+      NOTEGRAF_DATABASE_PASSWORD: password
+      NOTEGRAF_DATABASE_NAME: notegraf
+      NOTEGRAF_DEBUG: false
+volumes:
+  dbdata:
+</code></pre>
+<p>Within the folder, run <code>docker-compose up -d</code>.
+Your Notegraf instance should be up and running.
+Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser and see for yourself. </p>
+<p>To update Notegraf, run <code>docker pull ghcr.io/caizixian/notegraf:master</code> and run <code>docker-compose up -d</code> again. </p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="developer-guide"><a class="header" href="#developer-guide">Developer Guide</a></h1>
+<h2 id="prerequisite"><a class="header" href="#prerequisite">Prerequisite</a></h2>
+<ul>
+<li>Rust toolchain installed via <a href="https://rustup.rs/">https://rustup.rs/</a>. Tested with 1.62.0.</li>
+<li>Node.js. Tested with 16.x LTS and 18.x.</li>
+<li>PostgreSQL. Tested with 14. On macOS with Homebrew installed, simply <code>brew install postgresql</code>, and follow the
+instructions in the installation caveats.</li>
+</ul>
+<h2 id="build-from-source"><a class="header" href="#build-from-source">Build from Source</a></h2>
+<pre><code class="language-bash">git clone https://github.com/caizixian/notegraf.git
+cd notegraf/notegraf-web
+npm install
+cargo build
+</code></pre>
+<h2 id="setup-development-server"><a class="header" href="#setup-development-server">Setup Development Server</a></h2>
+<p>First, you need a PostgreSQL server running on the same host.
+On macOS with Homebrew installed, simply <code>brew install postgresql</code>,</p>
+<p>Under <code>notegraf/notegraf-web</code>, create the following two files.</p>
+<pre><code>notegraf
+├── ...
+└── notegraf-web
+    ├── ...
+    ├── .proxyrc.js
+    └── configuration.yml
+</code></pre>
+<pre><code class="language-javascript">// .proxyrc.js
+const {createProxyMiddleware} = require(&quot;http-proxy-middleware&quot;);
+
+module.exports = function (app) {
+    app.use(
+        createProxyMiddleware([&quot;/**&quot;, &quot;!/&quot;, &quot;!**/*.html&quot;, &quot;!**/*.js&quot;, &quot;!*.css&quot;, &quot;!**/*.css&quot;, &quot;!**/*.map&quot;, &quot;!**/*.ttf&quot;, &quot;!**/*.woff&quot;, &quot;!**/*.woff2&quot;], {
+            // localhost on macOS can also resolve to ::1
+            // python3 -c 'import socket; print(socket.getaddrinfo(&quot;localhost&quot;, 8000))'
+            // https://stackoverflow.com/questions/15227154/inexplicable-node-js-http-throwing-connect-econnrefused-ipv6
+            target: &quot;http://localhost:8000/&quot;,
+        })
+    );
+};
+</code></pre>
+<pre><code class="language-yaml"># configuration.yml
+port: 8000
+notestoretype: &quot;PostgreSQL&quot;
+debug: true
+database:
+  host: localhost
+  port: 5432
+  name: notegraf
+</code></pre>
+<p>Finally, open two terminal windows.
+In the first window, run <code>cargo run</code> under <code>notegraf/notegraf-web</code>, and in the other window, run <code>npm start</code>.
+Your browser should automatically navigate to <a href="http://localhost:1234">http://localhost:1234</a>.</p>
+<h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
+<p>The repo is set up as a cargo workspace with two crates.</p>
+<pre><code>notegraf
+├── ...
+├── notegraf     &lt;- Notegraf core data types and persistence logics
+└── notegraf-web &lt;- Notegraf HTTP frontend and web UI 
+</code></pre>
+<h2 id="pre-commit"><a class="header" href="#pre-commit">Pre-commit</a></h2>
+<p><code>cargo check &amp;&amp; cargo test &amp;&amp; cargo clippy &amp;&amp; cargo fmt</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="changelog"><a class="header" href="#changelog">Changelog</a></h1>
 <h2 id="unreleased"><a class="header" href="#unreleased">Unreleased</a></h2>
 <h3 id="added"><a class="header" href="#added">Added</a></h3>
 <h3 id="changed"><a class="header" href="#changed">Changed</a></h3>
