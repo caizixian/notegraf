@@ -7,7 +7,7 @@ type NoteLocator = {
 export async function getNote(noteID: string): Promise<Note> {
     const response = await fetch(`/api/v1/note/${noteID}`);
     if (!response.ok) {
-        throw new Error(response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
     return response.json();
 }
@@ -15,7 +15,7 @@ export async function getNote(noteID: string): Promise<Note> {
 export async function getNoteSpecific(noteID: string, revision: string): Promise<Note> {
     const response = await fetch(`/api/v1/note/${noteID}/revision/${revision}`);
     if (!response.ok) {
-        throw new Error(response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
     return response.json();
 }
@@ -23,7 +23,7 @@ export async function getNoteSpecific(noteID: string, revision: string): Promise
 export async function getNoteRevisions(noteID: string): Promise<Note[]> {
     const response = await fetch(`/api/v1/note/${noteID}/revision`);
     if (!response.ok) {
-        throw new Error(response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
     return response.json();
 }
@@ -31,7 +31,7 @@ export async function getNoteRevisions(noteID: string): Promise<Note[]> {
 export async function searchNotes(query: string): Promise<Note[]> {
     const response = await fetch("/api/v1/note?" + new URLSearchParams({query: query}));
     if (!response.ok) {
-        throw new Error(response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
     return response.json();
 }
@@ -41,7 +41,7 @@ export async function deleteNote(noteID: string) {
         method: "DELETE"
     });
     if (!response.ok) {
-        throw new Error(response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
 }
 
@@ -54,7 +54,7 @@ export async function postNote(endpoint: string, data: any): Promise<NoteLocator
         body: JSON.stringify(data),
     });
     if (!response.ok) {
-        console.error('Error:', response.statusText);
+        throw new Error(response.statusText + " " + await response.text());
     }
     return response.json();
 }

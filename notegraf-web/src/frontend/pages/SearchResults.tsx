@@ -41,6 +41,7 @@ export function SearchResults() {
         return (<div>Loading...</div>);
     }
     if (error) {
+        console.log(error);
         return (<div>{error.toString()}</div>);
     }
 

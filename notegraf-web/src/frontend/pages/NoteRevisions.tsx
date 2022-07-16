@@ -7,7 +7,7 @@ import {Note} from "../components/Note";
 import * as types from "../types";
 
 export function NoteRevisions() {
-    let {anchorNoteID} = useParams();
+    let {noteID} = useParams();
     const [notes, setNotes] = useState<any>(null);
     const [error, setError] = useState<any>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -16,7 +16,7 @@ export function NoteRevisions() {
     useEffect(() => {
         async function fetchNoteRevisions() {
             try {
-                const notes = await getNoteRevisions(anchorNoteID as string);
+                const notes = await getNoteRevisions(noteID as string);
                 setNotes(notes);
                 setRevisionSelected(notes[0].revision);
                 setIsLoaded(true);
@@ -27,7 +27,7 @@ export function NoteRevisions() {
         }
 
         fetchNoteRevisions();
-    }, [anchorNoteID]);
+    }, [noteID]);
 
     if (!isLoaded) {
         return (<div>Loading...</div>);

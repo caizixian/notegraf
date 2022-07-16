@@ -5,7 +5,7 @@ import {getNoteSpecific} from "../api";
 import {Note} from "../components/Note";
 
 export function NoteRevision() {
-    let {anchorNoteID, revision} = useParams();
+    let {noteID, revision} = useParams();
     const [note, setNote] = useState<any>(null);
     const [error, setError] = useState<any>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -13,7 +13,7 @@ export function NoteRevision() {
     useEffect(() => {
         async function fetchNoteSepcific() {
             try {
-                const note = await getNoteSpecific(anchorNoteID as string, revision as string);
+                const note = await getNoteSpecific(noteID as string, revision as string);
                 setNote(note);
                 setIsLoaded(true);
             } catch (e) {
@@ -23,7 +23,7 @@ export function NoteRevision() {
         }
 
         fetchNoteSepcific();
-    }, [anchorNoteID, revision]);
+    }, [noteID, revision]);
 
     if (!isLoaded) {
         return (<div>Loading...</div>);

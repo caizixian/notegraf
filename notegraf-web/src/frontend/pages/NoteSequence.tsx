@@ -23,7 +23,7 @@ async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): 
 }
 
 export function NoteSequence() {
-    let {anchorNoteID} = useParams();
+    let {noteID} = useParams();
     let [searchParams, setSearchParams] = useSearchParams();
     const [notes, setNotes] = useState<types.Note[]>([]);
     const [error, setError] = useState<any>(null);
@@ -33,7 +33,7 @@ export function NoteSequence() {
 
     async function fetchNoteSequenceInner() {
         try {
-            const notes = await fetchNoteSequence(anchorNoteID as string, recursiveLoad);
+            const notes = await fetchNoteSequence(noteID as string, recursiveLoad);
             setNotes(notes);
             setIsLoaded(true);
         } catch (e) {
@@ -44,7 +44,7 @@ export function NoteSequence() {
 
     useEffect(() => {
         fetchNoteSequenceInner();
-    }, [anchorNoteID, recursiveLoad]);
+    }, [noteID, recursiveLoad]);
 
     function handleCheckbox(event: React.FormEvent<HTMLInputElement>) {
         const checked = event.currentTarget.checked;

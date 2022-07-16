@@ -14,9 +14,11 @@ root.render(
                     <Route path="note" element={<pages.NoteTop/>}>
                         <Route index element={<pages.SearchResults/>}/>
                         <Route path={"new"} element={<pages.NoteNew/>}/>
-                        <Route path=":anchorNoteID">
+                        <Route path=":noteID">
                             <Route index element={<pages.NoteSequence/>}/>
                             <Route path="edit" element={<pages.NoteEdit/>}/>
+                            <Route path="branch" element={<pages.NoteBranch/>}/>
+                            <Route path="append" element={<pages.NoteAppend/>}/>
                             <Route path="revision">
                                 <Route index element={<pages.NoteRevisions/>}/>
                                 <Route path=":revision" element={<pages.NoteRevision/>}/>
