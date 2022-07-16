@@ -32,7 +32,8 @@ export function LazyLinks(props: LazyLinksProps) {
 
     useEffect(() => {
         loadNotes(props.noteIDs);
-    }, [everClicked]);
+    }, [everClicked, props.noteIDs]);
+
     let listItems;
     if (isLoaded) {
         listItems = notes.map(note =>
