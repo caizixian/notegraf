@@ -3,6 +3,7 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {getNote} from "../api";
 import {NoteForm} from "../components/NoteForm";
+import {tileInTitle} from "../utils";
 
 export function NoteEdit() {
     let {noteID} = useParams();
@@ -43,5 +44,6 @@ export function NoteEdit() {
         endpoint={`note/${note.id}/revision`}
         autoSaveKey={`autosave.note.edit.${note.id}`}
         submitText={"Update"}
+        title={`Update note ${tileInTitle(note.title)} - Notegraf`}
     />);
 }

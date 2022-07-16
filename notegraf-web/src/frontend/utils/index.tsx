@@ -7,3 +7,7 @@ export function renderTitle(title: string) {
     let className = title ? "" : "italic text-gray-500";
     return (<span className={className}>{title ? title : "no title"}</span>);
 }
+
+export function tileInTitle(title: string) {
+    return title ? title : "(no title)";
+}

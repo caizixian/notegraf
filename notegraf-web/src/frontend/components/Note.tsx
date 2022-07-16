@@ -9,7 +9,8 @@ import {
     ClockIcon,
     CollectionIcon,
     LinkIcon,
-    PencilAltIcon, ReplyIcon,
+    PencilAltIcon,
+    ReplyIcon,
     ShareIcon,
     TrashIcon
 } from "@heroicons/react/outline";
@@ -17,7 +18,7 @@ import katex from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
-import {renderTitle} from "../utils";
+import {renderTitle, showAgo} from "../utils";
 
 function escapeHtml(unsafe: string): string {
     return unsafe
@@ -60,7 +61,8 @@ type NoteProps = {
     showPrevNext: boolean,
     disableControl: boolean
     setError: any,
-    onDelete: () => void
+    onDelete: () => void,
+    permaLink: boolean
 }
 
 type NoteControlProps = {
@@ -129,11 +131,12 @@ function NoteControls(props: NoteControlProps) {
 }
 
 export function Note(props: NoteProps) {
+    let link = props.permaLink ? `/note/${props.note.id}/revision/${props.note.revision}` : `/note/${props.note.id}`;
     return (
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <Link to={`/note/${props.note.id}`}>
+                <Link to={link}>
                     <h1 className={"text-4xl underline"}>{renderTitle(props.note.title)}</h1>
                 </Link>
             </div>
@@ -144,14 +147,10 @@ export function Note(props: NoteProps) {
             <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>
             <details className={"border-b border-neutral-500"}>
                 <summary className={"select-none"}>Metadata</summary>
-                <p>Created at: {props.note.metadata.created_at}</p>
-                <p>Modified at: {props.note.metadata.modified_at}</p>
+                <p title={props.note.metadata.created_at}>Created {showAgo(props.note.metadata.created_at)}</p>
+                <p title={props.note.metadata.modified_at}>Modified {showAgo(props.note.metadata.modified_at)}</p>
                 <p>Tags: {props.note.metadata.tags.join(", ")}</p>
                 <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
-                <Link to={`/note/${props.note.id}/revision/${props.note.revision}`}
-                      className={"underline text-blue-500"}>
-                    Permalink
-                </Link>
             </details>
             <div className={"flex justify-center"}>
                 {/* remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none */}

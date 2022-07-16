@@ -2,7 +2,7 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
 import {getNoteRevisions} from "../api";
-import {renderTitle, showAgo} from "../utils";
+import {renderTitle, showAgo, tileInTitle} from "../utils";
 import {Note} from "../components/Note";
 import * as types from "../types";
 
@@ -20,6 +20,7 @@ export function NoteRevisions() {
                 setNotes(notes);
                 setRevisionSelected(notes[0].revision);
                 setIsLoaded(true);
+                document.title = `${tileInTitle(notes[notes.length - 1].title)} (revisions) - Notegraf`;
             } catch (e) {
                 setError(e);
                 setIsLoaded(true);
@@ -51,6 +52,7 @@ export function NoteRevisions() {
         </div>
         <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
             <Note note={notes.find((note: types.Note) => note.revision === revisionSelected)} showPrevNext={false}
+                  permaLink={true}
                   disableControl={true} setError={setError} onDelete={() => {
             }}/>
         </div>

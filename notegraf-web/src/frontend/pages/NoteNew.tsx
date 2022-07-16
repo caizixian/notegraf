@@ -13,6 +13,7 @@ export function NoteNew() {
         endpoint={"note"}
         autoSaveKey={"autosave.note.new"}
         submitText={"Create"}
+        title={`New note - Notegraf`}
     />);
 }
 
@@ -29,6 +30,7 @@ export function NoteAppend() {
         endpoint={`note/${noteID}/next`}
         autoSaveKey={`autosave.note.${noteID}.append`}
         submitText={"Append"}
+        title={`Append note ${noteID} - Notegraf`}
     />);
 }
 
@@ -45,5 +47,6 @@ export function NoteBranch() {
         endpoint={`note/${noteID}/branch`}
         autoSaveKey={`autosave.note.${noteID}.branch`}
         submitText={"Branch"}
+        title={`Add branch ${noteID} - Notegraf`}
     />);
 }

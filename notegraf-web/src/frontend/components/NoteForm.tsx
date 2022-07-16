@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 import {incrementCounter, useLocalStorage} from "../utils";
 import {postNote} from "../api";
 import * as React from "react";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 
 type NoteFormContent = {
     title: string,
@@ -16,7 +16,8 @@ type NoteFormProps = {
     defaultValue: NoteFormContent,
     endpoint: string,
     autoSaveKey: string,
-    submitText: string
+    submitText: string,
+    title: string
 }
 
 function isValidJSON(s: string): boolean {
@@ -45,6 +46,10 @@ export function NoteForm(props: NoteFormProps) {
             setError(e);
         }
     }
+
+    useEffect(() => {
+        document.title = props.title;
+    }, []);
 
     if (error) {
         return (<div>{error.toString()}</div>);
