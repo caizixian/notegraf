@@ -188,6 +188,28 @@ mod tests {
     }
 
     #[test]
+    fn referent_markdown_link() {
+        let note = MarkdownNote::new(r#"[foo](notegraf:/note/note-1)"#.into());
+        let referents = note.get_referents().unwrap();
+        assert_eq!(referents.len(), 1);
+        assert_eq!(
+            referents.iter().next().unwrap(),
+            &NoteID::new("note-1".to_owned())
+        );
+    }
+
+    #[test]
+    fn referent_markdown_autolink() {
+        let note = MarkdownNote::new(r#"<notegraf:/note/note-1>"#.into());
+        let referents = note.get_referents().unwrap();
+        assert_eq!(referents.len(), 1);
+        assert_eq!(
+            referents.iter().next().unwrap(),
+            &NoteID::new("note-1".to_owned())
+        );
+    }
+
+    #[test]
     fn rewrite_markdown_link() {
         let id_old = NoteID::new("old".into());
         let id_new = NoteID::new("new".into());
