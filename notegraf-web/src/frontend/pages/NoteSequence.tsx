@@ -64,7 +64,7 @@ export function NoteSequence() {
         <div>
             <input type="checkbox" id="recursiveLoad" name="recursiveLoad" checked={recursiveLoad}
                    onChange={handleCheckbox}/>
-            <label htmlFor={"recursiveLoad"}>Recursive load?</label>
+            <label htmlFor={"recursiveLoad"} className={"select-none"}>Recursive load?</label>
         </div>
         {notes.map(note => (<Note note={note} key={note.id} showPrevNext={!recursiveLoad}
                                   setError={setError} disableControl={false}

@@ -87,7 +87,7 @@ function NoteControls(props: NoteControlProps) {
     }
 
     return (
-        <div className={"flex gap-1 my-1"}>
+        <div className={"flex flex-wrap gap-1 my-1"}>
             <Link to={`/note/${props.note.id}/revision`}>
                 <button className={"ng-button ng-button-primary"} title={"Show revisions"}>
                     <ClockIcon className={"h-6 w-6"}/>
