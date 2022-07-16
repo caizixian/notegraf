@@ -138,6 +138,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             let note_id = get_new_noteid();
             let revision = get_new_revision();
             let mut transaction = self.db_pool.begin().await?;
+            read_write(&mut transaction).await?;
             query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
                 .execute(&mut transaction)
                 .await?;
@@ -163,7 +164,9 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<Box<dyn Note<T>>, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_only(&mut transaction).await?;
             let note: PostgreSQLNote<T> = get_note_by_loc(&mut transaction, loc).await?.into_note();
+            transaction.commit().await?;
             Ok(Box::new(note) as Box<dyn Note<T>>)
         })
     }
@@ -177,6 +180,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_write(&mut transaction).await?;
             let new_loc = update_note_helper(&mut transaction, loc, |old_note| {
                 let mut note = old_note.clone();
                 if let Some(t) = title {
@@ -201,6 +205,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_write(&mut transaction).await?;
             let (id, rev) = loc.unpack();
             if !is_current(&mut transaction, loc).await? {
                 return Err(NoteStoreError::DeleteOldRevision(
@@ -237,8 +242,10 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_only(&mut transaction).await?;
             let notes: Vec<PostgreSQLNoteRowJoined> =
                 get_revisions(&mut transaction, loc.get_id().try_to_uuid()?).await?;
+            transaction.commit().await?;
             Ok(notes
                 .into_iter()
                 .map(|n| Box::new(n.into_note()) as Box<dyn Note<T>>)
@@ -253,6 +260,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         Box::pin(async move {
             let id = loc.get_id().try_to_uuid()?;
             let mut transaction = self.db_pool.begin().await?;
+            read_only(&mut transaction).await?;
             let res = query!(
                 r#"
                 SELECT
@@ -266,6 +274,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             )
             .fetch_one(&mut transaction)
             .await;
+            transaction.commit().await?;
             match res {
                 Ok(row) => {
                     let cr: Option<Uuid> = row.current_revision;
@@ -289,6 +298,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_write(&mut transaction).await?;
             let last_note: PostgreSQLNote<T> =
                 get_note_by_loc(&mut transaction, &NoteLocator::Current(last.clone()))
                     .await?
@@ -320,6 +330,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_write(&mut transaction).await?;
             update_note_helper::<_, T>(
                 &mut transaction,
                 &NoteLocator::Current(child.clone()),
@@ -341,11 +352,13 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
+            read_only(&mut transaction).await?;
             let notes: Vec<PostgreSQLNoteRowJoined> = if sr.full_text.is_empty() {
                 get_recent(&mut transaction, 10).await?
             } else {
                 get_fulltext(&mut transaction, &sr.full_text, 10).await?
             };
+            transaction.commit().await?;
             Ok(notes
                 .into_iter()
                 .map(|n| Box::new(n.into_note()) as Box<dyn Note<T>>)
