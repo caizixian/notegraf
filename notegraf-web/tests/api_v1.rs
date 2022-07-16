@@ -1,10 +1,10 @@
-use reqwest::{Client, StatusCode};
-use serde_json::{json, Value};
+mod common;
 
 use common::*;
-use notegraf::NoteLocator;
+use reqwest::{Client, StatusCode};
 
-mod common;
+use notegraf::NoteLocator;
+use serde_json::{json, Value};
 
 #[tokio::test]
 async fn new_note() {
