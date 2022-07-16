@@ -149,8 +149,9 @@ npm install
 cargo build
 </code></pre>
 <h2 id="setup-development-server"><a class="header" href="#setup-development-server">Setup Development Server</a></h2>
-<p>Under <code>notegraf/notegraf-web</code>, create the following two files.</p>
-<pre><code>notegraf
+<p>First, you need to create a database, e.g., via <code>createdb notegraf</code>.</p>
+<p>Then, under <code>notegraf/notegraf-web</code>, create the following two files.</p>
+<pre><code class="language-console">notegraf
 ├── ...
 └── notegraf-web
     ├── ...
@@ -185,7 +186,7 @@ In the first window, run <code>cargo run</code> under <code>notegraf/notegraf-we
 Your browser should automatically navigate to <a href="http://localhost:1234">http://localhost:1234</a>.</p>
 <h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
 <p>The repo is set up as a cargo workspace with two crates.</p>
-<pre><code>notegraf
+<pre><code class="language-console">notegraf
 ├── ...
 ├── notegraf     &lt;- Notegraf core data types and persistence logics
 └── notegraf-web &lt;- Notegraf HTTP frontend and web UI 
