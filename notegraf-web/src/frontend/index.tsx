@@ -1,16 +1,8 @@
 import * as React from "react";
 import {createRoot} from "react-dom/client";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
-import {NoteSequence} from "./routes/note_sequence";
-import {NewNoteForm} from "./routes/new_note";
-import {EditNoteForm} from "./routes/edit_note";
-import {App} from "./routes/app";
-import {Notes} from "./routes/notes";
-import "./utils/markdown.tsx";
+import * as pages from "./pages";
 import "./app.css";
-import {SpecificNote} from "./routes/specific_note";
-import {NoteRevisions} from "./routes/note_revisions";
-import {SearchResults} from "./routes/search_results";
 
 const container = document.getElementById('app') as HTMLInputElement;
 const root = createRoot(container);
@@ -18,16 +10,16 @@ root.render(
     <React.StrictMode>
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<App/>}>
-                    <Route path="note" element={<Notes/>}>
-                        <Route index element={<SearchResults/>}/>
-                        <Route path={"new"} element={<NewNoteForm/>}/>
+                <Route path="/" element={<pages.App/>}>
+                    <Route path="note" element={<pages.NoteTop/>}>
+                        <Route index element={<pages.SearchResults/>}/>
+                        <Route path={"new"} element={<pages.NoteNew/>}/>
                         <Route path=":anchorNoteID">
-                            <Route index element={<NoteSequence/>}/>
-                            <Route path="edit" element={<EditNoteForm/>}/>
+                            <Route index element={<pages.NoteSequence/>}/>
+                            <Route path="edit" element={<pages.NoteEdit/>}/>
                             <Route path="revision">
-                                <Route index element={<NoteRevisions/>}/>
-                                <Route path=":revision" element={<SpecificNote/>}/>
+                                <Route index element={<pages.NoteRevisions/>}/>
+                                <Route path=":revision" element={<pages.NoteRevision/>}/>
                             </Route>
                         </Route>
                     </Route>

@@ -1,4 +1,4 @@
-import {Note} from "./note";
+import {Note} from "./types";
 
 type NoteLocator = {
     Specific: string[]
@@ -45,22 +45,8 @@ export async function deleteNote(noteID: string) {
     }
 }
 
-export async function postNote(data: any): Promise<NoteLocator> {
-    let response = await fetch('/api/v1/note', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        console.error('Error:', response.statusText);
-    }
-    return response.json();
-}
-
-export async function updateNote(noteID: string, data: any): Promise<NoteLocator> {
-    let response = await fetch(`/api/v1/note/${noteID}/revision`, {
+export async function postNote(endpoint: string, data: any): Promise<NoteLocator> {
+    let response = await fetch(`/api/v1/${endpoint}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

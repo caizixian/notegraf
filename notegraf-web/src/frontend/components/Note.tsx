@@ -2,41 +2,60 @@ import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link, useNavigate} from "react-router-dom";
-import {deleteNote} from "./api";
+import {deleteNote} from "../api";
 import {CollectionIcon, LinkIcon, PencilAltIcon, TrashIcon} from "@heroicons/react/outline";
+import katex from "katex";
+import * as hljs from 'highlight.js';
+import * as types from "../types";
 
-export type Note = {
-    title: string,
-    note_inner: string,
-    id: string,
-    revision: string,
-    parent: string | null,
-    branches: string[],
-    prev: string | null,
-    next: string | null,
-    references: string[],
-    referents: string[],
-    metadata: NoteMetadata
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
-type NoteMetadata = {
-    schema_version: number,
-    created_at: string,
-    modified_at: string,
-    tags: string[],
-    custom_metadata: any
+
+const renderer = {
+    code(code: string, infoString: string | null, escaped: boolean) {
+        // @ts-ignore
+        const lang = (infoString || '').match(/\S*/)[0];
+        if (lang !== "math") {
+            return false;
+        }
+        return katex.renderToString(escaped ? code : escapeHtml(code), {output: "html", displayMode: true});
+    },
+    codespan(code: string) {
+        const match = code.match(/^\$\{(.*)}\$$/);
+        if (!match) {
+            return false;
+        }
+        return katex.renderToString(match[1], {output: "html", displayMode: false});
+    }
 }
 
-type NoteComponentProps = {
-    note: Note,
+function highlight(code: string, lang: string) {
+    const language = hljs.default.getLanguage(lang) ? lang : 'plaintext';
+    return hljs.default.highlight(code, {language}).value;
+}
+
+// @ts-ignore
+marked.use({renderer, highlight: highlight});
+
+type NoteProps = {
+    note: types.Note,
     showPrevNext: boolean,
     disableControl: boolean
-    setError: any
+    setError: any,
+    onDelete: () => void
 }
 
 type NoteControlProps = {
-    id: string
-    setError: any
+    id: string,
+    setError: any,
+    onDelete: () => void
 }
 
 function NoteControls(props: NoteControlProps) {
@@ -49,7 +68,7 @@ function NoteControls(props: NoteControlProps) {
     const onDelete = async () => {
         try {
             await deleteNote(props.id);
-            navigate("/note");
+            props.onDelete();
         } catch (e) {
             props.setError(e);
         }
@@ -72,7 +91,7 @@ function NoteControls(props: NoteControlProps) {
     )
 }
 
-export function NoteComponent(props: NoteComponentProps) {
+export function Note(props: NoteProps) {
     return (
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline"}>
@@ -87,7 +106,8 @@ export function NoteComponent(props: NoteComponentProps) {
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
-            {props.disableControl || <NoteControls id={props.note.id} setError={props.setError}/>}
+            {props.disableControl ||
+                <NoteControls id={props.note.id} setError={props.setError} onDelete={props.onDelete}/>}
             <details className={"border-b border-neutral-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>

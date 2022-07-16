@@ -1,11 +1,12 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
 import {useParams, useSearchParams} from "react-router-dom";
-import {Note, NoteComponent} from "../note"
 import {getNote} from "../api";
+import {Note} from "../components/Note";
+import * as types from "../types";
 
-async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): Promise<Note[]> {
-    let notes: Note[] = [];
+async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): Promise<types.Note[]> {
+    let notes: types.Note[] = [];
     let anchorNote = await getNote(anchorNoteID);
     notes.push(anchorNote);
     if (recursiveLoad) {
@@ -24,24 +25,24 @@ async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): 
 export function NoteSequence() {
     let {anchorNoteID} = useParams();
     let [searchParams, setSearchParams] = useSearchParams();
-    const [notes, setNotes] = useState<Note[]>([]);
+    const [notes, setNotes] = useState<types.Note[]>([]);
     const [error, setError] = useState<any>(null);
     const recursiveLoad = searchParams.get("recursiveLoad") === "true";
 
     const [isLoaded, setIsLoaded] = useState(false);
 
-    useEffect(() => {
-        async function fetchNoteSequenceInner() {
-            try {
-                const notes = await fetchNoteSequence(anchorNoteID as string, recursiveLoad);
-                setNotes(notes);
-                setIsLoaded(true);
-            } catch (e) {
-                setError(e);
-                setIsLoaded(true);
-            }
+    async function fetchNoteSequenceInner() {
+        try {
+            const notes = await fetchNoteSequence(anchorNoteID as string, recursiveLoad);
+            setNotes(notes);
+            setIsLoaded(true);
+        } catch (e) {
+            setError(e);
+            setIsLoaded(true);
         }
+    }
 
+    useEffect(() => {
         fetchNoteSequenceInner();
     }, [anchorNoteID, recursiveLoad]);
 
@@ -65,7 +66,8 @@ export function NoteSequence() {
                    onChange={handleCheckbox}/>
             <label htmlFor={"recursiveLoad"}>Recursive load?</label>
         </div>
-        {notes.map(note => (<NoteComponent note={note} key={note.id} showPrevNext={!recursiveLoad}
-                                           setError={setError} disableControl={false}></NoteComponent>))}
+        {notes.map(note => (<Note note={note} key={note.id} showPrevNext={!recursiveLoad}
+                                  setError={setError} disableControl={false}
+                                  onDelete={fetchNoteSequenceInner}></Note>))}
     </div>);
 }
