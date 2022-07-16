@@ -59,7 +59,7 @@ marked.use({renderer, highlight: highlight});
 type NoteProps = {
     note: types.Note,
     showPrevNext: boolean,
-    disableControl: boolean
+    showingRevision: boolean
     setError: any,
     onDelete: () => void,
     permaLink: boolean
@@ -140,11 +140,11 @@ export function Note(props: NoteProps) {
                     <h1 className={"text-4xl underline"}>{renderTitle(props.note.title)}</h1>
                 </Link>
             </div>
-            {props.disableControl ||
+            {props.showingRevision ||
                 <NoteControls note={props.note} setError={props.setError} onDelete={props.onDelete}
                               showPrevNext={props.showPrevNext}/>}
-            <LazyLinks collectionName={"Backlinks"} noteIDs={props.note.references}/>
-            <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>
+            {props.showingRevision || <LazyLinks collectionName={"Backlinks"} noteIDs={props.note.references}/>}
+            {props.showingRevision || <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>}
             <details className={"border-b border-neutral-500"}>
                 <summary className={"select-none"}>Metadata</summary>
                 <p title={props.note.metadata.created_at}>Created {showAgo(props.note.metadata.created_at)}</p>

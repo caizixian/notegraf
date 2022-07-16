@@ -36,7 +36,7 @@ export function NoteRevision() {
 
     return (<div className="p-2">
         <Note note={note} key={note.id} showPrevNext={false} permaLink={true}
-              setError={setError} disableControl={true} onDelete={() => {
+              setError={setError} showingRevision={true} onDelete={() => {
         }}></Note>
     </div>);
 }

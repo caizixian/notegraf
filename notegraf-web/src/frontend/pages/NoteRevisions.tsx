@@ -53,7 +53,7 @@ export function NoteRevisions() {
         <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
             <Note note={notes.find((note: types.Note) => note.revision === revisionSelected)} showPrevNext={false}
                   permaLink={true}
-                  disableControl={true} setError={setError} onDelete={() => {
+                  showingRevision={true} setError={setError} onDelete={() => {
             }}/>
         </div>
     </div>);

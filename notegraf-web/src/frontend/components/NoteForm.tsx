@@ -49,7 +49,7 @@ export function NoteForm(props: NoteFormProps) {
 
     useEffect(() => {
         document.title = props.title;
-    }, []);
+    }, [props.title]);
 
     if (error) {
         return (<div>{error.toString()}</div>);
