@@ -106,7 +106,8 @@ export function Note(props: NoteProps) {
                     {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
                                                       className={"underline text-blue-500 m-0.5"}>next</Link>}
                 </div>}
-            {props.disableControl || <NoteControls id={props.note.id} setError={props.setError} onDelete={props.onDelete}/>}
+            {props.disableControl ||
+                <NoteControls id={props.note.id} setError={props.setError} onDelete={props.onDelete}/>}
             <details className={"border-b border-neutral-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>

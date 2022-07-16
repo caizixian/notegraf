@@ -42,5 +42,6 @@ export function NoteEdit() {
         }}
         endpoint={`note/${note.id}/revision`}
         autoSaveKey={`autosave.note.edit.${note.id}`}
+        submitText={"Update"}
     />);
 }

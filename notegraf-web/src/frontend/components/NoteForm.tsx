@@ -14,7 +14,8 @@ type NoteFormContent = {
 type NoteFormProps = {
     defaultValue: NoteFormContent,
     endpoint: string,
-    autoSaveKey: string
+    autoSaveKey: string,
+    submitText: string
 }
 
 function isValidJSON(s: string): boolean {
@@ -49,7 +50,7 @@ export function NoteForm(props: NoteFormProps) {
                 <label htmlFor={"title"}>Title</label>
                 <input className={"form-input bg-transparent w-full"} id={"title"} placeholder={"Title"}
                        type={"text"} {...register("title")} />
-                <input type="submit" className={"ng-button ng-button-primary"} value={"Update"}/>
+                <input type="submit" className={"ng-button ng-button-primary"} value={props.submitText}/>
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"tags"}>Tags</label>

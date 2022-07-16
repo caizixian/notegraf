@@ -12,6 +12,6 @@ export function NoteNew() {
         }}
         endpoint={"note"}
         autoSaveKey={"autosave.note.new"}
-
+        submitText={"Create"}
     />);
 }
