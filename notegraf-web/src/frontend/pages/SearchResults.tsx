@@ -41,6 +41,7 @@ export function SearchResults() {
         return (<div>Loading...</div>);
     }
     if (error) {
+        console.log(error);
         return (<div>{error.toString()}</div>);
     }
 
@@ -57,7 +58,7 @@ export function SearchResults() {
             </div>))}
         </div>
         <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
-            <Note note={notes.find((note: types.Note) => note.revision === revisionSelected)} showPrevNext={false}
+            <Note note={notes.find((note: types.Note) => note.revision === revisionSelected)} showPrevNext={true}
                   disableControl={false} setError={setError} onDelete={fetchSearch}/>
         </div>
     </div>);

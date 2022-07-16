@@ -82,40 +82,55 @@ async fn get_note_specific(
 }
 
 #[derive(Deserialize)]
-struct NewNoteData {
+struct NotePostData {
     title: String,
     note_inner: String,
     metadata_tags: String,
     metadata_custom_metadata: String,
 }
 
+struct NoteStoreEditArgument {
+    title: String,
+    note_inner: NoteType,
+    metadata: NoteMetadataEditable,
+}
+
+impl TryFrom<NotePostData> for NoteStoreEditArgument {
+    type Error = String;
+
+    fn try_from(note: NotePostData) -> Result<Self, Self::Error> {
+        let custom_metadata =
+            serde_json::from_str(&note.metadata_custom_metadata).map_err(|e| e.to_string())?;
+        let tags: HashSet<String> = HashSet::from_iter(
+            note.metadata_tags
+                .split(',')
+                .into_iter()
+                .map(|tag| tag.trim().to_owned()),
+        );
+        Ok(NoteStoreEditArgument {
+            title: note.title,
+            note_inner: NoteType::from(note.note_inner),
+            metadata: NoteMetadataEditable {
+                tags: Some(tags),
+                custom_metadata: Some(custom_metadata),
+            },
+        })
+    }
+}
+
 #[post("/note")]
 #[instrument(skip(store, note))]
 async fn new_note(
     store: web::Data<BoxedNoteStore<NoteType>>,
-    note: web::Json<NewNoteData>,
+    note: web::Json<NotePostData>,
 ) -> impl Responder {
-    let note = note.into_inner();
-    let res = serde_json::from_str(&note.metadata_custom_metadata);
-    if let Err(e) = res {
-        return HttpResponse::BadRequest().body(e.to_string());
+    let note: Result<NoteStoreEditArgument, String> = note.into_inner().try_into();
+    if let Err(e) = note {
+        return HttpResponse::BadRequest().body(e);
     }
-    let custom_metadata = res.unwrap();
-    let tags: HashSet<String> = HashSet::from_iter(
-        note.metadata_tags
-            .split(',')
-            .into_iter()
-            .map(|tag| tag.trim().to_owned()),
-    );
+    let note = note.unwrap();
     let res = store
-        .new_note(
-            note.title,
-            NoteType::from(note.note_inner),
-            NoteMetadataEditable {
-                custom_metadata: Some(custom_metadata),
-                tags: Some(tags),
-            },
-        )
+        .new_note(note.title, note.note_inner, note.metadata)
         .await;
     match res {
         Ok(loc) => HttpResponse::Ok().json(loc),
@@ -158,35 +173,86 @@ async fn get_revisions(
 async fn update_note(
     store: web::Data<BoxedNoteStore<NoteType>>,
     params: web::Path<(String,)>,
-    note: web::Json<NewNoteData>,
+    note: web::Json<NotePostData>,
 ) -> impl Responder {
     let (note_id,) = params.into_inner();
     let loc = NoteLocator::Current(note_id.into());
-    let note = note.into_inner();
-    let res = serde_json::from_str(&note.metadata_custom_metadata);
-    if let Err(e) = res {
-        return HttpResponse::BadRequest().body(e.to_string());
+    let note: Result<NoteStoreEditArgument, String> = note.into_inner().try_into();
+    if let Err(e) = note {
+        return HttpResponse::BadRequest().body(e);
     }
-    let custom_metadata = res.unwrap();
-    let tags: HashSet<String> = HashSet::from_iter(
-        note.metadata_tags
-            .split(',')
-            .into_iter()
-            .map(|tag| tag.trim().to_owned()),
-    );
+    let note = note.unwrap();
     let res = store
-        .update_note(
-            &loc,
-            Some(note.title),
-            Some(NoteType::from(note.note_inner)),
-            NoteMetadataEditable {
-                custom_metadata: Some(custom_metadata),
-                tags: Some(tags),
-            },
-        )
+        .update_note(&loc, Some(note.title), Some(note.note_inner), note.metadata)
         .await;
     match res {
         Ok(loc) => HttpResponse::Ok().json(loc),
+        Err(e) => notestore_error_handler(&e),
+    }
+}
+
+#[post("/note/{note_id}/branch")]
+#[instrument(
+    skip(store, params, note),
+    fields(
+      note_id = %params.0
+    )
+)]
+async fn new_branch(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    params: web::Path<(String,)>,
+    note: web::Json<NotePostData>,
+) -> impl Responder {
+    let (note_id,) = params.into_inner();
+    let loc = NoteLocator::Current(note_id.into());
+    let note: Result<NoteStoreEditArgument, String> = note.into_inner().try_into();
+    if let Err(e) = note {
+        return HttpResponse::BadRequest().body(e);
+    }
+    let note = note.unwrap();
+    let res = store
+        .new_note(note.title, note.note_inner, note.metadata)
+        .await;
+    if let Err(e) = res {
+        return notestore_error_handler(&e);
+    }
+    let loc_child = res.unwrap();
+    let res = store.add_branch(loc.get_id(), loc_child.get_id()).await;
+    match res {
+        Ok(_) => HttpResponse::Ok().json(loc_child),
+        Err(e) => notestore_error_handler(&e),
+    }
+}
+
+#[post("/note/{note_id}/next")]
+#[instrument(
+    skip(store, params, note),
+    fields(
+        note_id = %params.0
+    )
+)]
+async fn new_next(
+    store: web::Data<BoxedNoteStore<NoteType>>,
+    params: web::Path<(String,)>,
+    note: web::Json<NotePostData>,
+) -> impl Responder {
+    let (note_id,) = params.into_inner();
+    let loc = NoteLocator::Current(note_id.into());
+    let note: Result<NoteStoreEditArgument, String> = note.into_inner().try_into();
+    if let Err(e) = note {
+        return HttpResponse::BadRequest().body(e);
+    }
+    let note = note.unwrap();
+    let res = store
+        .new_note(note.title, note.note_inner, note.metadata)
+        .await;
+    if let Err(e) = res {
+        return notestore_error_handler(&e);
+    }
+    let loc_next = res.unwrap();
+    let res = store.append_note(loc.get_id(), loc_next.get_id()).await;
+    match res {
+        Ok(_) => HttpResponse::Ok().json(loc_next),
         Err(e) => notestore_error_handler(&e),
     }
 }
@@ -243,5 +309,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(delete_note_current)
         .service(update_note)
         .service(get_revisions)
-        .service(search);
+        .service(search)
+        .service(new_branch)
+        .service(new_next);
 }

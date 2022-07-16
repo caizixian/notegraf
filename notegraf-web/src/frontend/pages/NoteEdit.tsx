@@ -5,7 +5,7 @@ import {getNote} from "../api";
 import {NoteForm} from "../components/NoteForm";
 
 export function NoteEdit() {
-    let {anchorNoteID} = useParams();
+    let {noteID} = useParams();
     const [note, setNote] = useState<any>(null);
     const [error, setError] = useState<any>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -13,7 +13,7 @@ export function NoteEdit() {
     useEffect(() => {
         async function fetchNote() {
             try {
-                const note = await getNote(anchorNoteID as string);
+                const note = await getNote(noteID as string);
                 setNote(note);
                 setIsLoaded(true);
             } catch (e) {
@@ -23,7 +23,7 @@ export function NoteEdit() {
         }
 
         fetchNote();
-    }, [anchorNoteID]);
+    }, [noteID]);
 
 
     if (!isLoaded) {

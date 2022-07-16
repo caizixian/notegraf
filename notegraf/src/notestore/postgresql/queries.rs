@@ -5,7 +5,7 @@ use crate::notestore::postgresql::get_new_revision;
 use crate::{NoteID, NoteLocator, NoteType};
 use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Postgres, Transaction};
+use sqlx::{query, query_as, Executor, Postgres, Transaction};
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -669,4 +669,18 @@ where
     let new_loc = insert_revision(transaction, updated_note).await?;
     upsert_current_revision(transaction, id, new_revision).await?;
     Ok(new_loc)
+}
+
+pub async fn read_write(transaction: &mut Transaction<'_, Postgres>) -> Result<(), NoteStoreError> {
+    Ok(transaction
+        .execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE READ WRITE")
+        .await
+        .map(|_| ())?)
+}
+
+pub async fn read_only(transaction: &mut Transaction<'_, Postgres>) -> Result<(), NoteStoreError> {
+    Ok(transaction
+        .execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY")
+        .await
+        .map(|_| ())?)
 }

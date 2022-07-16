@@ -3,7 +3,16 @@ import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link, useNavigate} from "react-router-dom";
 import {deleteNote} from "../api";
-import {CollectionIcon, LinkIcon, PencilAltIcon, TrashIcon} from "@heroicons/react/outline";
+import {
+    ArrowDownIcon,
+    ArrowUpIcon,
+    ClockIcon,
+    CollectionIcon,
+    LinkIcon,
+    PencilAltIcon, ReplyIcon,
+    ShareIcon,
+    TrashIcon
+} from "@heroicons/react/outline";
 import katex from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
@@ -55,21 +64,22 @@ type NoteProps = {
 }
 
 type NoteControlProps = {
-    id: string,
+    note: types.Note,
     setError: any,
-    onDelete: () => void
+    onDelete: () => void,
+    showPrevNext: boolean
 }
 
 function NoteControls(props: NoteControlProps) {
     const navigate = useNavigate();
 
     const onEdit = () => {
-        navigate(`/note/${props.id}/edit`);
+        navigate(`/note/${props.note.id}/edit`);
     }
 
     const onDelete = async () => {
         try {
-            await deleteNote(props.id);
+            await deleteNote(props.note.id);
             props.onDelete();
         } catch (e) {
             props.setError(e);
@@ -77,16 +87,41 @@ function NoteControls(props: NoteControlProps) {
     }
 
     return (
-        <div className={"flex gap-1 my-1"}>
-            <Link to={`/note/${props.id}/revision`}>
-                <button className={"ng-button ng-button-primary"}>
-                    <CollectionIcon className={"h-6 w-6"}/>
+        <div className={"flex flex-wrap gap-1 my-1"}>
+            <Link to={`/note/${props.note.id}/revision`}>
+                <button className={"ng-button ng-button-primary"} title={"Show revisions"}>
+                    <ClockIcon className={"h-6 w-6"}/>
                 </button>
             </Link>
-            <button onClick={onEdit} className={"ng-button ng-button-primary"}>
+            {props.note.parent != null && <Link to={`/note/${props.note.parent}`}>
+                <button className={"ng-button ng-button-primary"} title={"Parent"}>
+                    <ReplyIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>}
+            {props.showPrevNext && props.note.prev != null && <Link to={`/note/${props.note.prev}`}>
+                <button className={"ng-button ng-button-primary"} title={"Previous"}>
+                    <ArrowUpIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>}
+            {props.showPrevNext && props.note.next != null && <Link to={`/note/${props.note.next}`}>
+                <button className={"ng-button ng-button-primary"} title={"Next"}>
+                    <ArrowDownIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>}
+            <Link to={`/note/${props.note.id}/branch`}>
+                <button className={"ng-button ng-button-primary"} title={"Add branch"}>
+                    <ShareIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>
+            {props.note.next != null || <Link to={`/note/${props.note.id}/append`}>
+                <button className={"ng-button ng-button-primary"} title={"Append note"}>
+                    <CollectionIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>}
+            <button onClick={onEdit} className={"ng-button ng-button-primary"} title={"Edit"}>
                 <PencilAltIcon className={"h-6 w-6"}/>
             </button>
-            <button onClick={onDelete} className={"ng-button ng-button-danger"}>
+            <button onClick={onDelete} className={"ng-button ng-button-danger"} title={"Delete"}>
                 <TrashIcon className={"h-6 w-6"}/>
             </button>
         </div>
@@ -102,18 +137,13 @@ export function Note(props: NoteProps) {
                     <h1 className={"text-4xl underline"}>{renderTitle(props.note.title)}</h1>
                 </Link>
             </div>
-            {props.showPrevNext &&
-                <div>
-                    {props.note.prev != null && <Link to={`../${props.note.prev}`} key={props.note.prev}
-                                                      className={"underline text-blue-500 m-0.5"}>prev</Link>}
-                    {props.note.next != null && <Link to={`../${props.note.next}`} key={props.note.next}
-                                                      className={"underline text-blue-500 m-0.5"}>next</Link>}
-                </div>}
             {props.disableControl ||
-                <NoteControls id={props.note.id} setError={props.setError} onDelete={props.onDelete}/>}
+                <NoteControls note={props.note} setError={props.setError} onDelete={props.onDelete}
+                              showPrevNext={props.showPrevNext}/>}
             <LazyLinks collectionName={"Backlinks"} noteIDs={props.note.references}/>
+            <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>
             <details className={"border-b border-neutral-500"}>
-                <summary>Metadata</summary>
+                <summary className={"select-none"}>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>
                 <p>Modified at: {props.note.metadata.modified_at}</p>
                 <p>Tags: {props.note.metadata.tags.join(", ")}</p>

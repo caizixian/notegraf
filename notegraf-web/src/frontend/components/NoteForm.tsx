@@ -3,6 +3,7 @@ import {useNavigate} from "react-router-dom";
 import {incrementCounter, useLocalStorage} from "../utils";
 import {postNote} from "../api";
 import * as React from "react";
+import {useState} from "react";
 
 type NoteFormContent = {
     title: string,
@@ -31,6 +32,7 @@ function isValidJSON(s: string): boolean {
 export function NoteForm(props: NoteFormProps) {
     const {register, watch, setValue, handleSubmit} = useForm();
     const navigate = useNavigate();
+    const [error, setError] = useState<any>(null);
     useLocalStorage(props.autoSaveKey, watch, setValue, props.defaultValue, 5000);
 
     const onSubmit = async (data: any) => {
@@ -40,8 +42,12 @@ export function NoteForm(props: NoteFormProps) {
             incrementCounter();
             navigate(`/note/${res["Specific"][0]}`);
         } catch (e: any) {
-            console.error('Error:', e.toString());
+            setError(e);
         }
+    }
+
+    if (error) {
+        return (<div>{error.toString()}</div>);
     }
 
     return (
