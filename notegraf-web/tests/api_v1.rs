@@ -6,32 +6,6 @@ use reqwest::{Client, StatusCode};
 use notegraf::NoteLocator;
 use serde_json::{json, Value};
 
-#[tokio::test]
-async fn new_note() {
-    let app = spawn_app().await;
-    let client = Client::new();
-
-    let response = client
-        // Use the returned application address
-        .post(&format!("{}/api/v1/note", &app.address))
-        .json(&json!({
-            "title": "My title",
-            "note_inner": "# Hey Markdown Note\n## H2",
-            "metadata_tags": "",
-            "metadata_custom_metadata": "null"
-        }))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json::<Value>()
-        .await
-        .expect("Failed to parse response");
-    println!("{}", response);
-    assert!(response.is_object());
-    let loc = response.as_object().unwrap();
-    assert!(loc.contains_key("Specific"));
-}
-
 async fn create_note_helper(
     client: &Client,
     address: &str,
@@ -54,19 +28,15 @@ async fn create_note_helper(
         .expect("Failed to parse response")
 }
 
-async fn update_note_helper(
+async fn post_note_helper(
     client: &Client,
     address: &str,
-    loc: &NoteLocator,
+    endpoint: &str,
     title: &str,
     note_inner: &str,
 ) -> NoteLocator {
     client
-        .post(&format!(
-            "{}/api/v1/note/{}/revision",
-            address,
-            loc.get_id()
-        ))
+        .post(&format!("{}/api/v1/{}", address, endpoint))
         .json(&json!({
             "title": title.to_owned(),
             "note_inner": note_inner.to_owned(),
@@ -76,9 +46,41 @@ async fn update_note_helper(
         .send()
         .await
         .expect("Failed to execute request.")
-        .json()
+        .json::<NoteLocator>()
         .await
         .expect("Failed to parse response")
+}
+
+async fn get_note_helper(client: &Client, address: &str, loc: &NoteLocator) -> Value {
+    client
+        .get(&format!(
+            "{}/api/v1/note/{}",
+            address,
+            loc.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response")
+}
+
+#[tokio::test]
+async fn new_note() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc = post_note_helper(
+        &client,
+        &app.address,
+        "note",
+        "My title",
+        "# Hey Markdown Note\n## H2",
+    )
+    .await;
+
+    assert!(matches!(loc, NoteLocator::Specific(_, _)));
 }
 
 #[tokio::test]
@@ -87,18 +89,7 @@ async fn note_retrive() {
     let client = Client::new();
 
     let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
-    let response = client
-        .get(&format!(
-            "{}/api/v1/note/{}",
-            &app.address,
-            loc1.get_id().as_ref()
-        ))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json::<Value>()
-        .await
-        .expect("Failed to parse response");
+    let response = get_note_helper(&client, &app.address, &loc1).await;
 
     assert!(response.is_object());
     assert_eq!(response["id"], loc1.get_id().as_ref());
@@ -114,18 +105,7 @@ async fn note_delete() {
     let client = Client::new();
 
     let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
-    client
-        .get(&format!(
-            "{}/api/v1/note/{}",
-            &app.address,
-            loc1.get_id().as_ref()
-        ))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json::<Value>()
-        .await
-        .expect("Failed to parse response");
+    get_note_helper(&client, &app.address, &loc1).await;
     client
         .delete(&format!(
             "{}/api/v1/note/{}",
@@ -153,20 +133,16 @@ async fn note_update() {
     let client = Client::new();
 
     let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
-    let loc2 = update_note_helper(&client, &app.address, &loc1, "New title", "New body text").await;
+    let loc2 = post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/revision", loc1.get_id()),
+        "New title",
+        "New body text",
+    )
+    .await;
 
-    let response = client
-        .get(&format!(
-            "{}/api/v1/note/{}",
-            &app.address,
-            loc1.get_id().as_ref()
-        ))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json::<Value>()
-        .await
-        .expect("Failed to parse response");
+    let response = get_note_helper(&client, &app.address, &loc1).await;
     assert_eq!(response["id"], loc1.get_id().as_ref());
     assert_eq!(response["revision"], loc2.get_revision().unwrap().as_ref());
     assert_eq!(response["next"], Value::Null);
@@ -180,7 +156,14 @@ async fn note_revisions() {
     let client = Client::new();
 
     let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
-    let loc2 = update_note_helper(&client, &app.address, &loc1, "New title", "New body text").await;
+    let loc2 = post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/revision", loc1.get_id()),
+        "New title",
+        "New body text",
+    )
+    .await;
 
     let response = client
         .get(&format!(
@@ -285,20 +268,56 @@ async fn backlink() {
     )
     .await;
 
-    let response = client
-        .get(&format!(
-            "{}/api/v1/note/{}",
-            &app.address,
-            loc1.get_id().as_ref()
-        ))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json::<Value>()
-        .await
-        .expect("Failed to parse response");
+    let response = get_note_helper(&client, &app.address, &loc1).await;
     assert_eq!(
         response["references"].as_array().unwrap()[0],
         loc2.get_id().as_ref()
     );
+}
+
+#[tokio::test]
+async fn add_branch() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc2 = post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/branch", loc1.get_id()),
+        "child title",
+        "New body text",
+    )
+    .await;
+
+    let response = get_note_helper(&client, &app.address, &loc1).await;
+    assert_eq!(
+        response["branches"].as_array().unwrap()[0],
+        loc2.get_id().as_ref()
+    );
+
+    let response = get_note_helper(&client, &app.address, &loc2).await;
+    assert_eq!(response["parent"].as_str().unwrap(), loc1.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn append_note() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc2 = post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/next", loc1.get_id()),
+        "next title",
+        "New body text",
+    )
+    .await;
+
+    let response = get_note_helper(&client, &app.address, &loc1).await;
+    assert_eq!(response["next"].as_str().unwrap(), loc2.get_id().as_ref());
+
+    let response = get_note_helper(&client, &app.address, &loc2).await;
+    assert_eq!(response["prev"].as_str().unwrap(), loc1.get_id().as_ref());
 }
