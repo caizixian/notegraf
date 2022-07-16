@@ -767,4 +767,9 @@ mod tests {
     async fn search_nonexist() {
         common_tests::search_nonexist(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn backlink() {
+        common_tests::backlink(InMemoryStore::new()).await;
+    }
 }

@@ -492,3 +492,28 @@ pub(super) async fn search_nonexist(store: impl NoteStore<PlainNote>) {
     let notes = store.search(&("fizzbuzz".into())).await.unwrap();
     assert_eq!(notes.len(), 0);
 }
+
+pub(super) async fn backlink(store: impl NoteStore<PlainNote>) {
+    let note_inner_1 = PlainNote::new("Hello world".into());
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            note_inner_1.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let mut note_inner_2 = PlainNote::new("Goodbye world".into());
+    note_inner_2.add_referent(loc1.get_id().clone());
+    let loc2 = store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner_2.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let note = store.get_note(&loc1.current()).await.unwrap();
+    let references = note.get_references();
+    assert!(references.contains(loc2.get_id()));
+}

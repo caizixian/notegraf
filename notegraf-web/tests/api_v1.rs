@@ -270,3 +270,35 @@ async fn search_notes() {
         loc2.get_revision().unwrap().as_ref()
     );
 }
+
+#[tokio::test]
+async fn backlink() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
+    let loc2 = create_note_helper(
+        &client,
+        &app.address,
+        "bar",
+        &format!("[here is a link to foo](notegraf:/note/{})", loc1.get_id()),
+    )
+    .await;
+
+    let response = client
+        .get(&format!(
+            "{}/api/v1/note/{}",
+            &app.address,
+            loc1.get_id().as_ref()
+        ))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(
+        response["references"].as_array().unwrap()[0],
+        loc2.get_id().as_ref()
+    );
+}

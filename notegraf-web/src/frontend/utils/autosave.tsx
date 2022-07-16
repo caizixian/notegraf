@@ -2,7 +2,7 @@ import {debounce} from "lodash";
 import * as React from "react";
 import {useEffect, useState} from "react";
 
-var autoSaveCounter = 0;
+let autoSaveCounter = 0;
 
 function getStorageValue(key: string, defaultValue: any): any {
     const saved = localStorage.getItem(key);

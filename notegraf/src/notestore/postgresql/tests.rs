@@ -112,3 +112,8 @@ async fn search_fulltext() {
 async fn search_nonexist() {
     common_tests::search_nonexist(get_store().await).await;
 }
+
+#[tokio::test]
+async fn backlink() {
+    common_tests::backlink(get_store().await).await;
+}

@@ -2,7 +2,7 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
 import {getNoteRevisions} from "../api";
-import {showAgo} from "../utils/datetime";
+import {renderTitle, showAgo} from "../utils";
 import {Note} from "../components/Note";
 import * as types from "../types";
 
@@ -42,8 +42,7 @@ export function NoteRevisions() {
                 key={note.revision}
                 onClick={() => setRevisionSelected(note.revision)}
                 className={"" + (note.revision === revisionSelected ? " bg-sky-300 dark:bg-sky-700" : "")}>
-                <p className={"truncate"}>{note.title ? note.title : <span
-                    className={"italic text-gray-500"}>no title</span>}
+                <p className={"truncate"}>{renderTitle(note.title)}
                 </p>
                 <p className={"truncate"}>
                     {showAgo(note.metadata.modified_at)}
