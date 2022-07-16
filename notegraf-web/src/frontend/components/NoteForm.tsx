@@ -1,6 +1,6 @@
 import {useForm} from "react-hook-form";
 import {useNavigate} from "react-router-dom";
-import {incrementCounter, useLocalStorage} from "../utils/autosave";
+import {incrementCounter, useLocalStorage} from "../utils";
 import {postNote} from "../api";
 import * as React from "react";
 

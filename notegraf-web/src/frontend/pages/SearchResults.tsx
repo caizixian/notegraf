@@ -2,7 +2,7 @@ import * as React from "react";
 import {useEffect, useState} from "react";
 import {useSearchParams} from "react-router-dom";
 import {searchNotes} from "../api";
-import {showAgo} from "../utils/datetime";
+import {renderTitle, showAgo} from "../utils";
 import * as types from "../types";
 import {Note} from "../components/Note";
 
@@ -50,9 +50,7 @@ export function SearchResults() {
                 key={note.id}
                 onClick={() => setRevisionSelected(note.revision)}
                 className={"" + (note.revision === revisionSelected ? " bg-sky-300 dark:bg-sky-700" : "")}>
-                <p className={"truncate"}>{note.title ? note.title : <span
-                    className={"italic text-gray-500"}>no title</span>}
-                </p>
+                <p className={"truncate"}>{renderTitle(note.title)}</p>
                 <p className={"truncate"}>
                     {showAgo(note.metadata.created_at)}
                 </p>

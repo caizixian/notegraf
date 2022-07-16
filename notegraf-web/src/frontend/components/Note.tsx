@@ -7,6 +7,8 @@ import {CollectionIcon, LinkIcon, PencilAltIcon, TrashIcon} from "@heroicons/rea
 import katex from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
+import {LazyLinks} from "./LazyLinks";
+import {renderTitle} from "../utils";
 
 function escapeHtml(unsafe: string): string {
     return unsafe
@@ -96,8 +98,9 @@ export function Note(props: NoteProps) {
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <h1 className={"text-4xl"}>{props.note.title ? props.note.title :
-                    <span className={"italic text-gray-500"}>no title</span>}</h1>
+                <Link to={`/note/${props.note.id}`}>
+                    <h1 className={"text-4xl underline"}>{renderTitle(props.note.title)}</h1>
+                </Link>
             </div>
             {props.showPrevNext &&
                 <div>
@@ -108,6 +111,7 @@ export function Note(props: NoteProps) {
                 </div>}
             {props.disableControl ||
                 <NoteControls id={props.note.id} setError={props.setError} onDelete={props.onDelete}/>}
+            <LazyLinks collectionName={"Backlinks"} noteIDs={props.note.references}/>
             <details className={"border-b border-neutral-500"}>
                 <summary>Metadata</summary>
                 <p>Created at: {props.note.metadata.created_at}</p>
