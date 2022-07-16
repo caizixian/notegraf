@@ -24,6 +24,7 @@ export function LazyLinks(props: LazyLinksProps) {
             let notes = await Promise.all(noteIDs.map(async (noteID) => {
                 return await getNote(noteID);
             }));
+            notes.sort((a, b) => a.title.localeCompare(b.title));
             setNotes(notes);
             setIsLoaded(true);
         }
