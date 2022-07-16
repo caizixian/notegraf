@@ -18,9 +18,11 @@ cargo build
 
 ## Setup Development Server
 
-Under `notegraf/notegraf-web`, create the following two files.
+First, you need to create a database, e.g., via `createdb notegraf`.
 
-```
+Then, under `notegraf/notegraf-web`, create the following two files.
+
+```console
 notegraf
 ├── ...
 └── notegraf-web
@@ -64,7 +66,7 @@ Your browser should automatically navigate to <http://localhost:1234>.
 
 The repo is set up as a cargo workspace with two crates.
 
-```
+```console
 notegraf
 ├── ...
 ├── notegraf     <- Notegraf core data types and persistence logics
