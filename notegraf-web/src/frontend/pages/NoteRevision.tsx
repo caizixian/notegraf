@@ -1,10 +1,10 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
-import {Note, NoteComponent} from "../note"
 import {getNoteSpecific} from "../api";
+import {Note} from "../components/Note";
 
-export function SpecificNote() {
+export function NoteRevision() {
     let {anchorNoteID, revision} = useParams();
     const [note, setNote] = useState<any>(null);
     const [error, setError] = useState<any>(null);
@@ -13,7 +13,7 @@ export function SpecificNote() {
     useEffect(() => {
         async function fetchNoteSepcific() {
             try {
-                const note: Note = await getNoteSpecific(anchorNoteID as string, revision as string);
+                const note = await getNoteSpecific(anchorNoteID as string, revision as string);
                 setNote(note);
                 setIsLoaded(true);
             } catch (e) {
@@ -33,7 +33,7 @@ export function SpecificNote() {
     }
 
     return (<div className="p-2">
-        <NoteComponent note={note} key={note.id} showPrevNext={false}
-                       setError={setError} disableControl={true}></NoteComponent>
+        <Note note={note} key={note.id} showPrevNext={false}
+              setError={setError} disableControl={true} onDelete={()=>{}}></Note>
     </div>);
 }

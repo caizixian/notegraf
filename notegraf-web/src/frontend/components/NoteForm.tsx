@@ -1,30 +1,41 @@
-import {useNavigate, useParams} from "react-router-dom";
-import * as React from "react";
-import {useEffect, useState} from "react";
 import {useForm} from "react-hook-form";
+import {useNavigate} from "react-router-dom";
 import {incrementCounter, useLocalStorage} from "../utils/autosave";
-import {getNote, updateNote} from "../api";
-import {Note} from "../note";
-import {isValidJSON} from "./new_note";
+import {postNote} from "../api";
+import * as React from "react";
 
-type EditNoteInnerProps = {
-    note: Note
+type NoteFormContent = {
+    title: string,
+    note_inner: string,
+    metadata_tags: string,
+    metadata_custom_metadata: string
 }
 
-function EditNoteInner(props: EditNoteInnerProps) {
+type NoteFormProps = {
+    defaultValue: NoteFormContent,
+    endpoint: string,
+    autoSaveKey: string
+}
+
+function isValidJSON(s: string): boolean {
+    try {
+        JSON.parse(s);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
+
+export function NoteForm(props: NoteFormProps) {
     const {register, watch, setValue, handleSubmit} = useForm();
     const navigate = useNavigate();
-    useLocalStorage(`autosave.note.edit.${props.note.id}`, watch, setValue, {
-        title: props.note.title,
-        note_inner: props.note.note_inner,
-        metadata_tags: props.note.metadata.tags.join(", "),
-        metadata_custom_metadata: JSON.stringify(props.note.metadata.custom_metadata)
-    }, 5000);
+    useLocalStorage(props.autoSaveKey, watch, setValue, props.defaultValue, 5000);
 
     const onSubmit = async (data: any) => {
         try {
-            let res = await updateNote(props.note.id, data);
-            localStorage.removeItem(`autosave.note.edit.${props.note.id}`);
+            let res = await postNote(props.endpoint, data);
+            localStorage.removeItem(props.autoSaveKey);
             incrementCounter();
             navigate(`/note/${res["Specific"][0]}`);
         } catch (e: any) {
@@ -56,36 +67,4 @@ function EditNoteInner(props: EditNoteInnerProps) {
             </div>
         </form>
     );
-}
-
-export function EditNoteForm() {
-    let {anchorNoteID} = useParams();
-    const [note, setNote] = useState<any>(null);
-    const [error, setError] = useState<any>(null);
-    const [isLoaded, setIsLoaded] = useState(false);
-
-    useEffect(() => {
-        async function fetchNote() {
-            try {
-                const note = await getNote(anchorNoteID as string);
-                setNote(note);
-                setIsLoaded(true);
-            } catch (e) {
-                setError(e);
-                setIsLoaded(true);
-            }
-        }
-
-        fetchNote();
-    }, [anchorNoteID]);
-
-
-    if (!isLoaded) {
-        return (<div>Loading...</div>);
-    }
-    if (error) {
-        return (<div>{error.toString()}</div>);
-    }
-
-    return (<EditNoteInner note={note}/>);
 }
