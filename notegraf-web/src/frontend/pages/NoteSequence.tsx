@@ -4,6 +4,7 @@ import {useParams, useSearchParams} from "react-router-dom";
 import {getNote} from "../api";
 import {Note} from "../components/Note";
 import * as types from "../types";
+import {tileInTitle} from "../utils";
 
 async function fetchNoteSequence(anchorNoteID: string, recursiveLoad: boolean): Promise<types.Note[]> {
     let notes: types.Note[] = [];
@@ -36,6 +37,7 @@ export function NoteSequence() {
             const notes = await fetchNoteSequence(noteID as string, recursiveLoad);
             setNotes(notes);
             setIsLoaded(true);
+            document.title = `${tileInTitle(notes[0].title)}${recursiveLoad ? " (recursive)" : ""} - Notegraf`;
         } catch (e) {
             setError(e);
             setIsLoaded(true);
@@ -66,7 +68,7 @@ export function NoteSequence() {
                    onChange={handleCheckbox}/>
             <label htmlFor={"recursiveLoad"} className={"select-none"}>Recursive load?</label>
         </div>
-        {notes.map(note => (<Note note={note} key={note.id} showPrevNext={!recursiveLoad}
+        {notes.map(note => (<Note note={note} key={note.id} showPrevNext={!recursiveLoad} permaLink={false}
                                   setError={setError} disableControl={false}
                                   onDelete={fetchNoteSequenceInner}></Note>))}
     </div>);

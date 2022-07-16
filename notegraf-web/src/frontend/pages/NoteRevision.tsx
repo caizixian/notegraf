@@ -3,6 +3,7 @@ import {useEffect, useState} from "react";
 import {useParams} from "react-router-dom";
 import {getNoteSpecific} from "../api";
 import {Note} from "../components/Note";
+import {showAgo, tileInTitle} from "../utils";
 
 export function NoteRevision() {
     let {noteID, revision} = useParams();
@@ -16,6 +17,7 @@ export function NoteRevision() {
                 const note = await getNoteSpecific(noteID as string, revision as string);
                 setNote(note);
                 setIsLoaded(true);
+                document.title = `${tileInTitle(note.title)} (${showAgo(note.metadata.modified_at)}) - Notegraf`;
             } catch (e) {
                 setError(e);
                 setIsLoaded(true);
@@ -33,7 +35,7 @@ export function NoteRevision() {
     }
 
     return (<div className="p-2">
-        <Note note={note} key={note.id} showPrevNext={false}
+        <Note note={note} key={note.id} showPrevNext={false} permaLink={true}
               setError={setError} disableControl={true} onDelete={() => {
         }}></Note>
     </div>);
