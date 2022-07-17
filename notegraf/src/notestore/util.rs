@@ -14,7 +14,8 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         .await
         .unwrap();
     let loc2 = store
-        .new_note(
+        .append_note(
+            loc1.get_id(),
             "".to_owned(),
             "## Code testing\n`inline code`\n```python\na = [1, 2, 3, 4]\nfor n in a:\n    print(n)\n```\n".into(),
             NoteMetadataEditable {
@@ -26,21 +27,14 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
         )
         .await
         .unwrap();
-    store
-        .append_note(loc1.get_id(), loc2.get_id())
-        .await
-        .unwrap();
-    let loc3 = store
-        .new_note(
+    let _loc3 = store
+        .append_note(
+            loc2.get_id(),
             "".to_owned(),
             "## Math testing\n```math\n\\frac{1}{2}\n```\n\nInline math `${\\frac{1}{2}}$`\n"
                 .into(),
             NoteMetadataEditable::unchanged(),
         )
-        .await
-        .unwrap();
-    store
-        .append_note(loc2.get_id(), loc3.get_id())
         .await
         .unwrap();
 }

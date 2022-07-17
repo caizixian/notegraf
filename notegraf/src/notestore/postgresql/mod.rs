@@ -4,7 +4,7 @@ use crate::notestore::Revisions;
 use crate::{Note, NoteID, NoteLocator, NoteStore, NoteType, Revision};
 use futures::future::BoxFuture;
 use sqlx::postgres::PgConnectOptions;
-use sqlx::{query, PgPool};
+use sqlx::{query, PgPool, Postgres, Transaction};
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::path::Path;
@@ -127,6 +127,37 @@ pub struct PostgreSQLStore<T> {
     _phantom: PhantomData<T>,
 }
 
+impl<T: NoteType> PostgreSQLStore<T> {
+    async fn new_note_helper(
+        &self,
+        transaction: &mut Transaction<'_, Postgres>,
+        title: String,
+        note_inner: T,
+        prev: Option<Uuid>,
+        parent: Option<Uuid>,
+        metadata: NoteMetadataEditable,
+    ) -> Result<NoteLocator, NoteStoreError> {
+        let id = get_new_noteid();
+        let revision = get_new_revision();
+        // reborrowing hack to prevent transaction from moving
+        query!(r#"INSERT INTO note(id) VALUES ($1)"#, &id)
+            .execute(&mut *transaction)
+            .await?;
+        let n = PostgreSQLNoteEditable {
+            id,
+            revision,
+            title,
+            note_inner,
+            prev,
+            parent,
+            metadata: NoteMetadata::from_editable(metadata),
+        };
+        insert_revision(transaction, n).await?;
+        upsert_current_revision(transaction, id, revision).await?;
+        Ok(NoteLocator::Specific(id.into(), revision.into()))
+    }
+}
+
 impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn new_note(
         &self,
@@ -135,26 +166,13 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         metadata: NoteMetadataEditable,
     ) -> BoxFuture<Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
-            let note_id = get_new_noteid();
-            let revision = get_new_revision();
             let mut transaction = self.db_pool.begin().await?;
             read_write(&mut transaction).await?;
-            query!(r#"INSERT INTO note(id) VALUES ($1)"#, &note_id)
-                .execute(&mut transaction)
-                .await?;
-            let n = PostgreSQLNoteEditable {
-                id: note_id,
-                revision,
-                title,
-                note_inner,
-                prev: None,
-                parent: None,
-                metadata: NoteMetadata::from_editable(metadata),
-            };
-            insert_revision(&mut transaction, n).await?;
-            upsert_current_revision(&mut transaction, note_id, revision).await?;
+            let loc = self
+                .new_note_helper(&mut transaction, title, note_inner, None, None, metadata)
+                .await;
             transaction.commit().await?;
-            Ok(NoteLocator::Specific(note_id.into(), revision.into()))
+            loc
         })
     }
 
@@ -294,8 +312,10 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
     fn append_note<'a>(
         &'a self,
         last: &'a NoteID,
-        next: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
             read_write(&mut transaction).await?;
@@ -308,41 +328,45 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 transaction.rollback().await?;
                 return Err(NoteStoreError::ExistingNext(last.clone(), n));
             }
-            update_note_helper::<_, T>(
-                &mut transaction,
-                &NoteLocator::Current(next.clone()),
-                |old_note| {
-                    let mut note = old_note.clone();
-                    note.prev = Some(last.to_uuid().unwrap());
-                    Ok(note)
-                },
-            )
-            .await?;
+            let last_uuid = last.try_to_uuid()?;
+            let loc = self
+                .new_note_helper(
+                    &mut transaction,
+                    title,
+                    note_inner,
+                    Some(last_uuid),
+                    None,
+                    metadata,
+                )
+                .await?;
             transaction.commit().await?;
-            Ok(())
+            Ok(loc)
         })
     }
 
     fn add_branch<'a>(
         &'a self,
         parent: &'a NoteID,
-        child: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
             read_write(&mut transaction).await?;
-            update_note_helper::<_, T>(
-                &mut transaction,
-                &NoteLocator::Current(child.clone()),
-                |old_note| {
-                    let mut note = old_note.clone();
-                    note.parent = Some(parent.to_uuid().unwrap());
-                    Ok(note)
-                },
-            )
-            .await?;
+            let parent_uuid = parent.try_to_uuid()?;
+            let loc = self
+                .new_note_helper(
+                    &mut transaction,
+                    title,
+                    note_inner,
+                    None,
+                    Some(parent_uuid),
+                    metadata,
+                )
+                .await?;
             transaction.commit().await?;
-            Ok(())
+            Ok(loc)
         })
     }
 

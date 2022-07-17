@@ -211,15 +211,10 @@ async fn new_branch(
     }
     let note = note.unwrap();
     let res = store
-        .new_note(note.title, note.note_inner, note.metadata)
+        .add_branch(loc.get_id(), note.title, note.note_inner, note.metadata)
         .await;
-    if let Err(e) = res {
-        return notestore_error_handler(&e);
-    }
-    let loc_child = res.unwrap();
-    let res = store.add_branch(loc.get_id(), loc_child.get_id()).await;
     match res {
-        Ok(_) => HttpResponse::Ok().json(loc_child),
+        Ok(loc_child) => HttpResponse::Ok().json(loc_child),
         Err(e) => notestore_error_handler(&e),
     }
 }
@@ -244,15 +239,10 @@ async fn new_next(
     }
     let note = note.unwrap();
     let res = store
-        .new_note(note.title, note.note_inner, note.metadata)
+        .append_note(loc.get_id(), note.title, note.note_inner, note.metadata)
         .await;
-    if let Err(e) = res {
-        return notestore_error_handler(&e);
-    }
-    let loc_next = res.unwrap();
-    let res = store.append_note(loc.get_id(), loc_next.get_id()).await;
     match res {
-        Ok(_) => HttpResponse::Ok().json(loc_next),
+        Ok(loc_next) => HttpResponse::Ok().json(loc_next),
         Err(e) => notestore_error_handler(&e),
     }
 }

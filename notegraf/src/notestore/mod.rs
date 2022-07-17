@@ -98,14 +98,18 @@ where
     fn append_note<'a>(
         &'a self,
         last: &'a NoteID,
-        next: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Add a branch to a note
     fn add_branch<'a>(
         &'a self,
         parent: &'a NoteID,
-        child: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>>;
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>>;
     /// Search for a note
     ///
     /// No matter which variant of [`NoteLocator`] is used, we only care about the [`NoteID`].
