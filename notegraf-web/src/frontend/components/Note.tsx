@@ -45,6 +45,23 @@ const renderer = {
             return false;
         }
         return katex.renderToString(match[1], {output: "html", displayMode: false});
+    },
+    link(href: string, title: string, text: string) {
+        // The original implementation cleans the URL if marked option sanitize/base
+        // But these two options aren't used by Notegraf
+        // The rest of the original link implementation is copied verbatim with the notegraf protocol stripping
+        if (href === null) {
+            return text;
+        }
+        if (href.indexOf("notegraf:") === 0) {
+            href = href.slice(9);
+        }
+        let out = '<a href="' + escapeHtml(href) + '"';
+        if (title) {
+            out += ' title="' + title + '"';
+        }
+        out += '>' + text + '</a>';
+        return out;
     }
 }
 
