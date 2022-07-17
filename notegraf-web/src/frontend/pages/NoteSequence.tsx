@@ -28,7 +28,7 @@ export function NoteSequence() {
     let [searchParams, setSearchParams] = useSearchParams();
     const [notes, setNotes] = useState<types.Note[]>([]);
     const [error, setError] = useState<any>(null);
-    const recursiveLoad = searchParams.get("recursiveLoad") === "true";
+    const recursiveLoad = !(searchParams.get("recursiveLoad") === "false");
 
     const [isLoaded, setIsLoaded] = useState(false);
 
