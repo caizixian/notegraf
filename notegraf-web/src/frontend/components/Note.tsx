@@ -112,6 +112,7 @@ function NoteControls(props: NoteControlProps) {
                     <ClockIcon className={"h-6 w-6"}/>
                 </button>
             </Link>
+            <div className={"w-1"}></div>
             {props.note.parent != null && <Link to={`/note/${props.note.parent}`}>
                 <button className={"ng-button ng-button-primary"} title={"Parent"}>
                     <ReplyIcon className={"h-6 w-6"}/>
@@ -127,6 +128,7 @@ function NoteControls(props: NoteControlProps) {
                     <ArrowDownIcon className={"h-6 w-6"}/>
                 </button>
             </Link>}
+            <div className={"w-1"}></div>
             <Link to={`/note/${props.note.id}/branch`}>
                 <button className={"ng-button ng-button-primary"} title={"Add branch"}>
                     <ShareIcon className={"h-6 w-6"}/>
@@ -137,10 +139,11 @@ function NoteControls(props: NoteControlProps) {
                     <CollectionIcon className={"h-6 w-6"}/>
                 </button>
             </Link>}
+            <div className={"w-1"}></div>
             <button onClick={onEdit} className={"ng-button ng-button-primary"} title={"Edit"}>
                 <PencilAltIcon className={"h-6 w-6"}/>
             </button>
-            <button onClick={onDelete} className={"ng-button ng-button-danger"} title={"Delete"}>
+            <button onClick={onDelete} className={"ng-button ng-button-danger ml-auto"} title={"Delete"}>
                 <TrashIcon className={"h-6 w-6"}/>
             </button>
         </div>
