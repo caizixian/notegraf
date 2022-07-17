@@ -156,35 +156,32 @@ pub(super) async fn add_branch(store: impl NoteStore<PlainNote>) {
     let loc1 = store
         .new_note(
             "".to_owned(),
-            PlainNote::new("Branch".into()),
-            NoteMetadataEditable::unchanged(),
-        )
-        .await
-        .unwrap();
-    let loc2 = store
-        .new_note(
-            "".to_owned(),
             PlainNote::new("Parent".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
-    assert!(!store
-        .get_note(&loc2.current())
+    assert!(store
+        .get_note(&loc1.current())
         .await
         .unwrap()
         .get_branches()
-        .contains(loc1.get_id()));
-    store
-        .add_branch(&loc2.get_id(), loc1.get_id())
+        .is_empty());
+    let loc2 = store
+        .add_branch(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     assert!(store
-        .get_note(&loc2.current())
+        .get_note(&loc1.current())
         .await
         .unwrap()
         .get_branches()
-        .contains(loc1.get_id()));
+        .contains(loc2.get_id()));
 }
 
 pub(super) async fn delete_note_specific(store: impl NoteStore<PlainNote>) {
@@ -221,31 +218,28 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
     let loc1 = store
         .new_note(
             "".to_owned(),
-            PlainNote::new("Branch".into()),
-            NoteMetadataEditable::unchanged(),
-        )
-        .await
-        .unwrap();
-    let loc2 = store
-        .new_note(
-            "".to_owned(),
             PlainNote::new("Parent".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
-    store
-        .add_branch(&loc2.get_id(), loc1.get_id())
+    let loc2 = store
+        .add_branch(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
         .await
         .unwrap();
     assert!(store
-        .get_note(&loc2.current())
+        .get_note(&loc1.current())
         .await
         .unwrap()
         .get_branches()
-        .contains(loc1.get_id()));
+        .contains(loc2.get_id()));
     assert!(matches!(
-        store.delete_note(&loc2.current()).await,
+        store.delete_note(&loc1.current()).await,
         Err(NoteStoreError::HasBranches(_))
     ));
 }
@@ -297,13 +291,14 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
     let loc1 = store
         .new_note(
             "".to_owned(),
-            PlainNote::new("Tail".into()),
+            PlainNote::new("Head".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
     let loc2 = store
-        .new_note(
+        .append_note(
+            loc1.get_id(),
             "".to_owned(),
             PlainNote::new("Middle".into()),
             NoteMetadataEditable::unchanged(),
@@ -311,19 +306,12 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
         .await
         .unwrap();
     let loc3 = store
-        .new_note(
+        .append_note(
+            loc2.get_id(),
             "".to_owned(),
-            PlainNote::new("Head".into()),
+            PlainNote::new("Tail".into()),
             NoteMetadataEditable::unchanged(),
         )
-        .await
-        .unwrap();
-    store
-        .append_note(&loc3.get_id(), loc2.get_id())
-        .await
-        .unwrap();
-    store
-        .append_note(&loc2.get_id(), loc1.get_id())
         .await
         .unwrap();
     store.delete_note(&loc2.current()).await.unwrap();
@@ -332,7 +320,7 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
             .get_note(&loc1.current())
             .await
             .unwrap()
-            .get_prev()
+            .get_next()
             .unwrap(),
         loc3.get_id()
     );
@@ -341,7 +329,7 @@ pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>
             .get_note(&loc3.current())
             .await
             .unwrap()
-            .get_next()
+            .get_prev()
             .unwrap(),
         loc1.get_id()
     );
@@ -351,54 +339,30 @@ pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>)
     let loc1 = store
         .new_note(
             "".to_owned(),
-            PlainNote::new("Tail".into()),
+            PlainNote::new("Head".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
     let loc2 = store
-        .new_note(
+        .append_note(
+            loc1.get_id(),
             "".to_owned(),
             PlainNote::new("Middle".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
-    let loc3 = store
-        .new_note(
+    let _loc3 = store
+        .append_note(
+            loc2.get_id(),
             "".to_owned(),
-            PlainNote::new("Head".into()),
+            PlainNote::new("Tail".into()),
             NoteMetadataEditable::unchanged(),
         )
         .await
         .unwrap();
-    store
-        .append_note(&loc3.get_id(), loc2.get_id())
-        .await
-        .unwrap();
-    store
-        .append_note(&loc2.get_id(), loc1.get_id())
-        .await
-        .unwrap();
     store.delete_note(&loc2.current()).await.unwrap();
-    assert_eq!(
-        &store
-            .get_note(&loc1.current())
-            .await
-            .unwrap()
-            .get_prev()
-            .unwrap(),
-        loc3.get_id()
-    );
-    assert_eq!(
-        &store
-            .get_note(&loc3.current())
-            .await
-            .unwrap()
-            .get_next()
-            .unwrap(),
-        loc1.get_id()
-    );
     assert!(matches!(
         &store.get_current_revision(&loc2).await.ok().unwrap(),
         None

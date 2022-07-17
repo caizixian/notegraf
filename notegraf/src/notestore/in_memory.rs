@@ -315,14 +315,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .collect()
     }
 
-    // The methods above are helper methods
-    // The methods below are to implement the NoteStore interface
-    fn new_note(
+    fn new_note_helper(
         &mut self,
         title: String,
         note_inner: T,
         metadata: NoteMetadataEditable,
-    ) -> Result<NoteLocator, NoteStoreError> {
+    ) -> NoteLocator {
         let id = self.get_new_noteid();
         let revision = self.get_new_revision(&id);
         let note = InMemoryNoteStored {
@@ -344,7 +342,18 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .insert(revision.clone(), note);
         assert!(!self.current_revision.contains_key(&id));
         self.current_revision.insert(id.clone(), revision.clone());
-        Ok(NoteLocator::Specific(id, revision))
+        NoteLocator::Specific(id, revision)
+    }
+
+    // The methods above are helper methods
+    // The methods below are to implement the NoteStore interface
+    fn new_note(
+        &mut self,
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> Result<NoteLocator, NoteStoreError> {
+        Ok(self.new_note_helper(title, note_inner, metadata))
     }
 
     fn compute_stored_note(
@@ -472,25 +481,42 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .collect()
     }
 
-    fn append_note(&mut self, last: &NoteID, next: &NoteID) -> Result<(), NoteStoreError> {
-        self.update_note_helper(&NoteLocator::Current(last.clone()), |old_note| {
+    fn append_note(
+        &mut self,
+        last: &NoteID,
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> Result<NoteLocator, NoteStoreError> {
+        let last_loc = NoteLocator::Current(last.clone());
+        let last_note = self.get_note_stored(&last_loc)?;
+        if let Some(n) = last_note.next {
+            return Err(NoteStoreError::ExistingNext(last_note.id, n));
+        }
+        let loc = self.new_note_helper(title, note_inner, metadata);
+        self.update_note_helper(&last_loc, |old_note| {
             let mut note = old_note.clone();
-            if note.next.is_some() {
-                return Err(NoteStoreError::ExistingNext(note.id, next.clone()));
-            }
-            note.next = Some(next.clone());
+            note.next = Some(loc.get_id().clone());
             Ok(note)
         })?;
-        Ok(())
+        Ok(loc)
     }
 
-    fn add_branch(&mut self, parent: &NoteID, child: &NoteID) -> Result<(), NoteStoreError> {
-        self.update_note_helper(&NoteLocator::Current(parent.clone()), |old_note| {
+    fn add_branch(
+        &mut self,
+        parent: &NoteID,
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> Result<NoteLocator, NoteStoreError> {
+        let parent_loc = NoteLocator::Current(parent.clone());
+        let child_loc = self.new_note_helper(title, note_inner, metadata);
+        self.update_note_helper(&parent_loc, |old_note| {
             let mut note = old_note.clone();
-            note.branches.insert(child.clone());
+            note.branches.insert(child_loc.get_id().clone());
             Ok(note)
         })?;
-        Ok(())
+        Ok(child_loc)
     }
 
     fn search(&self, sr: &SearchRequest) -> Result<Revisions<T>, NoteStoreError> {
@@ -614,22 +640,26 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
     fn append_note<'a>(
         &'a self,
         last: &'a NoteID,
-        next: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.append_note(last, next)
+            ims.append_note(last, title, note_inner, metadata)
         })
     }
 
     fn add_branch<'a>(
         &'a self,
         parent: &'a NoteID,
-        child: &'a NoteID,
-    ) -> BoxFuture<'a, Result<(), NoteStoreError>> {
+        title: String,
+        note_inner: T,
+        metadata: NoteMetadataEditable,
+    ) -> BoxFuture<'a, Result<NoteLocator, NoteStoreError>> {
         Box::pin(async move {
             let mut ims = self.ims.write().await;
-            ims.add_branch(parent, child)
+            ims.add_branch(parent, title, note_inner, metadata)
         })
     }
 
