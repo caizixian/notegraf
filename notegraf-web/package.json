@@ -1,6 +1,6 @@
 {
   "name": "notegraf-web",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-beta.1",
   "description": "The reference web frontend of Notegraf",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/caizixian/notegraf/issues"
   },
-  "homepage": "https://github.com/caizixian/notegraf",
+  "homepage": "https://notegraf.zcai.org",
   "dependencies": {
     "dompurify": "^2.3.9",
     "highlight.js": "^11.6.0",
