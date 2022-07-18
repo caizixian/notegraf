@@ -34,7 +34,10 @@ pub fn get_otlp_tracer(configuration: &Settings) -> Option<Tracer> {
 pub fn get_subscriber(
     configuration: &Settings,
 ) -> impl Subscriber + Send + Sync + for<'span> LookupSpan<'span> {
-    let default_logging_level = if configuration.debug { "debug" } else { "info" };
+    let mut default_logging_level = if configuration.debug { "debug" } else { "info" };
+    if let Some(l) = &configuration.loglevel {
+        default_logging_level = l.as_ref();
+    }
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_logging_level));
     Registry::default().with(env_filter)

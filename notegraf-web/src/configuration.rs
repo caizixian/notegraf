@@ -20,6 +20,7 @@ pub struct Settings {
     notestoretype: NoteStoreType,
     populatetestdata: bool,
     pub otlpendpoint: Option<String>,
+    pub loglevel: Option<String>,
 }
 
 impl Settings {
