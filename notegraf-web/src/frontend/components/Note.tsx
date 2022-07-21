@@ -111,8 +111,10 @@ function NoteControls(props: NoteControlProps) {
 
     const onDelete = async () => {
         try {
-            await deleteNote(props.note.id);
-            props.onDelete();
+            if (window.confirm("Are you sure you want to delete this note?")) {
+                await deleteNote(props.note.id);
+                props.onDelete();
+            }
         } catch (e) {
             props.setError(e);
         }
