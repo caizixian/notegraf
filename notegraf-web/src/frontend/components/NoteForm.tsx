@@ -75,7 +75,7 @@ export function NoteForm(props: NoteFormProps) {
             </div>
             <div className={"flex-1 flex"}>
                 <textarea required={true} autoFocus={true} id={"note_inner"}
-                          className={"form-textarea bg-transparent flex-1"} {...register("note_inner")}></textarea>
+                          className={"form-textarea bg-transparent flex-1 font-mono"} {...register("note_inner")}></textarea>
             </div>
         </form>
     );
