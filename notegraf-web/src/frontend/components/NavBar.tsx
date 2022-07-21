@@ -6,7 +6,6 @@ import * as React from "react";
 export function NavBar() {
     // @ts-ignore
     let sso_signout_url = document.head.querySelector('meta[name="notegraf-sso-signout"]')!.content;
-    console.log(sso_signout_url);
     return (
         <nav className={"flex p-1 w-full bg-gray-500 items-center gap-1"}>
             <NavLink to={"/note"}>Recent</NavLink>
