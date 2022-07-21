@@ -29,7 +29,6 @@ function escapeHtml(unsafe: string): string {
         .replace(/'/g, "&#039;");
 }
 
-
 const renderer = {
     code(code: string, infoString: string | null, escaped: boolean) {
         // @ts-ignore
@@ -72,6 +71,20 @@ function highlight(code: string, lang: string) {
 
 // @ts-ignore
 marked.use({renderer, highlight: highlight});
+
+type RenderMarkdownProps = {
+    note_inner: string
+}
+
+export function RenderMarkdown(props: RenderMarkdownProps) {
+    // remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none
+    return (<article
+            className={"overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl"}
+            dangerouslySetInnerHTML={{
+                __html: sanitize(marked(props.note_inner))
+            }}/>
+    );
+}
 
 type NoteProps = {
     note: types.Note,
@@ -173,12 +186,7 @@ export function Note(props: NoteProps) {
                 <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
             </details>
             <div className={"flex justify-center"}>
-                {/* remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none */}
-                <article
-                    className={"overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl"}
-                    dangerouslySetInnerHTML={{
-                        __html: sanitize(marked(props.note.note_inner))
-                    }}/>
+                <RenderMarkdown note_inner={props.note.note_inner}/>
             </div>
         </div>
     );
