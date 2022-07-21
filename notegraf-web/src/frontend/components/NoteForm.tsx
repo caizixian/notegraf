@@ -63,13 +63,13 @@ export function NoteForm(props: NoteFormProps) {
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"title"}>Title</label>
                 <input className={"form-input bg-transparent w-full"} id={"title"} placeholder={"Title"}
-                       type={"text"} {...register("title")} />
+                       spellCheck={true} type={"text"} {...register("title")} />
                 <input type="submit" className={"ng-button ng-button-primary"} value={props.submitText}/>
             </div>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"tags"}>Tags</label>
                 <input className={"form-input bg-transparent w-full"} id={"tags"} placeholder={"comma separated"}
-                       type={"text"} {...register("metadata_tags")} />
+                       spellCheck={true} type={"text"} {...register("metadata_tags")} />
                 <button className={"ng-button ng-button-primary"}
                         title={preview ? "Show source" : "Preview"}
                         onClick={(e) => {
@@ -85,6 +85,7 @@ export function NoteForm(props: NoteFormProps) {
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"custom_metadata"}>Custom metadata</label>
                 <input className={"form-input bg-transparent w-full"} id={"custom_metadata"} placeholder={"{}"}
+                       spellCheck={true}
                        type={"text"} {...register("metadata_custom_metadata", {validate: isValidJSON})} />
             </div>
             <div className={"flex-1 flex justify-center"}>
