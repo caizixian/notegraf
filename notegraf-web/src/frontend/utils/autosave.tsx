@@ -4,7 +4,7 @@ import {useEffect, useState} from "react";
 
 let autoSaveCounter = 0;
 
-function getStorageValue(key: string, defaultValue: any): any {
+export function getStorageValue(key: string, defaultValue: any): any {
     const saved = localStorage.getItem(key);
     if (saved) {
         const initial = JSON.parse(saved);
