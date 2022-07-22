@@ -84,7 +84,7 @@ async fn new_note() {
 }
 
 #[tokio::test]
-async fn note_retrive() {
+async fn note_retrieve() {
     let app = spawn_app().await;
     let client = Client::new();
 
@@ -97,6 +97,7 @@ async fn note_retrive() {
     assert_eq!(response["next"], Value::Null);
     assert_eq!(response["title"], "title");
     assert_eq!(response["note_inner"], "## body text");
+    assert!(response["metadata"]["tags"].as_array().unwrap().is_empty());
 }
 
 #[tokio::test]
