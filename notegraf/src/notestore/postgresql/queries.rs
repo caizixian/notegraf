@@ -339,21 +339,31 @@ pub(super) async fn get_recent(
 
 pub(super) async fn get_fulltext(
     transaction: &mut Transaction<'_, Postgres>,
-    query: &str,
+    lexemes: &[String],
+    tags: &[String],
     limit: u64,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
-    let lexemes: Vec<&str> = query.split(' ').collect();
-    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
-        vec!["ts_rank(revision.text_searchable, query.query) AS rank".to_string()],
-        vec!["JOIN to_tsquery($1) query ON revision.text_searchable @@ query.query".to_string()],
-        vec!["cr.current_revision IS NOT NULL".to_owned()],
-        vec!["query.query".to_owned()],
-        vec!["rank DESC".to_owned()],
-        Some(limit),
-    ))
-    .bind(lexemes.join(" & "))
-    .fetch_all(transaction)
-    .await;
+    let mut columns = vec![];
+    let mut joins = vec![];
+    let mut conditions = vec![];
+    let mut groupbys = vec![];
+    let mut orders = vec![];
+    conditions.push("revision.metadata_tags @> $1".to_owned());
+    conditions.push("cr.current_revision IS NOT NULL".to_owned());
+    if !lexemes.is_empty() {
+        columns.push("ts_rank(revision.text_searchable, query.query) AS rank".to_string());
+        joins.push(
+            "JOIN to_tsquery($2) query ON revision.text_searchable @@ query.query".to_string(),
+        );
+        groupbys.push("query.query".to_owned());
+        orders.push("rank DESC".to_owned());
+    }
+    let query_statement = get_note_query(columns, joins, conditions, groupbys, orders, Some(limit));
+    let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement).bind(tags);
+    if !lexemes.is_empty() {
+        q = q.bind(lexemes.join(" & "));
+    }
+    let res = q.fetch_all(transaction).await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Ok(vec![])
     } else {

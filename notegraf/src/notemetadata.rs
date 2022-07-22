@@ -51,7 +51,7 @@ impl NoteMetadata {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NoteMetadataEditable {
     pub tags: Option<HashSet<String>>,
     pub custom_metadata: Option<serde_json::Value>,

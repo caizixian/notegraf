@@ -1,6 +1,7 @@
 use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadataEditable;
 use crate::{NoteLocator, NoteStore, PlainNote};
+use std::collections::HashSet;
 use std::option::Option::None;
 
 async fn is_deleted(
@@ -480,4 +481,25 @@ pub(super) async fn backlink(store: impl NoteStore<PlainNote>) {
     let note = store.get_note(&loc1.current()).await.unwrap();
     let references = note.get_references();
     assert!(references.contains(loc2.get_id()));
+}
+
+pub(super) async fn search_tags(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    let md = NoteMetadataEditable {
+        tags: Some(HashSet::from_iter(["tag1".to_owned()])),
+        custom_metadata: None,
+    };
+    store
+        .new_note("hello world".to_owned(), note_inner.clone(), md.clone())
+        .await
+        .unwrap();
+    store
+        .new_note("goodbye world".to_owned(), note_inner.clone(), md)
+        .await
+        .unwrap();
+    let notes = store.search(&("hello #tag1".into())).await.unwrap();
+    assert_eq!(notes[0].get_title(), "hello world");
+    assert_eq!(notes.len(), 1);
+    let notes = store.search(&("#tag1".into())).await.unwrap();
+    assert_eq!(notes.len(), 2);
 }
