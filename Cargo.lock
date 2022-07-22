@@ -1213,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "notegraf"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "chrono",
  "futures",
@@ -1231,7 +1231,7 @@ dependencies = [
 
 [[package]]
 name = "notegraf-web"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "actix-files",
  "actix-web",
