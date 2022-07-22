@@ -119,6 +119,18 @@ impl<T: NoteType> Default for InMemoryStoreInner<T> {
     }
 }
 
+fn note_contains_lexemes(title: &str, note_inner: &str, lexemes: &[String]) -> bool {
+    let title = title.to_lowercase();
+    let note_inner = note_inner.to_lowercase();
+    for lexeme in lexemes {
+        let lexeme_lower = lexeme.to_lowercase();
+        if !title.contains(&lexeme_lower) && !note_inner.contains(&lexeme_lower) {
+            return false;
+        }
+    }
+    true
+}
+
 impl<T: NoteType> InMemoryStoreInner<T> {
     pub fn new() -> Self {
         Default::default()
@@ -304,12 +316,17 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         notes.into_iter().take(limit as usize).collect()
     }
 
-    fn get_fulltext(&self, query: &str, limit: u64) -> Vec<InMemoryNoteStored<T>> {
+    fn get_fulltext(
+        &self,
+        lexemes: &[String],
+        tags: &[String],
+        limit: u64,
+    ) -> Vec<InMemoryNoteStored<T>> {
         self.get_all_current_notes()
             .into_iter()
             .filter(|x| {
-                x.title.to_lowercase().contains(&query.to_lowercase())
-                    || x.note_inner.to_lowercase().contains(&query.to_lowercase())
+                note_contains_lexemes(&x.title, &x.note_inner, lexemes)
+                    && HashSet::from_iter(tags.to_vec()).is_subset(&x.metadata.tags)
             })
             .take(limit as usize)
             .collect()
@@ -520,10 +537,10 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 
     fn search(&self, sr: &SearchRequest) -> Result<Revisions<T>, NoteStoreError> {
-        let notes = if sr.full_text.is_empty() {
+        let notes = if sr.search_recent() {
             self.get_recent(10)
         } else {
-            self.get_fulltext(&sr.full_text, 10)
+            self.get_fulltext(&sr.lexemes, &sr.tags, 10)
         };
         notes
             .into_iter()
@@ -801,5 +818,10 @@ mod tests {
     #[tokio::test]
     async fn backlink() {
         common_tests::backlink(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_tags() {
+        common_tests::search_tags(InMemoryStore::new()).await;
     }
 }
