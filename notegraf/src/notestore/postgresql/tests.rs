@@ -117,3 +117,8 @@ async fn search_nonexist() {
 async fn backlink() {
     common_tests::backlink(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_tags() {
+    common_tests::search_tags(get_store().await).await;
+}

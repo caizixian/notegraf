@@ -12,6 +12,7 @@ import {
     PencilAltIcon,
     ReplyIcon,
     ShareIcon,
+    TagIcon,
     TrashIcon
 } from "@heroicons/react/outline";
 import katex from "katex";
@@ -165,16 +166,34 @@ function NoteControls(props: NoteControlProps) {
     )
 }
 
+type TagsProps = {
+    tags: string[],
+    disableLink: boolean
+}
+
+export function Tags(props: TagsProps) {
+    let tags = props.tags;
+    tags.sort();
+    return (<div className={"flex gap-1 flex-wrap"}>{props.tags.map(tag =>
+        <div key={tag} className={"flex items-center rounded border border-neutral-500"}>
+            <TagIcon className={"h-4 w-4 inline"}/>
+            {props.disableLink ? <p>{tag}</p> :
+                <Link to={"/note?" + new URLSearchParams({query: `#${tag}`})}>{tag}</Link>}
+        </div>
+    )}</div>);
+}
+
 export function Note(props: NoteProps) {
     let link = props.permaLink ? `/note/${props.note.id}/revision/${props.note.revision}` : `/note/${props.note.id}`;
     return (
         <div className="note border border-neutral-500 my-0.5 p-1">
-            <div className={"flex items-baseline"}>
+            <div className={"flex items-baseline mb-1.5"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <Link to={link}>
-                    <h1 className={"text-4xl underline"}>{renderTitle(props.note.title)}</h1>
+                <Link to={link} className={"min-w-0"}>
+                    <h1 className={"text-4xl underline text-ellipsis overflow-hidden"}>{renderTitle(props.note.title)}</h1>
                 </Link>
             </div>
+            <Tags tags={props.note.metadata.tags} disableLink={false}/>
             {props.showingRevision ||
                 <NoteControls note={props.note} setError={props.setError} onDelete={props.onDelete}
                               showPrevNext={props.showPrevNext}/>}
@@ -184,7 +203,6 @@ export function Note(props: NoteProps) {
                 <summary className={"select-none"}>Metadata</summary>
                 <p title={props.note.metadata.created_at}>Created {showAgo(new Date(props.note.metadata.created_at))}</p>
                 <p title={props.note.metadata.modified_at}>Modified {showAgo(new Date(props.note.metadata.modified_at))}</p>
-                <p>Tags: {props.note.metadata.tags.join(", ")}</p>
                 <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
             </details>
             <div className={"flex justify-center"}>
