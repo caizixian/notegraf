@@ -1,5 +1,5 @@
 import {useForm} from "react-hook-form";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useParams} from "react-router-dom";
 import {incrementCounter, useLocalStorage} from "../utils";
 import {postNote} from "../api";
 import * as React from "react";
@@ -17,7 +17,7 @@ type NoteFormContent = {
 type NoteFormProps = {
     defaultValue: NoteFormContent,
     endpoint: string,
-    autoSaveKey: string,
+    autoSaveKeyPrefix: string,
     submitText: string,
     title: string
 }
@@ -32,17 +32,19 @@ function isValidJSON(s: string): boolean {
 }
 
 
-export function NoteForm(props: NoteFormProps) {
+export function NoteFormSession(props: NoteFormProps) {
     const {register, watch, setValue, handleSubmit, getValues} = useForm();
     const navigate = useNavigate();
     const [error, setError] = useState<any>(null);
     const [preview, setPreview] = useState(false);
-    useLocalStorage(props.autoSaveKey, watch, setValue, props.defaultValue, 5000);
+    const {sessionTs} = useParams();
+    const autoSaveKey = `${props.autoSaveKeyPrefix}.${sessionTs}`;
+    useLocalStorage(autoSaveKey, watch, setValue, props.defaultValue, 5000);
 
     const onSubmit = async (data: any) => {
         try {
             let res = await postNote(props.endpoint, data);
-            localStorage.removeItem(props.autoSaveKey);
+            localStorage.removeItem(autoSaveKey);
             incrementCounter();
             navigate(`/note/${res["Specific"][0]}`);
         } catch (e: any) {

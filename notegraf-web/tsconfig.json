@@ -1,5 +1,5 @@
 {
-  "include": ["src/frontend/*.ts", "src/frontend/*.tsx"],
+  "include": ["src/frontend/**/*.ts", "src/frontend/**/*.tsx"],
   "compilerOptions": {
     "strict": true,
     "jsx": "react",

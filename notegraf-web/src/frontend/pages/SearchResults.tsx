@@ -58,7 +58,7 @@ export function SearchResults() {
                 className={"" + (note.revision === revisionSelected ? " bg-sky-300 dark:bg-sky-700" : "")}>
                 <p className={"truncate"}>{renderTitle(note.title)}</p>
                 <p className={"truncate"}>
-                    {showAgo(note.metadata.created_at)}
+                    {showAgo(new Date(note.metadata.created_at))}
                 </p>
             </div>))}
         </div>

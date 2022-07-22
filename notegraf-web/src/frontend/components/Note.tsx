@@ -182,8 +182,8 @@ export function Note(props: NoteProps) {
             {props.showingRevision || <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>}
             <details className={"border-b border-neutral-500"}>
                 <summary className={"select-none"}>Metadata</summary>
-                <p title={props.note.metadata.created_at}>Created {showAgo(props.note.metadata.created_at)}</p>
-                <p title={props.note.metadata.modified_at}>Modified {showAgo(props.note.metadata.modified_at)}</p>
+                <p title={props.note.metadata.created_at}>Created {showAgo(new Date(props.note.metadata.created_at))}</p>
+                <p title={props.note.metadata.modified_at}>Modified {showAgo(new Date(props.note.metadata.modified_at))}</p>
                 <p>Tags: {props.note.metadata.tags.join(", ")}</p>
                 <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
             </details>

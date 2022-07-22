@@ -17,7 +17,7 @@ export function NoteRevision() {
                 const note = await getNoteSpecific(noteID as string, revision as string);
                 setNote(note);
                 setIsLoaded(true);
-                document.title = `${tileInTitle(note.title)} (${showAgo(note.metadata.modified_at)}) - Notegraf`;
+                document.title = `${tileInTitle(note.title)} (${showAgo(new Date(note.metadata.modified_at))}) - Notegraf`;
             } catch (e) {
                 setError(e);
                 setIsLoaded(true);
