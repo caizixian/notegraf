@@ -1,6 +1,5 @@
-export function showAgo(t: string) {
-    const date = Date.parse(t);
-    const delta = Date.now() - date; // milliseconds
+export function showAgo(date: Date) {
+    const delta = Date.now() - date.getTime(); // milliseconds
     const seconds = Math.round(delta / 1000);
     const rtf = new Intl.RelativeTimeFormat();
     if (seconds < 60) {

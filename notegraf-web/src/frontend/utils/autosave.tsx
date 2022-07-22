@@ -46,3 +46,9 @@ export function useLocalStorage(key: string, watch: any, setValue: any, defaultV
     );
     return null;
 }
+
+export function getKeysByPrefix(prefix: string): string[] {
+    let keys = Object.keys(localStorage).filter(x => x.startsWith(prefix));
+    keys.sort();
+    return keys;
+}

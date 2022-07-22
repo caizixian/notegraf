@@ -2,8 +2,9 @@ import {useParams} from "react-router-dom";
 import * as React from "react";
 import {useEffect, useState} from "react";
 import {getNote} from "../api";
-import {NoteForm} from "../components/NoteForm";
+import {NoteFormSession} from "../components/NoteFormSession";
 import {tileInTitle} from "../utils";
+import {FormSessions} from "../components/FormSessions";
 
 export function NoteEdit() {
     let {noteID} = useParams();
@@ -34,7 +35,7 @@ export function NoteEdit() {
         return (<div>{error.toString()}</div>);
     }
 
-    return (<NoteForm
+    return (<NoteFormSession
         defaultValue={{
             title: note.title,
             note_inner: note.note_inner,
@@ -42,8 +43,15 @@ export function NoteEdit() {
             metadata_custom_metadata: JSON.stringify(note.metadata.custom_metadata)
         }}
         endpoint={`note/${note.id}/revision`}
-        autoSaveKey={`autosave.note.edit.${note.id}`}
+        autoSaveKeyPrefix={`autosave.note.${note.id}.edit`}
         submitText={"Update"}
         title={`Update note ${tileInTitle(note.title)} - Notegraf`}
     />);
+}
+
+export function NoteEditSessions() {
+    let {noteID} = useParams();
+
+    return (<FormSessions keyPrefix={`autosave.note.${noteID}.edit`}
+                          title={`Choose a session: update note ${noteID} - Notegraf`}/>);
 }

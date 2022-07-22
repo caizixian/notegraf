@@ -46,7 +46,7 @@ export function NoteRevisions() {
                 <p className={"truncate"}>{renderTitle(note.title)}
                 </p>
                 <p className={"truncate"}>
-                    {showAgo(note.metadata.modified_at)}
+                    {showAgo(new Date(note.metadata.modified_at))}
                 </p>
             </div>))}
         </div>

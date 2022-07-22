@@ -13,12 +13,24 @@ root.render(
                 <Route path="/" element={<pages.App/>}>
                     <Route path="note" element={<pages.NoteTop/>}>
                         <Route index element={<pages.SearchResults/>}/>
-                        <Route path={"new"} element={<pages.NoteNew/>}/>
+                        <Route path={"new"}>
+                            <Route index element={<pages.NoteNewSessions/>}/>
+                            <Route path={":sessionTs"} element={<pages.NoteNew/>}/>
+                        </Route>
                         <Route path=":noteID">
                             <Route index element={<pages.NoteSequence/>}/>
-                            <Route path="edit" element={<pages.NoteEdit/>}/>
-                            <Route path="branch" element={<pages.NoteBranch/>}/>
-                            <Route path="append" element={<pages.NoteAppend/>}/>
+                            <Route path={"edit"}>
+                                <Route index element={<pages.NoteEditSessions/>}/>
+                                <Route path={":sessionTs"} element={<pages.NoteEdit/>}/>
+                            </Route>
+                            <Route path={"branch"}>
+                                <Route index element={<pages.NoteBranchSessions/>}/>
+                                <Route path={":sessionTs"} element={<pages.NoteBranch/>}/>
+                            </Route>
+                            <Route path={"append"}>
+                                <Route index element={<pages.NoteAppendSessions/>}/>
+                                <Route path={":sessionTs"} element={<pages.NoteAppend/>}/>
+                            </Route>
                             <Route path="revision">
                                 <Route index element={<pages.NoteRevisions/>}/>
                                 <Route path=":revision" element={<pages.NoteRevision/>}/>
