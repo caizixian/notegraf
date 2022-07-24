@@ -122,3 +122,8 @@ async fn backlink() {
 async fn search_tags() {
     common_tests::search_tags(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_orphan() {
+    common_tests::search_orphan(get_store().await).await;
+}

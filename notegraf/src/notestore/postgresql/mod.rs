@@ -377,11 +377,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         Box::pin(async move {
             let mut transaction = self.db_pool.begin().await?;
             read_only(&mut transaction).await?;
-            let notes: Vec<PostgreSQLNoteRowJoined> = if sr.search_recent() {
-                get_recent(&mut transaction, 10).await?
-            } else {
-                get_fulltext(&mut transaction, &sr.lexemes, &sr.tags, 10).await?
-            };
+            let notes: Vec<PostgreSQLNoteRowJoined> = search(&mut transaction, &sr).await?;
             transaction.commit().await?;
             Ok(notes
                 .into_iter()

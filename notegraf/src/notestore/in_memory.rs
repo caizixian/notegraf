@@ -824,4 +824,9 @@ mod tests {
     async fn search_tags() {
         common_tests::search_tags(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn search_orphan() {
+        common_tests::search_orphan(InMemoryStore::new()).await;
+    }
 }
