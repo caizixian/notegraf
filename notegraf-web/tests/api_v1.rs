@@ -347,10 +347,7 @@ async fn orphan_reference() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["id"],
-        loc2.get_id().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
 }
 
 #[tokio::test]
@@ -378,10 +375,7 @@ async fn orphan_prev() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["id"],
-        loc1.get_id().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 }
 
 #[tokio::test]
@@ -409,8 +403,5 @@ async fn orphan_parent() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["id"],
-        loc1.get_id().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 }
