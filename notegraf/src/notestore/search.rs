@@ -1,6 +1,8 @@
 pub struct SearchRequest {
     pub(super) lexemes: Vec<String>,
     pub(super) tags: Vec<String>,
+    pub(super) orphan: bool,
+    pub(super) limit: u64,
 }
 
 impl SearchRequest {
@@ -13,16 +15,26 @@ fn parse_query(query: &str) -> SearchRequest {
     let parts: Vec<&str> = query.split(' ').collect();
     let mut lexemes = vec![];
     let mut tags = vec![];
+    let mut orphan = false;
     for part in parts {
         if let Some(stripped) = part.strip_prefix('#') {
             if !stripped.is_empty() {
                 tags.push(stripped.to_owned());
             }
+        } else if let Some(stripped) = part.strip_prefix('!') {
+            if stripped == "orphan" {
+                orphan = true;
+            }
         } else if !part.is_empty() {
             lexemes.push(part.to_owned());
         }
     }
-    SearchRequest { lexemes, tags }
+    SearchRequest {
+        lexemes,
+        tags,
+        orphan,
+        limit: 10,
+    }
 }
 
 impl From<String> for SearchRequest {
@@ -85,5 +97,29 @@ mod tests {
         assert!(sr.tags.is_empty());
         assert!(!sr.lexemes.is_empty());
         assert_eq!(sr.lexemes, vec!["fizz".to_owned(), "buzz".to_owned()]);
+    }
+
+    #[test]
+    fn orphan_recent() {
+        let sr: SearchRequest = "!orphan".into();
+        assert!(sr.search_recent());
+        assert!(sr.orphan);
+    }
+
+    #[test]
+    fn orphan_lexemes() {
+        let sr: SearchRequest = "!orphan foo".into();
+        assert!(!sr.search_recent());
+        assert_eq!(sr.lexemes, vec!["foo".to_owned()]);
+        assert!(sr.orphan);
+    }
+
+    #[test]
+    fn orphan_mixed() {
+        let sr: SearchRequest = "!orphan foo #bar".into();
+        assert!(!sr.search_recent());
+        assert_eq!(sr.lexemes, vec!["foo".to_owned()]);
+        assert_eq!(sr.tags, vec!["bar".to_owned()]);
+        assert!(sr.orphan);
     }
 }

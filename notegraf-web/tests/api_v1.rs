@@ -205,15 +205,9 @@ async fn recent_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 2);
-    assert_eq!(
-        response[1]["revision"],
-        loc1.get_revision().unwrap().as_ref()
-    );
+    assert_eq!(response[1]["id"], loc1.get_id().as_ref());
     // recent note comes first
-    assert_eq!(
-        response[0]["revision"],
-        loc2.get_revision().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
 }
 
 #[tokio::test]
@@ -234,10 +228,7 @@ async fn search_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["revision"],
-        loc1.get_revision().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
@@ -249,10 +240,7 @@ async fn search_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["revision"],
-        loc2.get_revision().unwrap().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
 }
 
 #[tokio::test]
@@ -321,4 +309,87 @@ async fn append_note() {
 
     let response = get_note_helper(&client, &app.address, &loc2).await;
     assert_eq!(response["prev"].as_str().unwrap(), loc1.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn orphan_reference() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
+    let loc2 = create_note_helper(
+        &client,
+        &app.address,
+        "bar",
+        &format!("[here is a link to foo](notegraf:/note/{})", loc1.get_id()),
+    )
+    .await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "!orphan")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn orphan_prev() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/next", loc1.get_id()),
+        "next title",
+        "New body text",
+    )
+    .await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "!orphan")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn orphan_parent() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    post_note_helper(
+        &client,
+        &app.address,
+        &format!("note/{}/branch", loc1.get_id()),
+        "child title",
+        "New body text",
+    )
+    .await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "!orphan")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 }

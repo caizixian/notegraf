@@ -2,6 +2,7 @@ use super::PostgreSQLNote;
 use crate::errors::NoteStoreError;
 use crate::notemetadata::NoteMetadata;
 use crate::notestore::postgresql::get_new_revision;
+use crate::notestore::search::SearchRequest;
 use crate::{NoteID, NoteLocator, NoteType};
 use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
@@ -169,6 +170,7 @@ fn get_note_query(
     joins: Vec<String>,
     conditions: Vec<String>,
     groupbys: Vec<String>,
+    havings: Vec<String>,
     orders: Vec<String>,
     limit: Option<u64>,
 ) -> String {
@@ -191,6 +193,11 @@ fn get_note_query(
         "".to_string()
     } else {
         ", ".to_owned() + &groupbys.join(", ")
+    };
+    let having_clause = if havings.is_empty() {
+        "".to_string()
+    } else {
+        "HAVING ".to_owned() + &havings.join(" AND ")
     };
     let orderby_clause = if orders.is_empty() {
         "".to_string()
@@ -237,8 +244,15 @@ fn get_note_query(
         GROUP BY revision.revision, cr.current_revision{}
         {}
         {}
+        {}
         "#,
-        select_clause, join_clause, where_clause, groupby_clause, orderby_clause, limit_clause
+        select_clause,
+        join_clause,
+        where_clause,
+        groupby_clause,
+        having_clause,
+        orderby_clause,
+        limit_clause
     )
 }
 
@@ -253,6 +267,7 @@ async fn get_note_current(
             "revision.id = $1".to_owned(),
             "cr.current_revision IS NOT NULL".to_owned(),
         ],
+        vec![],
         vec![],
         vec![],
         None,
@@ -281,6 +296,7 @@ async fn get_note_specific(
         ],
         vec![],
         vec![],
+        vec![],
         None,
     ))
     .bind(id)
@@ -303,6 +319,7 @@ pub(super) async fn get_revisions(
         vec![],
         vec!["revision.id = $1".to_owned()],
         vec![],
+        vec![],
         vec!["revision.metadata_modified_at ASC".to_owned()],
         None,
     ))
@@ -316,41 +333,28 @@ pub(super) async fn get_revisions(
     }
 }
 
-pub(super) async fn get_recent(
+pub(super) async fn search(
     transaction: &mut Transaction<'_, Postgres>,
-    limit: u64,
-) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
-    let res = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&get_note_query(
-        vec![],
-        vec![],
-        vec!["cr.current_revision IS NOT NULL".to_owned()],
-        vec![],
-        vec!["revision.metadata_created_at DESC".to_owned()],
-        Some(limit),
-    ))
-    .fetch_all(transaction)
-    .await;
-    if let Err(sqlx::Error::RowNotFound) = res {
-        Ok(vec![])
-    } else {
-        res.map_err(NoteStoreError::PostgreSQLError)
-    }
-}
-
-pub(super) async fn get_fulltext(
-    transaction: &mut Transaction<'_, Postgres>,
-    lexemes: &[String],
-    tags: &[String],
-    limit: u64,
+    sr: &SearchRequest,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
     let mut columns = vec![];
     let mut joins = vec![];
     let mut conditions = vec![];
     let mut groupbys = vec![];
+    let mut havings = vec![];
     let mut orders = vec![];
-    conditions.push("revision.metadata_tags @> $1".to_owned());
+    // only search current versions
     conditions.push("cr.current_revision IS NOT NULL".to_owned());
-    if !lexemes.is_empty() {
+    if sr.search_recent() {
+        orders.push("revision.metadata_created_at DESC".to_owned());
+    }
+    if sr.orphan {
+        conditions.push("revision.prev IS NULL".to_owned());
+        conditions.push("revision.parent IS NULL".to_owned());
+        havings.push("array_remove(array_agg(revision3.id), NULL) = '{}'".to_owned());
+    }
+    conditions.push("revision.metadata_tags @> $1".to_owned());
+    if !sr.lexemes.is_empty() {
         columns.push("ts_rank(revision.text_searchable, query.query) AS rank".to_string());
         joins.push(
             "JOIN to_tsquery($2) query ON revision.text_searchable @@ query.query".to_string(),
@@ -358,10 +362,18 @@ pub(super) async fn get_fulltext(
         groupbys.push("query.query".to_owned());
         orders.push("rank DESC".to_owned());
     }
-    let query_statement = get_note_query(columns, joins, conditions, groupbys, orders, Some(limit));
-    let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement).bind(tags);
-    if !lexemes.is_empty() {
-        q = q.bind(lexemes.join(" & "));
+    let query_statement = get_note_query(
+        columns,
+        joins,
+        conditions,
+        groupbys,
+        havings,
+        orders,
+        Some(sr.limit),
+    );
+    let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement).bind(&sr.tags);
+    if !sr.lexemes.is_empty() {
+        q = q.bind(sr.lexemes.join(" & "));
     }
     let res = q.fetch_all(transaction).await;
     if let Err(sqlx::Error::RowNotFound) = res {

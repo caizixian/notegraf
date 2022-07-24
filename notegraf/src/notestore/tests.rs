@@ -503,3 +503,25 @@ pub(super) async fn search_tags(store: impl NoteStore<PlainNote>) {
     let notes = store.search(&("#tag1".into())).await.unwrap();
     assert_eq!(notes.len(), 2);
 }
+
+pub(super) async fn search_orphan(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Head".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store
+        .append_note(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Middle".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("!orphan".into())).await.unwrap();
+    assert_eq!(notes.len(), 1);
+}

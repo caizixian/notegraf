@@ -131,6 +131,10 @@ fn note_contains_lexemes(title: &str, note_inner: &str, lexemes: &[String]) -> b
     true
 }
 
+fn note_is_orphan<T: NoteType>(note: &dyn Note<T>) -> bool {
+    note.get_prev().is_none() && note.get_parent().is_none() && note.get_references().is_empty()
+}
+
 impl<T: NoteType> InMemoryStoreInner<T> {
     pub fn new() -> Self {
         Default::default()
@@ -307,28 +311,6 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         self.current_revision
             .iter()
             .map(|(id, revision)| self.get_note_by_revision(id, revision).unwrap())
-            .collect()
-    }
-
-    fn get_recent(&self, limit: u64) -> Vec<InMemoryNoteStored<T>> {
-        let mut notes = self.get_all_current_notes();
-        notes.sort_by_key(|n| Reverse(n.metadata.created_at));
-        notes.into_iter().take(limit as usize).collect()
-    }
-
-    fn get_fulltext(
-        &self,
-        lexemes: &[String],
-        tags: &[String],
-        limit: u64,
-    ) -> Vec<InMemoryNoteStored<T>> {
-        self.get_all_current_notes()
-            .into_iter()
-            .filter(|x| {
-                note_contains_lexemes(&x.title, &x.note_inner, lexemes)
-                    && HashSet::from_iter(tags.to_vec()).is_subset(&x.metadata.tags)
-            })
-            .take(limit as usize)
             .collect()
     }
 
@@ -537,18 +519,27 @@ impl<T: NoteType> InMemoryStoreInner<T> {
     }
 
     fn search(&self, sr: &SearchRequest) -> Result<Revisions<T>, NoteStoreError> {
-        let notes = if sr.search_recent() {
-            self.get_recent(10)
-        } else {
-            self.get_fulltext(&sr.lexemes, &sr.tags, 10)
-        };
-        notes
+        let notes: Vec<InMemoryNoteStored<T>> = self.get_all_current_notes();
+        let revisions: Result<Revisions<T>, NoteStoreError> = notes
             .into_iter()
             .map(|x| {
                 self.compute_stored_note(x)
                     .map(|x_computed| Box::new(x_computed) as Box<dyn Note<T>>)
             })
-            .collect()
+            .collect();
+        let mut revisions: Revisions<T> = revisions?
+            .into_iter()
+            .filter(|x| {
+                note_contains_lexemes(&x.get_title(), &x.get_note_inner().into(), &sr.lexemes)
+                    && HashSet::from_iter(sr.tags.to_vec()).is_subset(&x.get_metadata().tags)
+                    && (!sr.orphan || note_is_orphan(x.as_ref()))
+            })
+            .collect();
+        if sr.search_recent() {
+            revisions.sort_by_key(|n| Reverse(n.get_metadata().created_at));
+        }
+        let revisions: Revisions<T> = revisions.into_iter().take(sr.limit as usize).collect();
+        Ok(revisions)
     }
 
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), NoteStoreError> {
@@ -823,5 +814,10 @@ mod tests {
     #[tokio::test]
     async fn search_tags() {
         common_tests::search_tags(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_orphan() {
+        common_tests::search_orphan(InMemoryStore::new()).await;
     }
 }
