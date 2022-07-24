@@ -205,15 +205,9 @@ async fn recent_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 2);
-    assert_eq!(
-        response[1]["id"],
-        loc1.get_id().as_ref()
-    );
+    assert_eq!(response[1]["id"], loc1.get_id().as_ref());
     // recent note comes first
-    assert_eq!(
-        response[0]["id"],
-        loc2.get_id().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
 }
 
 #[tokio::test]
@@ -234,10 +228,7 @@ async fn search_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["id"],
-        loc1.get_id().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
@@ -249,10 +240,7 @@ async fn search_notes() {
         .await
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
-    assert_eq!(
-        response[0]["id"],
-        loc2.get_id().as_ref()
-    );
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
 }
 
 #[tokio::test]
