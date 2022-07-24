@@ -206,13 +206,13 @@ async fn recent_notes() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 2);
     assert_eq!(
-        response[1]["revision"],
-        loc1.get_revision().unwrap().as_ref()
+        response[1]["id"],
+        loc1.get_id().as_ref()
     );
     // recent note comes first
     assert_eq!(
-        response[0]["revision"],
-        loc2.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc2.get_id().as_ref()
     );
 }
 
@@ -235,8 +235,8 @@ async fn search_notes() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(
-        response[0]["revision"],
-        loc1.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc1.get_id().as_ref()
     );
 
     let response = client
@@ -250,8 +250,8 @@ async fn search_notes() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(
-        response[0]["revision"],
-        loc2.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc2.get_id().as_ref()
     );
 }
 
