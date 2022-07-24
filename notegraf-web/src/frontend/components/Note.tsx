@@ -31,17 +31,17 @@ function escapeHtml(unsafe: string): string {
 }
 
 function renderMath(escaped: string, displayMode: boolean): string | boolean {
+    const doc = new DOMParser().parseFromString(escaped, "text/html");
+    const parsed = doc.documentElement.textContent!;
     try {
-        const doc = new DOMParser().parseFromString(escaped, "text/html");
-        const parsed = doc.documentElement.textContent!;
         return katex.renderToString(parsed, {output: "html", displayMode: displayMode});
     } catch (e) {
         if (e instanceof ParseError) {
             if (displayMode) {
-                return `<pre><code class="text-red-500">${e.toString()}</code><br/>` +
-                    `<code>${escapeHtml(escaped)}</code></pre>`;
+                return `<pre><code class="text-red-500">${escapeHtml(e.toString())}</code><br/>` +
+                    `<code>${escapeHtml(parsed)}</code></pre>`;
             } else {
-                return `<code title="${e.toString()}" class="text-red-500">${escapeHtml(escaped)}</code>`;
+                return `<code title="${escapeHtml(e.toString())}" class="text-red-500">${escapeHtml(parsed)}</code>`;
             }
         } else {
             return false;
