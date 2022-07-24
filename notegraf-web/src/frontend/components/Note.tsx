@@ -15,7 +15,7 @@ import {
     TagIcon,
     TrashIcon
 } from "@heroicons/react/outline";
-import katex from "katex";
+import katex, {ParseError} from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
@@ -30,6 +30,25 @@ function escapeHtml(unsafe: string): string {
         .replace(/'/g, "&#039;");
 }
 
+function renderMath(escaped: string, displayMode: boolean): string | boolean {
+    try {
+        const doc = new DOMParser().parseFromString(escaped, "text/html");
+        const parsed = doc.documentElement.textContent!;
+        return katex.renderToString(parsed, {output: "html", displayMode: displayMode});
+    } catch (e) {
+        if (e instanceof ParseError) {
+            if (displayMode) {
+                return `<pre><code class="text-red-500">${e.toString()}</code><br/>` +
+                    `<code>${escapeHtml(escaped)}</code></pre>`;
+            } else {
+                return `<code title="${e.toString()}" class="text-red-500">${escapeHtml(escaped)}</code>`;
+            }
+        } else {
+            return false;
+        }
+    }
+}
+
 const renderer = {
     code(code: string, infoString: string | null, escaped: boolean) {
         // @ts-ignore
@@ -37,14 +56,14 @@ const renderer = {
         if (lang !== "math") {
             return false;
         }
-        return katex.renderToString(escaped ? code : escapeHtml(code), {output: "html", displayMode: true});
+        return renderMath(code, true);
     },
     codespan(code: string) {
         const match = code.match(/^\$\{(.*)}\$$/);
         if (!match) {
             return false;
         }
-        return katex.renderToString(match[1], {output: "html", displayMode: false});
+        return renderMath(match[1], false);
     },
     link(href: string, title: string, text: string) {
         // The original implementation cleans the URL if marked option sanitize/base
