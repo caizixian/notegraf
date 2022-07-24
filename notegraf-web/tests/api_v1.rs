@@ -348,8 +348,8 @@ async fn orphan_reference() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(
-        response[0]["revision"],
-        loc2.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc2.get_id().unwrap().as_ref()
     );
 }
 
@@ -379,8 +379,8 @@ async fn orphan_prev() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(
-        response[0]["revision"],
-        loc1.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc1.get_id().unwrap().as_ref()
     );
 }
 
@@ -410,7 +410,7 @@ async fn orphan_parent() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(
-        response[0]["revision"],
-        loc1.get_revision().unwrap().as_ref()
+        response[0]["id"],
+        loc1.get_id().unwrap().as_ref()
     );
 }
