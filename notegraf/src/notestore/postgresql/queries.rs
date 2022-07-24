@@ -335,7 +335,7 @@ pub(super) async fn get_revisions(
 
 pub(super) async fn search(
     transaction: &mut Transaction<'_, Postgres>,
-    sr: &SearchRequest
+    sr: &SearchRequest,
 ) -> Result<Vec<PostgreSQLNoteRowJoined>, NoteStoreError> {
     let mut columns = vec![];
     let mut joins = vec![];

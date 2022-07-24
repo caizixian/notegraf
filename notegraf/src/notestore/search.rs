@@ -33,7 +33,7 @@ fn parse_query(query: &str) -> SearchRequest {
         lexemes,
         tags,
         orphan,
-        limit: 10
+        limit: 10,
     }
 }
 
