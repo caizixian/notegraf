@@ -345,7 +345,7 @@ pub(super) async fn search(
     let mut orders = vec![];
     // only search current versions
     conditions.push("cr.current_revision IS NOT NULL".to_owned());
-    if sr.search_recent() {
+    if sr.sort_by_created_at() {
         orders.push("revision.metadata_created_at DESC".to_owned());
     }
     if sr.orphan {
@@ -363,13 +363,7 @@ pub(super) async fn search(
         orders.push("rank DESC".to_owned());
     }
     let query_statement = get_note_query(
-        columns,
-        joins,
-        conditions,
-        groupbys,
-        havings,
-        orders,
-        Some(sr.limit),
+        columns, joins, conditions, groupbys, havings, orders, sr.limit,
     );
     let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement).bind(&sr.tags);
     if !sr.lexemes.is_empty() {

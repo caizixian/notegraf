@@ -535,10 +535,12 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                     && (!sr.orphan || note_is_orphan(x.as_ref()))
             })
             .collect();
-        if sr.search_recent() {
+        if sr.sort_by_created_at() {
             revisions.sort_by_key(|n| Reverse(n.get_metadata().created_at));
         }
-        let revisions: Revisions<T> = revisions.into_iter().take(sr.limit as usize).collect();
+        if let Some(l) = sr.limit {
+            revisions = revisions.into_iter().take(l as usize).collect();
+        }
         Ok(revisions)
     }
 
