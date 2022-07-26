@@ -300,6 +300,24 @@
       ]
     }
   },
+  "cb07e983a89847fe929c37ecfe696ddb1f7f7f4193e0b29f23ec264abb9b199c": {
+    "query": "\n        SELECT\n            array_remove(array_agg(DISTINCT tag ORDER BY tag), NULL) AS tags\n        FROM\n            revision\n        LEFT JOIN current_revision cr ON revision.revision = cr.current_revision\n        LEFT JOIN LATERAL unnest(metadata_tags) tag ON TRUE\n        WHERE cr.current_revision IS NOT NULL\n    ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tags",
+          "type_info": "TextArray"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "cc5867c004b986f6323b1ab499b2280ceedc5c951116b24b166e833099d4a036": {
     "query": "\n                SELECT\n                    note.id,\n                    cr.current_revision AS \"current_revision?\"\n                FROM note\n                LEFT JOIN current_revision cr on cr.id = note.id\n                WHERE note.id = $1\n                ",
     "describe": {
