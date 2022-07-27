@@ -2,6 +2,7 @@ pub struct SearchRequest {
     pub(super) lexemes: Vec<String>,
     pub(super) tags: Vec<String>,
     pub(super) orphan: bool,
+    pub(super) no_tag: bool,
     pub(super) limit: Option<u64>,
 }
 
@@ -17,6 +18,7 @@ fn parse_query(query: &str) -> SearchRequest {
     let mut tags = vec![];
     let mut orphan = false;
     let mut limit = None;
+    let mut no_tag = false;
     for part in parts {
         if let Some(stripped) = part.strip_prefix('#') {
             if !stripped.is_empty() {
@@ -25,6 +27,8 @@ fn parse_query(query: &str) -> SearchRequest {
         } else if let Some(stripped) = part.strip_prefix('!') {
             if stripped == "orphan" {
                 orphan = true;
+            } else if stripped == "notag" {
+                no_tag = true;
             }
         } else if !part.is_empty() {
             lexemes.push(part.to_owned());
@@ -37,6 +41,7 @@ fn parse_query(query: &str) -> SearchRequest {
         lexemes,
         tags,
         orphan,
+        no_tag,
         limit,
     }
 }

@@ -127,3 +127,8 @@ async fn search_tags() {
 async fn search_orphan() {
     common_tests::search_orphan(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_notag() {
+    common_tests::search_notag(get_store().await).await;
+}

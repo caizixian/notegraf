@@ -533,6 +533,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                 note_contains_lexemes(&x.get_title(), &x.get_note_inner().into(), &sr.lexemes)
                     && HashSet::from_iter(sr.tags.to_vec()).is_subset(&x.get_metadata().tags)
                     && (!sr.orphan || note_is_orphan(x.as_ref()))
+                    && (!sr.no_tag || x.get_metadata().tags.is_empty())
             })
             .collect();
         if sr.sort_by_created_at() {
@@ -821,5 +822,10 @@ mod tests {
     #[tokio::test]
     async fn search_orphan() {
         common_tests::search_orphan(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_notag() {
+        common_tests::search_notag(InMemoryStore::new()).await;
     }
 }
