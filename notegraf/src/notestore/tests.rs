@@ -525,3 +525,28 @@ pub(super) async fn search_orphan(store: impl NoteStore<PlainNote>) {
     let notes = store.search(&("!orphan".into())).await.unwrap();
     assert_eq!(notes.len(), 1);
 }
+
+pub(super) async fn search_notag(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    let md = NoteMetadataEditable {
+        tags: Some(HashSet::from_iter(["tag1".to_owned()])),
+        custom_metadata: None,
+    };
+    store
+        .new_note("hello world".to_owned(), note_inner.clone(), md.clone())
+        .await
+        .unwrap();
+    store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("world !notag".into())).await.unwrap();
+    assert_eq!(notes[0].get_title(), "goodbye world");
+    assert_eq!(notes.len(), 1);
+    let notes = store.search(&("world".into())).await.unwrap();
+    assert_eq!(notes.len(), 2);
+}

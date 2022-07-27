@@ -354,6 +354,9 @@ pub(super) async fn search(
         havings.push("array_remove(array_agg(revision3.id), NULL) = '{}'".to_owned());
     }
     conditions.push("revision.metadata_tags @> $1".to_owned());
+    if sr.no_tag {
+        conditions.push("revision.metadata_tags = '{}'".to_owned());
+    }
     if !sr.lexemes.is_empty() {
         columns.push("ts_rank(revision.text_searchable, query.query) AS rank".to_string());
         joins.push(
