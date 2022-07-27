@@ -12,7 +12,6 @@ import {
     PencilAltIcon,
     ReplyIcon,
     ShareIcon,
-    TagIcon,
     TrashIcon
 } from "@heroicons/react/outline";
 import katex, {ParseError} from "katex";
@@ -20,6 +19,7 @@ import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
 import {renderTitle, showAgo} from "../utils";
+import {Tags} from "./Tags";
 
 function escapeHtml(unsafe: string): string {
     return unsafe
@@ -183,23 +183,6 @@ function NoteControls(props: NoteControlProps) {
             </button>
         </div>
     )
-}
-
-type TagsProps = {
-    tags: string[],
-    disableLink: boolean
-}
-
-export function Tags(props: TagsProps) {
-    let tags = props.tags;
-    tags.sort();
-    return (<div className={"flex gap-1 flex-wrap"}>{props.tags.map(tag =>
-        <div key={tag} className={"flex items-center rounded border border-neutral-500"}>
-            <TagIcon className={"h-4 w-4 inline"}/>
-            {props.disableLink ? <p>{tag}</p> :
-                <Link to={"/note?" + new URLSearchParams({query: `#${tag}`})}>{tag}</Link>}
-        </div>
-    )}</div>);
 }
 
 export function Note(props: NoteProps) {

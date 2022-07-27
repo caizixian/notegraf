@@ -4,6 +4,7 @@ import {Link} from "react-router-dom";
 import * as types from "../types";
 import {renderTitle} from "../utils";
 import {getNote} from "../api";
+import {Tags} from "./Tags";
 
 type LazyLinksProps = {
     collectionName: string
@@ -38,9 +39,12 @@ export function LazyLinks(props: LazyLinksProps) {
     if (isLoaded) {
         listItems = notes.map(note =>
             <li key={note.id}>
-                <Link to={`/note/${note.id}`} className={"underline"}>
-                    <p className={"truncate"}>{renderTitle(note.title)}</p>
-                </Link>
+                <div className={"flex flex-wrap gap-1"}>
+                    <Link to={`/note/${note.id}`} className={"underline min-w-0"}>
+                        <p className={"truncate"}>{renderTitle(note.title)}</p>
+                    </Link>
+                    <Tags tags={note.metadata.tags} disableLink={false}></Tags>
+                </div>
             </li>);
     } else {
         listItems = props.noteIDs.map(noteID =>
