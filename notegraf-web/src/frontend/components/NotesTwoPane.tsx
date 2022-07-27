@@ -2,7 +2,8 @@ import * as types from "../types";
 import * as React from "react";
 import {useEffect, useState} from "react";
 import {renderTitle, showAgo} from "../utils";
-import {Note, Tags} from "./Note";
+import {Note} from "./Note";
+import {Tags} from "./Tags";
 
 type NotesTwoPaneProps = {
     setError: any,
