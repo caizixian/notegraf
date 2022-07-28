@@ -11,3 +11,9 @@ export function renderTitle(title: string) {
 export function tileInTitle(title: string) {
     return title ? title : "(no title)";
 }
+
+export function openInNewTabClosure(url: string) {
+    return () => {
+        window.open(url, '_blank')!.focus();
+    }
+}

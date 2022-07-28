@@ -1,8 +1,7 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
-import {Link} from "react-router-dom";
 import * as types from "../types";
-import {renderTitle} from "../utils";
+import {openInNewTabClosure, renderTitle} from "../utils";
 import {getNote} from "../api";
 import {Tags} from "./Tags";
 
@@ -40,18 +39,20 @@ export function LazyLinks(props: LazyLinksProps) {
         listItems = notes.map(note =>
             <li key={note.id}>
                 <div className={"flex flex-wrap gap-1"}>
-                    <Link to={`/note/${note.id}`} className={"underline min-w-0"}>
-                        <p className={"truncate"}>{renderTitle(note.title)}</p>
-                    </Link>
+                    <p className={"min-w-0 truncate underline cursor-pointer"}
+                       onClick={openInNewTabClosure(`/note/${note.id}`)}>
+                        {renderTitle(note.title)}
+                    </p>
                     <Tags tags={note.metadata.tags} disableLink={false}></Tags>
                 </div>
             </li>);
     } else {
         listItems = props.noteIDs.map(noteID =>
             <li key={noteID}>
-                <Link to={`/note/${noteID}`} className={"underline"}>
-                    <p className={"truncate"}>{noteID}</p>
-                </Link>
+                <p className={"truncate underline cursor-pointer"}
+                   onClick={openInNewTabClosure(`/note/${noteID}`)}>
+                    {noteID}
+                </p>
             </li>);
     }
     return (
