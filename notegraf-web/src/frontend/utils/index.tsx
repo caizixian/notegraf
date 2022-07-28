@@ -12,8 +12,12 @@ export function tileInTitle(title: string) {
     return title ? title : "(no title)";
 }
 
-export function openInNewTabClosure(url: string) {
+export function openLinkClosure(url: string, sameTab: boolean, navigate: any) {
     return () => {
-        window.open(url, '_blank')!.focus();
+        if (sameTab) {
+            navigate(url);
+        } else {
+            window.open(url, '_blank')!.focus();
+        }
     }
 }
