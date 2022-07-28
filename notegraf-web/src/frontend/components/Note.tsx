@@ -18,7 +18,7 @@ import katex, {ParseError} from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
-import {renderTitle, showAgo} from "../utils";
+import {openInNewTabClosure, renderTitle, showAgo} from "../utils";
 import {Tags} from "./Tags";
 
 function escapeHtml(unsafe: string): string {
@@ -191,9 +191,10 @@ export function Note(props: NoteProps) {
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline mb-1.5"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <Link to={link} className={"min-w-0"}>
-                    <h1 className={"text-4xl underline text-ellipsis overflow-hidden"}>{renderTitle(props.note.title)}</h1>
-                </Link>
+                <h1 className={"text-4xl underline text-ellipsis overflow-hidden min-w-0 cursor-pointer"}
+                    onClick={openInNewTabClosure(link)}>
+                    {renderTitle(props.note.title)}
+                </h1>
             </div>
             <Tags tags={props.note.metadata.tags} disableLink={false}/>
             {props.showingRevision ||
