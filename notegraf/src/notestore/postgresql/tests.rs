@@ -132,3 +132,8 @@ async fn search_orphan() {
 async fn search_notag() {
     common_tests::search_notag(get_store().await).await;
 }
+
+#[tokio::test]
+async fn issue_151() {
+    common_tests::issue_151(get_store().await).await;
+}

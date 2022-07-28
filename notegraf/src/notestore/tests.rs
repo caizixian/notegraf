@@ -550,3 +550,47 @@ pub(super) async fn search_notag(store: impl NoteStore<PlainNote>) {
     let notes = store.search(&("world".into())).await.unwrap();
     assert_eq!(notes.len(), 2);
 }
+
+pub(super) async fn issue_151(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("".into());
+    let loc = store
+        .new_note(
+            "note 1".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc_next = store
+        .append_note(
+            loc.get_id(),
+            "note 2".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let mut note_inner_ref = PlainNote::new("ref".into());
+    note_inner_ref.add_referent(loc.get_id().clone());
+    let loc2 = store
+        .new_note(
+            "note 3".to_owned(),
+            note_inner_ref.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc3 = store
+        .new_note(
+            "note 4".to_owned(),
+            note_inner_ref.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let n = store.get_note(&loc.current()).await.unwrap();
+    assert_eq!(&n.get_next().unwrap(), loc_next.get_id());
+    assert_eq!(n.get_references().len(), 2);
+    assert!(n.get_references().contains(loc2.get_id()));
+    assert!(n.get_references().contains(loc3.get_id()));
+}

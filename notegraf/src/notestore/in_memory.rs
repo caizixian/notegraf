@@ -828,4 +828,9 @@ mod tests {
     async fn search_notag() {
         common_tests::search_notag(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn issue_151() {
+        common_tests::issue_151(InMemoryStore::new()).await;
+    }
 }
