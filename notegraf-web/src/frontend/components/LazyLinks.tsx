@@ -1,9 +1,10 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
 import * as types from "../types";
-import {openInNewTabClosure, renderTitle} from "../utils";
+import {openLinkClosure, renderTitle} from "../utils";
 import {getNote} from "../api";
 import {Tags} from "./Tags";
+import {useNavigate} from "react-router-dom";
 
 type LazyLinksProps = {
     collectionName: string
@@ -14,6 +15,7 @@ export function LazyLinks(props: LazyLinksProps) {
     const [everClicked, setEverClicked] = useState(false);
     const [notes, setNotes] = useState<types.Note[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
+    const navigate = useNavigate();
 
     function onToggle() {
         setEverClicked(true);
@@ -40,7 +42,7 @@ export function LazyLinks(props: LazyLinksProps) {
             <li key={note.id}>
                 <div className={"flex flex-wrap gap-1"}>
                     <p className={"min-w-0 truncate underline cursor-pointer"}
-                       onClick={openInNewTabClosure(`/note/${note.id}`)}>
+                       onClick={openLinkClosure(`/note/${note.id}`, true, navigate)}>
                         {renderTitle(note.title)}
                     </p>
                     <Tags tags={note.metadata.tags} disableLink={false}></Tags>
@@ -50,7 +52,7 @@ export function LazyLinks(props: LazyLinksProps) {
         listItems = props.noteIDs.map(noteID =>
             <li key={noteID}>
                 <p className={"truncate underline cursor-pointer"}
-                   onClick={openInNewTabClosure(`/note/${noteID}`)}>
+                   onClick={openLinkClosure(`/note/${noteID}`, true, navigate)}>
                     {noteID}
                 </p>
             </li>);
