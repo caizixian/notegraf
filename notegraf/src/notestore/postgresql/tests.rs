@@ -137,3 +137,8 @@ async fn search_notag() {
 async fn issue_151() {
     common_tests::issue_151(get_store().await).await;
 }
+
+#[tokio::test]
+async fn tags() {
+    common_tests::tags(get_store().await).await;
+}

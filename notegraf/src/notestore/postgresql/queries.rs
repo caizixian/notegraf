@@ -708,7 +708,7 @@ pub(super) async fn read_only(
         .map(|_| ())?)
 }
 
-pub(super) async fn tags(
+pub(super) async fn get_tags(
     transaction: &mut Transaction<'_, Postgres>,
 ) -> Result<Vec<String>, NoteStoreError> {
     let row = query!(

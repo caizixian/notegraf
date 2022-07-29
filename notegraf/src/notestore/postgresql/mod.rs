@@ -386,6 +386,16 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
         })
     }
 
+    fn tags(&self) -> BoxFuture<Result<Vec<String>, NoteStoreError>> {
+        Box::pin(async move {
+            let mut transaction = self.db_pool.begin().await?;
+            read_only(&mut transaction).await?;
+            let tags = get_tags(&mut transaction).await?;
+            transaction.commit().await?;
+            Ok(tags)
+        })
+    }
+
     fn backup(&self, _path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>> {
         unimplemented!("Please use PostgreSQL's own backup utilities.")
     }
