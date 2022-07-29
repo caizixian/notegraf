@@ -1,4 +1,4 @@
-import {NavLink} from "react-router-dom";
+import {Link, NavLink} from "react-router-dom";
 import SearchBox from "./SearchBox";
 import {DocumentAddIcon, LogoutIcon, MenuIcon} from "@heroicons/react/outline";
 import * as React from "react";
@@ -35,17 +35,22 @@ function MiscDropdown(props: MiscDropdownProps) {
                         "dark:divide-gray-700 shadow-lg ring-1 ring-white dark:ring-black ring-opacity-20 p-0.5"}>
                     {props.links.map(link => (
                         <div key={link[0]}>
-                            <NavLink to={link[0]} onClick={() => {
-                                setOpen(false)
-                            }}>{
-                                ({isActive}) => {
-                                    const activeStyle = " bg-gray-400 dark:bg-gray-600";
-                                    return (<div
-                                        className={"px-2 py-2 block rounded-md" + (isActive ? activeStyle : "")}>
-                                        {link[1]}
-                                    </div>);
+                            <NavLink
+                                to={link[0]}
+                                onClick={() => {
+                                    setOpen(false)
+                                }}
+                                end
+                            >
+                                {
+                                    ({isActive}) => {
+                                        const activeStyle = " bg-gray-400 dark:bg-gray-600";
+                                        return (<div
+                                            className={"px-2 py-2 block rounded-md" + (isActive ? activeStyle : "")}>
+                                            {link[1]}
+                                        </div>);
+                                    }
                                 }
-                            }
                             </NavLink>
                         </div>
                     ))}
@@ -66,11 +71,11 @@ export function NavBar() {
                 <div className={"min-w-0"}>
                     <SearchBox/>
                 </div>
-                <NavLink to={"/note/new"}>
+                <Link to={"/note/new"}>
                     <button className={"ng-button ng-button-primary"}>
                         <DocumentAddIcon className={"h-6 w-6"}/>
                     </button>
-                </NavLink>
+                </Link>
                 {sso_signout_url && <a href={sso_signout_url}>
                     <button className={"ng-button ng-button-primary"}>
                         <LogoutIcon className={"h-6 w-6"}/>
