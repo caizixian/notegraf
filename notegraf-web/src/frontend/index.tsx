@@ -37,6 +37,7 @@ root.render(
                             </Route>
                         </Route>
                     </Route>
+                    <Route path={"tags"} element={<pages.Tags/>}/>
                 </Route>
                 <Route
                     path="*"
