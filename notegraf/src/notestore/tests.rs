@@ -594,3 +594,37 @@ pub(super) async fn issue_151(store: impl NoteStore<PlainNote>) {
     assert!(n.get_references().contains(loc2.get_id()));
     assert!(n.get_references().contains(loc3.get_id()));
 }
+
+pub(super) async fn tags(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("".into());
+    let md1 = NoteMetadataEditable {
+        tags: Some(HashSet::from(["tag1".to_owned()])),
+        custom_metadata: None,
+    };
+    let md2 = NoteMetadataEditable {
+        tags: Some(HashSet::from(["tag1".to_owned(), "tag2".to_owned()])),
+        custom_metadata: None,
+    };
+    let md3 = NoteMetadataEditable {
+        tags: Some(HashSet::from(["tag2".to_owned(), "tag3".to_owned()])),
+        custom_metadata: None,
+    };
+    let _loc1 = store
+        .new_note("note 1".to_owned(), note_inner.clone(), md1)
+        .await
+        .unwrap();
+    let _loc2 = store
+        .new_note("note 2".to_owned(), note_inner.clone(), md2)
+        .await
+        .unwrap();
+    let loc3 = store
+        .new_note("note 3".to_owned(), note_inner.clone(), md3)
+        .await
+        .unwrap();
+    assert_eq!(store.tags().await.unwrap().len(), 3);
+    store.delete_note(&loc3).await.unwrap();
+    let tags = store.tags().await.unwrap();
+    assert_eq!(tags.len(), 2);
+    assert!(tags.contains(&"tag1".to_owned()));
+    assert!(tags.contains(&"tag2".to_owned()));
+}

@@ -690,16 +690,44 @@ where
     Ok(new_loc)
 }
 
-pub async fn read_write(transaction: &mut Transaction<'_, Postgres>) -> Result<(), NoteStoreError> {
+pub(super) async fn read_write(
+    transaction: &mut Transaction<'_, Postgres>,
+) -> Result<(), NoteStoreError> {
     Ok(transaction
         .execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE READ WRITE")
         .await
         .map(|_| ())?)
 }
 
-pub async fn read_only(transaction: &mut Transaction<'_, Postgres>) -> Result<(), NoteStoreError> {
+pub(super) async fn read_only(
+    transaction: &mut Transaction<'_, Postgres>,
+) -> Result<(), NoteStoreError> {
     Ok(transaction
         .execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY")
         .await
         .map(|_| ())?)
+}
+
+pub(super) async fn get_tags(
+    transaction: &mut Transaction<'_, Postgres>,
+) -> Result<Vec<String>, NoteStoreError> {
+    let row = query!(
+        r#"
+        SELECT
+            array_remove(array_agg(DISTINCT tag ORDER BY tag), NULL) AS tags
+        FROM
+            revision
+        LEFT JOIN current_revision cr ON revision.revision = cr.current_revision
+        LEFT JOIN LATERAL unnest(metadata_tags) tag ON TRUE
+        WHERE cr.current_revision IS NOT NULL
+    "#
+    )
+    .fetch_one(transaction)
+    .await
+    .map_err(NoteStoreError::PostgreSQLError)?;
+    if let Some(t) = row.tags {
+        Ok(t)
+    } else {
+        Ok(vec![])
+    }
 }

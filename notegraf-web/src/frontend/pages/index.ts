@@ -6,3 +6,4 @@ export * from "./NoteRevisions";
 export * from "./NoteSequence";
 export * from "./NoteTop";
 export * from "./SearchResults";
+export * from "./TagList";

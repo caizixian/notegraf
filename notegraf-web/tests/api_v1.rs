@@ -11,21 +11,9 @@ async fn create_note_helper(
     address: &str,
     title: &str,
     note_inner: &str,
+    tags: &str,
 ) -> NoteLocator {
-    client
-        .post(&format!("{}/api/v1/note", address))
-        .json(&json!({
-            "title": title.to_owned(),
-            "note_inner": note_inner.to_owned(),
-            "metadata_tags": "",
-            "metadata_custom_metadata": "null"
-        }))
-        .send()
-        .await
-        .expect("Failed to execute request.")
-        .json()
-        .await
-        .expect("Failed to parse response")
+    post_note_helper(client, address, "note", title, note_inner, tags).await
 }
 
 async fn post_note_helper(
@@ -34,19 +22,20 @@ async fn post_note_helper(
     endpoint: &str,
     title: &str,
     note_inner: &str,
+    tags: &str,
 ) -> NoteLocator {
     client
         .post(&format!("{}/api/v1/{}", address, endpoint))
         .json(&json!({
             "title": title.to_owned(),
             "note_inner": note_inner.to_owned(),
-            "metadata_tags": "",
+            "metadata_tags": tags.to_owned(),
             "metadata_custom_metadata": "null"
         }))
         .send()
         .await
         .expect("Failed to execute request.")
-        .json::<NoteLocator>()
+        .json()
         .await
         .expect("Failed to parse response")
 }
@@ -77,6 +66,7 @@ async fn new_note() {
         "note",
         "My title",
         "# Hey Markdown Note\n## H2",
+        "",
     )
     .await;
 
@@ -88,7 +78,7 @@ async fn note_retrieve() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     let response = get_note_helper(&client, &app.address, &loc1).await;
 
     assert!(response.is_object());
@@ -105,7 +95,7 @@ async fn note_delete() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     get_note_helper(&client, &app.address, &loc1).await;
     client
         .delete(&format!(
@@ -133,13 +123,14 @@ async fn note_update() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     let loc2 = post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/revision", loc1.get_id()),
         "New title",
         "New body text",
+        "",
     )
     .await;
 
@@ -156,13 +147,14 @@ async fn note_revisions() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     let loc2 = post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/revision", loc1.get_id()),
         "New title",
         "New body text",
+        "",
     )
     .await;
 
@@ -193,8 +185,8 @@ async fn recent_notes() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
-    let loc2 = create_note_helper(&client, &app.address, "title2", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
+    let loc2 = create_note_helper(&client, &app.address, "title2", "## body text", "").await;
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
@@ -215,8 +207,8 @@ async fn search_notes() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
-    let loc2 = create_note_helper(&client, &app.address, "bar", "buzz").await;
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz", "").await;
+    let loc2 = create_note_helper(&client, &app.address, "bar", "buzz", "").await;
 
     let response = client
         .get(&format!("{}/api/v1/note", &app.address))
@@ -248,12 +240,13 @@ async fn backlink() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz", "").await;
     let loc2 = create_note_helper(
         &client,
         &app.address,
         "bar",
         &format!("[here is a link to foo](notegraf:/note/{})", loc1.get_id()),
+        "",
     )
     .await;
 
@@ -269,13 +262,14 @@ async fn add_branch() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     let loc2 = post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/branch", loc1.get_id()),
         "child title",
         "New body text",
+        "",
     )
     .await;
 
@@ -294,13 +288,14 @@ async fn append_note() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     let loc2 = post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/next", loc1.get_id()),
         "next title",
         "New body text",
+        "",
     )
     .await;
 
@@ -316,12 +311,13 @@ async fn orphan_reference() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz").await;
+    let loc1 = create_note_helper(&client, &app.address, "foo", "Fizz", "").await;
     let loc2 = create_note_helper(
         &client,
         &app.address,
         "bar",
         &format!("[here is a link to foo](notegraf:/note/{})", loc1.get_id()),
+        "",
     )
     .await;
 
@@ -343,13 +339,14 @@ async fn orphan_prev() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/next", loc1.get_id()),
         "next title",
         "New body text",
+        "",
     )
     .await;
 
@@ -371,13 +368,14 @@ async fn orphan_parent() {
     let app = spawn_app().await;
     let client = Client::new();
 
-    let loc1 = create_note_helper(&client, &app.address, "title", "## body text").await;
+    let loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
     post_note_helper(
         &client,
         &app.address,
         &format!("note/{}/branch", loc1.get_id()),
         "child title",
         "New body text",
+        "",
     )
     .await;
 
@@ -392,4 +390,26 @@ async fn orphan_parent() {
         .expect("Failed to parse response");
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(response[0]["id"], loc1.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn tags() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    create_note_helper(&client, &app.address, "foo", "", "tag1").await;
+    create_note_helper(&client, &app.address, "foo", "", "tag2").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/tags", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    let tags = response.as_array().unwrap();
+    assert_eq!(tags.len(), 2);
+    assert!(tags.contains(&json! {"tag1"}));
+    assert!(tags.contains(&json! {"tag2"}));
 }

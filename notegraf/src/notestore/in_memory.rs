@@ -545,6 +545,17 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         Ok(revisions)
     }
 
+    fn tags(&self) -> Result<Vec<String>, NoteStoreError> {
+        let mut tags = HashSet::new();
+        let notes: Vec<InMemoryNoteStored<T>> = self.get_all_current_notes();
+        for note in &notes {
+            for tag in &note.metadata.tags {
+                tags.insert(tag.clone());
+            }
+        }
+        Ok(Vec::from_iter(tags.into_iter()))
+    }
+
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), NoteStoreError> {
         let p = path.as_ref().join("notegraf_in_memory.json");
 
@@ -681,6 +692,13 @@ impl<T: NoteType> NoteStore<T> for InMemoryStore<T> {
         Box::pin(async move {
             let ims = self.ims.read().await;
             ims.search(sr)
+        })
+    }
+
+    fn tags(&self) -> BoxFuture<Result<Vec<String>, NoteStoreError>> {
+        Box::pin(async move {
+            let ims = self.ims.read().await;
+            ims.tags()
         })
     }
 
@@ -832,5 +850,10 @@ mod tests {
     #[tokio::test]
     async fn issue_151() {
         common_tests::issue_151(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn tags() {
+        common_tests::tags(InMemoryStore::new()).await;
     }
 }

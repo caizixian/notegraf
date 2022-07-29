@@ -293,6 +293,17 @@ async fn search(
     HttpResponse::Ok().json(revisions)
 }
 
+#[get("/tags")]
+#[instrument(skip(store))]
+async fn get_tags(store: web::Data<BoxedNoteStore<NoteType>>) -> impl Responder {
+    let res = store.tags().await;
+
+    if let Err(e) = res {
+        return notestore_error_handler(&e);
+    }
+    HttpResponse::Ok().json(res.unwrap())
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_note_current)
         .service(get_note_specific)
@@ -302,5 +313,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(get_revisions)
         .service(search)
         .service(new_branch)
-        .service(new_next);
+        .service(new_next)
+        .service(get_tags);
 }

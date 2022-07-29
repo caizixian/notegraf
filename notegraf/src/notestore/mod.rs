@@ -117,6 +117,8 @@ where
         &'a self,
         sr: &'a SearchRequest,
     ) -> BoxFuture<'a, Result<Revisions<T>, NoteStoreError>>;
+    /// List all tags of current notes
+    fn tags(&self) -> BoxFuture<Result<Vec<String>, NoteStoreError>>;
     /// Backup the storage to a folder on some filesystem.
     fn backup(&self, path: Box<dyn AsRef<Path> + Send>) -> BoxFuture<Result<(), NoteStoreError>>;
     /// Restore the storage from a folder on some filesystem.
