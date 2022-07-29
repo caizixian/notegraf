@@ -1,4 +1,4 @@
-import {Link, NavLink} from "react-router-dom";
+import {NavLink} from "react-router-dom";
 import SearchBox from "./SearchBox";
 import {DocumentAddIcon, LogoutIcon, MenuIcon} from "@heroicons/react/outline";
 import * as React from "react";
@@ -31,17 +31,22 @@ function MiscDropdown(props: MiscDropdownProps) {
             }}/>
             {
                 open && (<div
-                    className={"absolute bg-gray-500 mt-1.5 w-24 rounded-md divide-y divide-gray-300 dark:divide-gray-700 shadow-lg ring-1 ring-white dark:ring-black ring-opacity-20 p-0.5"}
-                >
+                    className={"absolute bg-gray-500 mt-1.5 w-24 rounded-md divide-y divide-gray-300" +
+                        "dark:divide-gray-700 shadow-lg ring-1 ring-white dark:ring-black ring-opacity-20 p-0.5"}>
                     {props.links.map(link => (
                         <div key={link[0]}>
-                            <Link to={link[0]} onClick={() => {
+                            <NavLink to={link[0]} onClick={() => {
                                 setOpen(false)
-                            }}>
-                                <div className={"px-2 py-2 block rounded-md hover:dark:bg-gray-600 hover:bg-gray-400"}>
-                                    {link[1]}
-                                </div>
-                            </Link>
+                            }}>{
+                                ({isActive}) => {
+                                    const activeStyle = " bg-gray-400 dark:bg-gray-600";
+                                    return (<div
+                                        className={"px-2 py-2 block rounded-md" + (isActive ? activeStyle : "")}>
+                                        {link[1]}
+                                    </div>);
+                                }
+                            }
+                            </NavLink>
                         </div>
                     ))}
                 </div>)

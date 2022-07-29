@@ -58,3 +58,11 @@ export async function postNote(endpoint: string, data: any): Promise<NoteLocator
     }
     return response.json();
 }
+
+export async function getTags(): Promise<string[]> {
+    const response = await fetch(`/api/v1/tags`);
+    if (!response.ok) {
+        throw new Error(response.statusText + " " + await response.text());
+    }
+    return response.json();
+}
