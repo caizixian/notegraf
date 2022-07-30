@@ -147,3 +147,8 @@ async fn tags() {
 async fn search_limit_override() {
     common_tests::search_limit_override(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_tag_exclude() {
+    common_tests::search_tag_exclude(get_store().await).await;
+}

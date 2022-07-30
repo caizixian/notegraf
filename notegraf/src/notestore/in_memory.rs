@@ -131,6 +131,18 @@ fn note_contains_lexemes(title: &str, note_inner: &str, lexemes: &[String]) -> b
     true
 }
 
+fn note_excludes_lexemes(title: &str, note_inner: &str, lexemes_excluded: &[String]) -> bool {
+    let title = title.to_lowercase();
+    let note_inner = note_inner.to_lowercase();
+    for lexeme in lexemes_excluded {
+        let lexeme_lower = lexeme.to_lowercase();
+        if title.contains(&lexeme_lower) || note_inner.contains(&lexeme_lower) {
+            return false;
+        }
+    }
+    true
+}
+
 fn note_is_orphan<T: NoteType>(note: &dyn Note<T>) -> bool {
     note.get_prev().is_none() && note.get_parent().is_none() && note.get_references().is_empty()
 }
@@ -531,7 +543,16 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             .into_iter()
             .filter(|x| {
                 note_contains_lexemes(&x.get_title(), &x.get_note_inner().into(), &sr.lexemes)
+                    && note_excludes_lexemes(
+                        &x.get_title(),
+                        &x.get_note_inner().into(),
+                        &sr.lexemes_excluded,
+                    )
                     && HashSet::from_iter(sr.tags.to_vec()).is_subset(&x.get_metadata().tags)
+                    && HashSet::from_iter(sr.tags_excluded.to_vec())
+                        .intersection(&x.get_metadata().tags)
+                        .count()
+                        == 0
                     && (!sr.orphan || note_is_orphan(x.as_ref()))
                     && (!sr.no_tag || x.get_metadata().tags.is_empty())
             })
@@ -860,5 +881,10 @@ mod tests {
     #[tokio::test]
     async fn search_limit_override() {
         common_tests::search_limit_override(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn search_tag_exclude() {
+        common_tests::search_tag_exclude(InMemoryStore::new()).await;
     }
 }
