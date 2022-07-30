@@ -25,6 +25,7 @@ fn parse_query(query: &str) -> SearchRequest {
     let mut orphan = false;
     let mut limit = None;
     let mut no_tag = false;
+    let mut no_limit = false;
     for part in parts {
         if let Some(stripped) = part.strip_prefix('#') {
             if !stripped.is_empty() {
@@ -35,6 +36,8 @@ fn parse_query(query: &str) -> SearchRequest {
                 orphan = true;
             } else if stripped == "notag" {
                 no_tag = true;
+            } else if stripped == "nolimit" {
+                no_limit = true;
             } else if let Some(limit_str) = stripped.strip_prefix("limit=") {
                 limit = limit_str.parse::<u64>().ok();
             }
@@ -52,6 +55,9 @@ fn parse_query(query: &str) -> SearchRequest {
     }
     if lexemes.is_empty() && limit.is_none() {
         limit = Some(DEFAULT_LIMIT);
+    }
+    if no_limit {
+        limit = None;
     }
     SearchRequest {
         lexemes,
@@ -196,5 +202,20 @@ mod tests {
         let sr: SearchRequest = "-#foo #bar".into();
         assert_eq!(sr.tags, vec!["bar".to_owned()]);
         assert_eq!(sr.tags_excluded, vec!["foo".to_owned()]);
+    }
+
+    #[test]
+    fn nolimit() {
+        let sr: SearchRequest = "!nolimit".into();
+        assert_eq!(sr.limit, None);
+    }
+
+    #[test]
+    fn nolimit_higher_precedence() {
+        let sr: SearchRequest = "!limit=512 !nolimit".into();
+        assert_eq!(sr.limit, None);
+
+        let sr: SearchRequest = "!nolimit !limit=512".into();
+        assert_eq!(sr.limit, None);
     }
 }

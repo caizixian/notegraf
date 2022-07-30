@@ -26,3 +26,4 @@ modifier is used.
 - `!orphan`: match notes that have no previous note, no parent note (i.e., not a branch of another note), and not
   referenced by other notes.
 - `!limit=<integer>`: control the number of notes returned in the result to be `<integer>`.
+- `!nolimit`: return all notes that match. This takes precedence over `!limit=<integer>`.
