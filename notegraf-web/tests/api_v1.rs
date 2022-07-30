@@ -553,3 +553,57 @@ async fn lexeme_exclude() {
     assert_eq!(response.as_array().unwrap().len(), 1);
     assert_eq!(response[0]["id"], loc1.get_id().as_ref());
 }
+
+#[tokio::test]
+async fn issue_158() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "hello world", "", "tag1").await;
+    let loc2 = create_note_helper(&client, &app.address, "goodbye world", "", "tag2").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "world")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "-hello")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "-goodbye")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
+}

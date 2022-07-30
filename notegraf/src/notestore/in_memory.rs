@@ -892,4 +892,9 @@ mod tests {
     async fn search_lexeme_exclude() {
         common_tests::search_lexeme_exclude(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn issue_158() {
+        common_tests::issue_158(InMemoryStore::new()).await;
+    }
 }

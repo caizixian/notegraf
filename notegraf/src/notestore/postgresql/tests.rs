@@ -157,3 +157,8 @@ async fn search_tag_exclude() {
 async fn search_lexeme_exclude() {
     common_tests::search_lexeme_exclude(get_store().await).await;
 }
+
+#[tokio::test]
+async fn issue_158() {
+    common_tests::issue_158(get_store().await).await;
+}
