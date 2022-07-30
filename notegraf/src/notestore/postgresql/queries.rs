@@ -358,7 +358,8 @@ pub(super) async fn search(
     if sr.no_tag {
         conditions.push("revision.metadata_tags = '{}'".to_owned());
     }
-    if !sr.lexemes.is_empty() {
+    let is_tsquery = !sr.lexemes.is_empty() || !sr.lexemes_excluded.is_empty();
+    if is_tsquery {
         columns.push("ts_rank(revision.text_searchable, query.query) AS rank".to_string());
         joins.push(
             "JOIN to_tsquery($3) query ON revision.text_searchable @@ query.query".to_string(),
@@ -372,7 +373,7 @@ pub(super) async fn search(
     let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement)
         .bind(&sr.tags)
         .bind(&sr.tags_excluded);
-    if !sr.lexemes.is_empty() {
+    if is_tsquery {
         let mut terms = sr.lexemes.clone();
         let prefixed = sr.lexemes_excluded.iter().map(|x| "! ".to_owned() + x);
         terms.extend(prefixed);
