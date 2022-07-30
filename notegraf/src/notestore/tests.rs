@@ -628,3 +628,27 @@ pub(super) async fn tags(store: impl NoteStore<PlainNote>) {
     assert!(tags.contains(&"tag1".to_owned()));
     assert!(tags.contains(&"tag2".to_owned()));
 }
+
+pub(super) async fn search_limit_override(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    store
+        .new_note(
+            "hello world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("".into())).await.unwrap();
+    assert_eq!(notes.len(), 2);
+    let notes = store.search(&("!limit=1".into())).await.unwrap();
+    assert_eq!(notes.len(), 1);
+}

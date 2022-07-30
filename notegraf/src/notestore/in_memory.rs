@@ -856,4 +856,9 @@ mod tests {
     async fn tags() {
         common_tests::tags(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn search_limit_override() {
+        common_tests::search_limit_override(InMemoryStore::new()).await;
+    }
 }

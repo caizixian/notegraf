@@ -43,10 +43,8 @@ fn parse_query(query: &str) -> SearchRequest {
                 if !stripped.is_empty() {
                     tags_excluded.push(stripped.to_owned());
                 }
-            } else {
-                if !negation.is_empty() {
-                    lexemes_excluded.push(negation.to_owned());
-                }
+            } else if !negation.is_empty() {
+                lexemes_excluded.push(negation.to_owned());
             }
         } else if !part.is_empty() {
             lexemes.push(part.to_owned());
@@ -190,13 +188,13 @@ mod tests {
     fn exclude_lexemes() {
         let sr: SearchRequest = "-foo bar".into();
         assert_eq!(sr.lexemes, vec!["bar".to_owned()]);
-        assert_eq!(sr.lexemes_excluded, vec!["bar".to_owned()]);
+        assert_eq!(sr.lexemes_excluded, vec!["foo".to_owned()]);
     }
 
     #[test]
     fn exclude_tags() {
         let sr: SearchRequest = "-#foo #bar".into();
         assert_eq!(sr.tags, vec!["bar".to_owned()]);
-        assert_eq!(sr.tags_excluded, vec!["bar".to_owned()]);
+        assert_eq!(sr.tags_excluded, vec!["foo".to_owned()]);
     }
 }
