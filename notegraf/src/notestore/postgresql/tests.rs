@@ -142,3 +142,18 @@ async fn issue_151() {
 async fn tags() {
     common_tests::tags(get_store().await).await;
 }
+
+#[tokio::test]
+async fn search_limit_override() {
+    common_tests::search_limit_override(get_store().await).await;
+}
+
+#[tokio::test]
+async fn search_tag_exclude() {
+    common_tests::search_tag_exclude(get_store().await).await;
+}
+
+#[tokio::test]
+async fn search_lexeme_exclude() {
+    common_tests::search_lexeme_exclude(get_store().await).await;
+}

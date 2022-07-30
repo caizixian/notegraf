@@ -354,13 +354,14 @@ pub(super) async fn search(
         havings.push("array_remove(array_agg(revision3.id), NULL) = '{}'".to_owned());
     }
     conditions.push("revision.metadata_tags @> $1".to_owned());
+    conditions.push("NOT revision.metadata_tags && $2".to_owned());
     if sr.no_tag {
         conditions.push("revision.metadata_tags = '{}'".to_owned());
     }
     if !sr.lexemes.is_empty() {
         columns.push("ts_rank(revision.text_searchable, query.query) AS rank".to_string());
         joins.push(
-            "JOIN to_tsquery($2) query ON revision.text_searchable @@ query.query".to_string(),
+            "JOIN to_tsquery($3) query ON revision.text_searchable @@ query.query".to_string(),
         );
         groupbys.push("query.query".to_owned());
         orders.push("rank DESC".to_owned());
@@ -368,9 +369,14 @@ pub(super) async fn search(
     let query_statement = get_note_query(
         columns, joins, conditions, groupbys, havings, orders, sr.limit,
     );
-    let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement).bind(&sr.tags);
+    let mut q = sqlx::query_as::<_, PostgreSQLNoteRowJoined>(&query_statement)
+        .bind(&sr.tags)
+        .bind(&sr.tags_excluded);
     if !sr.lexemes.is_empty() {
-        q = q.bind(sr.lexemes.join(" & "));
+        let mut terms = sr.lexemes.clone();
+        let prefixed = sr.lexemes_excluded.iter().map(|x| "! ".to_owned() + x);
+        terms.extend(prefixed);
+        q = q.bind(terms.join(" & "));
     }
     let res = q.fetch_all(transaction).await;
     if let Err(sqlx::Error::RowNotFound) = res {
