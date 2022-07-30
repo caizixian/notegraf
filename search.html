@@ -3,8 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Page not found - Notegraf Documentation</title>
-        <base href="/">
+        <title>Search Syntax - Notegraf Documentation</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
@@ -76,7 +75,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="search.html"><strong aria-hidden="true">3.</strong> Search Syntax</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">4.</strong> Changelog</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="search.html" class="active"><strong aria-hidden="true">3.</strong> Search Syntax</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">4.</strong> Changelog</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -135,19 +134,54 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="document-not-found-404"><a class="header" href="#document-not-found-404">Document not found (404)</a></h1>
-<p>This URL is invalid, sorry. Please use the navigation bar or search to continue.</p>
+                        <h1 id="search-syntax"><a class="header" href="#search-syntax">Search Syntax</a></h1>
+<p>A search query contains zero or more search terms, separated by spaces.</p>
+<p>If any positive lexeme term is specified, results are ordered by relevance for the PostgreSQL backend.
+If no positive lexeme term is specified, results are ordered by their creation time (newer notes come first) regardless
+the backend.
+In any other case, the order is unspecified.</p>
+<p>If no positive lexeme term is specified, results are limited to 10 notes by default, unless a <code>!limit=&lt;integer&gt;</code>
+modifier is used.</p>
+<h2 id="lexeme-terms"><a class="header" href="#lexeme-terms">Lexeme Terms</a></h2>
+<ul>
+<li>Positive lexeme term: a plain word, such as <code>token</code>, will be searched against the title and the note body.</li>
+<li>Negative lexeme term: prefix a word with <code>-</code> to exclude the word, such as <code>-exclude</code>.</li>
+</ul>
+<h2 id="tag-terms"><a class="header" href="#tag-terms">Tag Terms</a></h2>
+<ul>
+<li>Positive tag term: a hashtag, such as <code>#token</code>.</li>
+<li>Negative tag term: prefix a hashtag with <code>-</code> to exclude the tag, such as <code>-#exclude</code>.</li>
+</ul>
+<h2 id="modifier-terms"><a class="header" href="#modifier-terms">Modifier Terms</a></h2>
+<ul>
+<li><code>!notag</code>: match notes with no tags.</li>
+<li><code>!orphan</code>: match notes that have no previous note, no parent note (i.e., not a branch of another note), and not
+referenced by other notes.</li>
+<li><code>!limit=&lt;integer&gt;</code>: control the number of notes returned in the result to be <code>&lt;integer&gt;</code>.</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="developer.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="changelog.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         <div style="clear: both"></div>
                     </nav>
                 </div>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="developer.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="changelog.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
             </nav>
 
         </div>
