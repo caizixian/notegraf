@@ -1,6 +1,5 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
-import * as types from "../types";
 import {openLinkClosure, renderTitle} from "../utils";
 import {getNote} from "../api";
 import {Tags} from "./Tags";
@@ -13,7 +12,7 @@ type LazyLinksProps = {
 
 export function LazyLinks(props: LazyLinksProps) {
     const [everClicked, setEverClicked] = useState(false);
-    const [notes, setNotes] = useState<types.Note[]>([]);
+    const [notes, setNotes] = useState<any[][]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
     const navigate = useNavigate();
 
@@ -21,12 +20,26 @@ export function LazyLinks(props: LazyLinksProps) {
         setEverClicked(true);
     }
 
+    async function loadNote(noteID: string): Promise<any[]> {
+        const baseNote = await getNote(noteID);
+        let rootNote = baseNote;
+        let transitive = false;
+        while (rootNote.title == "" && rootNote.prev != null) {
+            rootNote = await getNote(rootNote.prev);
+        }
+
+        if (rootNote != baseNote) {
+            transitive = true;
+        }
+        return [baseNote, rootNote, transitive];
+    }
+
     async function loadNotes(noteIDs: string[]) {
         if (everClicked) {
             let notes = await Promise.all(noteIDs.map(async (noteID) => {
-                return await getNote(noteID);
+                return await loadNote(noteID);
             }));
-            notes.sort((a, b) => a.title.localeCompare(b.title));
+            notes.sort((a, b) => a[1].title.localeCompare(b[1].title));
             setNotes(notes);
             setIsLoaded(true);
         }
@@ -39,13 +52,14 @@ export function LazyLinks(props: LazyLinksProps) {
     let listItems;
     if (isLoaded) {
         listItems = notes.map(note =>
-            <li key={note.id}>
+            <li key={note[0].id}>
                 <div className={"flex flex-wrap gap-1"}>
                     <p className={"min-w-0 truncate underline cursor-pointer"}
-                       onClick={openLinkClosure(`/note/${note.id}`, true, navigate)}>
-                        {renderTitle(note.title)}
+                       onClick={openLinkClosure(`/note/${note[0].id}?recursiveLoad=false`, true, navigate)}>
+                        {renderTitle(note[1].title)}
                     </p>
-                    <Tags tags={note.metadata.tags} disableLink={false}></Tags>
+                    {note[2] && (<span className={"italic text-gray-500"}> (transitive)</span>)}
+                    <Tags tags={note[0].metadata.tags} disableLink={false}></Tags>
                 </div>
             </li>);
     } else {
