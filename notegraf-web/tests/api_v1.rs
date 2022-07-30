@@ -413,3 +413,143 @@ async fn tags() {
     assert!(tags.contains(&json! {"tag1"}));
     assert!(tags.contains(&json! {"tag2"}));
 }
+
+#[tokio::test]
+async fn limit_override() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let _loc1 = create_note_helper(&client, &app.address, "title", "## body text", "").await;
+    let loc2 = create_note_helper(&client, &app.address, "title2", "## body text", "").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    // recent note comes first
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "!limit=1")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn tag_exclude() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "foo", "", "tag1").await;
+    let loc2 = create_note_helper(&client, &app.address, "foo", "", "tag2").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "foo")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "foo -#tag1")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "foo -#tag2")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
+}
+
+#[tokio::test]
+async fn lexeme_exclude() {
+    let app = spawn_app().await;
+    let client = Client::new();
+
+    let loc1 = create_note_helper(&client, &app.address, "hello world", "", "tag1").await;
+    let loc2 = create_note_helper(&client, &app.address, "goodbye world", "", "tag2").await;
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "world")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 2);
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "world -hello")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc2.get_id().as_ref());
+
+    let response = client
+        .get(&format!("{}/api/v1/note", &app.address))
+        .query(&[("query", "world -goodbye")])
+        .send()
+        .await
+        .expect("Failed to execute request.")
+        .json::<Value>()
+        .await
+        .expect("Failed to parse response");
+    assert_eq!(response.as_array().unwrap().len(), 1);
+    assert_eq!(response[0]["id"], loc1.get_id().as_ref());
+}
