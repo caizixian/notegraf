@@ -887,4 +887,9 @@ mod tests {
     async fn search_tag_exclude() {
         common_tests::search_tag_exclude(InMemoryStore::new()).await;
     }
+
+    #[tokio::test]
+    async fn search_lexeme_exclude() {
+        common_tests::search_lexeme_exclude(InMemoryStore::new()).await;
+    }
 }

@@ -373,7 +373,10 @@ pub(super) async fn search(
         .bind(&sr.tags)
         .bind(&sr.tags_excluded);
     if !sr.lexemes.is_empty() {
-        q = q.bind(sr.lexemes.join(" & "));
+        let mut terms = sr.lexemes.clone();
+        let prefixed = sr.lexemes_excluded.iter().map(|x| "! ".to_owned() + x);
+        terms.extend(prefixed);
+        q = q.bind(terms.join(" & "));
     }
     let res = q.fetch_all(transaction).await;
     if let Err(sqlx::Error::RowNotFound) = res {

@@ -680,3 +680,31 @@ pub(super) async fn search_tag_exclude(store: impl NoteStore<PlainNote>) {
     assert_eq!(notes.len(), 1);
     assert_eq!(&notes[0].get_id(), loc1.get_id());
 }
+
+pub(super) async fn search_lexeme_exclude(store: impl NoteStore<PlainNote>) {
+    let note_inner = PlainNote::new("Foo".into());
+    let loc1 = store
+        .new_note(
+            "hello world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc2 = store
+        .new_note(
+            "goodbye world".to_owned(),
+            note_inner.clone(),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let notes = store.search(&("world".into())).await.unwrap();
+    assert_eq!(notes.len(), 2);
+    let notes = store.search(&("world -hello".into())).await.unwrap();
+    assert_eq!(notes.len(), 1);
+    assert_eq!(&notes[0].get_id(), loc2.get_id());
+    let notes = store.search(&("world -goodbye".into())).await.unwrap();
+    assert_eq!(notes.len(), 1);
+    assert_eq!(&notes[0].get_id(), loc1.get_id());
+}
