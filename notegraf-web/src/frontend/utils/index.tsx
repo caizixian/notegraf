@@ -17,7 +17,10 @@ export function openLinkClosure(url: string, sameTab: boolean, navigate: any) {
         if (sameTab) {
             navigate(url);
         } else {
-            window.open(url, '_blank')!.focus();
+            const newWindow = window.open(url, '_blank', 'noreferrer,noopener');
+            if (newWindow) {
+                newWindow.focus();
+            }
         }
     }
 }
