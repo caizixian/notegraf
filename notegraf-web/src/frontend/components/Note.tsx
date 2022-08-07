@@ -131,8 +131,6 @@ type NoteControlProps = {
 }
 
 function NoteControls(props: NoteControlProps) {
-    const navigate = useNavigate();
-
     const onDelete = async () => {
         try {
             if (window.confirm("Are you sure you want to delete this note?")) {
