@@ -133,10 +133,6 @@ type NoteControlProps = {
 function NoteControls(props: NoteControlProps) {
     const navigate = useNavigate();
 
-    const onEdit = () => {
-        navigate(`/note/${props.note.id}/edit`);
-    }
-
     const onDelete = async () => {
         try {
             if (window.confirm("Are you sure you want to delete this note?")) {
@@ -183,9 +179,11 @@ function NoteControls(props: NoteControlProps) {
                 </button>
             </Link>}
             <div className={"w-1"}></div>
-            <button onClick={onEdit} className={"ng-button ng-button-primary"} title={"Edit"}>
-                <PencilAltIcon className={"h-6 w-6"}/>
-            </button>
+            <Link to={`/note/${props.note.id}/edit`}>
+                <button className={"ng-button ng-button-primary"} title={"Edit"}>
+                    <PencilAltIcon className={"h-6 w-6"}/>
+                </button>
+            </Link>
             <button onClick={onDelete} className={"ng-button ng-button-danger ml-auto"} title={"Delete"}>
                 <TrashIcon className={"h-6 w-6"}/>
             </button>
