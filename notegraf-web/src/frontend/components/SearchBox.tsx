@@ -9,7 +9,7 @@ export default function SearchBox() {
             navigate({
                 pathname: "/note",
                 search: createSearchParams({
-                    query: event.target.value
+                    query: (event.target as HTMLInputElement).value
                 }).toString()
             });
         }
