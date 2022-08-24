@@ -1,6 +1,6 @@
 import {Link, NavLink} from "react-router-dom";
 import SearchBox from "./SearchBox";
-import {DocumentAddIcon, LogoutIcon, MenuIcon} from "@heroicons/react/outline";
+import {DocumentPlusIcon, ArrowRightOnRectangleIcon, Bars3Icon} from "@heroicons/react/24/outline";
 import * as React from "react";
 import {useEffect, useRef, useState} from "react";
 
@@ -26,7 +26,7 @@ function MiscDropdown(props: MiscDropdownProps) {
 
     return (
         <div className={"relative mr-2"} ref={ref}>
-            <MenuIcon className={"h-6 w-6 inline"} onClick={() => {
+            <Bars3Icon className={"h-6 w-6 inline"} onClick={() => {
                 setOpen(!open);
             }}/>
             {
@@ -73,12 +73,12 @@ export function NavBar() {
                 </div>
                 <Link to={"/note/new"}>
                     <button className={"ng-button ng-button-primary"}>
-                        <DocumentAddIcon className={"h-6 w-6"}/>
+                        <DocumentPlusIcon className={"h-6 w-6"}/>
                     </button>
                 </Link>
                 {sso_signout_url && <a href={sso_signout_url}>
                     <button className={"ng-button ng-button-primary"}>
-                        <LogoutIcon className={"h-6 w-6"}/>
+                        <ArrowRightOnRectangleIcon className={"h-6 w-6"}/>
                     </button>
                 </a>}
             </div>

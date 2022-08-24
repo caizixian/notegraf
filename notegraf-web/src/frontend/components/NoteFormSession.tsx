@@ -5,7 +5,7 @@ import {postNote} from "../api";
 import * as React from "react";
 import {useEffect, useState} from "react";
 import {RenderMarkdown} from "./Note";
-import {CodeIcon, DocumentTextIcon} from "@heroicons/react/outline";
+import {CodeBracketIcon, DocumentTextIcon} from "@heroicons/react/24/outline";
 
 type NoteFormContent = {
     title: string,
@@ -79,7 +79,7 @@ export function NoteFormSession(props: NoteFormProps) {
                             setPreview(!preview);
                         }}>
                     {preview ?
-                        (<CodeIcon className={"h-6 w-6"}/>) :
+                        (<CodeBracketIcon className={"h-6 w-6"}/>) :
                         (<DocumentTextIcon className={"h-6 w-6"}/>)
                     }
                 </button>
