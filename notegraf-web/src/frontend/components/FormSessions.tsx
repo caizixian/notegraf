@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 import {getKeysByPrefix, getStorageValue, renderTitle, showAgo} from "../utils";
 import {Link, useNavigate} from "react-router-dom";
 import * as types from "../types";
-import {TrashIcon} from "@heroicons/react/outline";
+import {TrashIcon} from "@heroicons/react/24/outline";
 
 type FormSessionsProps = {
     keyPrefix: string,

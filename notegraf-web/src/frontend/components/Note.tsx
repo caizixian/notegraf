@@ -7,13 +7,13 @@ import {
     ArrowDownIcon,
     ArrowUpIcon,
     ClockIcon,
-    CollectionIcon,
+    RectangleStackIcon,
     LinkIcon,
-    PencilAltIcon,
-    ReplyIcon,
+    PencilSquareIcon,
+    ArrowUturnLeftIcon,
     ShareIcon,
     TrashIcon
-} from "@heroicons/react/outline";
+} from "@heroicons/react/24/outline";
 import katex, {ParseError} from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
@@ -152,7 +152,7 @@ function NoteControls(props: NoteControlProps) {
             <div className={"w-1"}></div>
             {props.note.parent != null && <Link to={`/note/${props.note.parent}`}>
                 <button className={"ng-button ng-button-primary"} title={"Parent"}>
-                    <ReplyIcon className={"h-6 w-6"}/>
+                    <ArrowUturnLeftIcon className={"h-6 w-6"}/>
                 </button>
             </Link>}
             {props.showPrevNext && props.note.prev != null && <Link to={`/note/${props.note.prev}`}>
@@ -173,13 +173,13 @@ function NoteControls(props: NoteControlProps) {
             </Link>
             {props.note.next != null || <Link to={`/note/${props.note.id}/append`}>
                 <button className={"ng-button ng-button-primary"} title={"Append note"}>
-                    <CollectionIcon className={"h-6 w-6"}/>
+                    <RectangleStackIcon className={"h-6 w-6"}/>
                 </button>
             </Link>}
             <div className={"w-1"}></div>
             <Link to={`/note/${props.note.id}/edit`}>
                 <button className={"ng-button ng-button-primary"} title={"Edit"}>
-                    <PencilAltIcon className={"h-6 w-6"}/>
+                    <PencilSquareIcon className={"h-6 w-6"}/>
                 </button>
             </Link>
             <button onClick={onDelete} className={"ng-button ng-button-danger ml-auto"} title={"Delete"}>
