@@ -27,7 +27,7 @@
   },
   "homepage": "https://notegraf.zcai.org",
   "dependencies": {
-    "dompurify": "^2.3.12",
+    "dompurify": "^2.4.0",
     "highlight.js": "^11.6.0",
     "katex": "^0.16.0",
     "lodash": "^4.17.21",
@@ -41,7 +41,7 @@
     "@heroicons/react": "^2.0.1",
     "@tailwindcss/forms": "^0.5.2",
     "@tailwindcss/typography": "^0.5.4",
-    "@types/dompurify": "^2.3.3",
+    "@types/dompurify": "^2.3.4",
     "@types/katex": "^0.14.0",
     "@types/lodash": "^4.14.184",
     "@types/marked": "^4.0.6",
