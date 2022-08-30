@@ -43,6 +43,7 @@ export function NoteFormSession(props: NoteFormProps) {
 
     const onSubmit = async (data: any) => {
         try {
+            data.note_inner = data.note_inner.replace(`${window.origin}/note/`, "notegraf:/note/");
             let res = await postNote(props.endpoint, data);
             localStorage.removeItem(autoSaveKey);
             incrementCounter();

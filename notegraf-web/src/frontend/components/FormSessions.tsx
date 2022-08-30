@@ -20,7 +20,7 @@ export function FormSessions(props: FormSessionsProps) {
         existingKeys.sort();
         let notes = existingKeys.map(key => getStorageValue(key, null));
         if (existingKeys.length == 0) {
-            navigate(`./${Date.now()}`);
+            navigate(`./${Date.now()}`, {replace: true});
         } else {
             setKeys(existingKeys);
             setNotes(notes);
