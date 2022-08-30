@@ -1,6 +1,6 @@
 {
   "name": "notegraf-web",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0",
   "description": "The reference web frontend of Notegraf",
   "license": "AGPL-3.0-only",
   "private": true,
