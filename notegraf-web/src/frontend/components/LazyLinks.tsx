@@ -1,9 +1,8 @@
 import * as React from "react";
 import {useEffect, useState} from "react";
-import {openLinkClosure, renderTitle} from "../utils";
+import {renderTitle} from "../utils";
 import {getNote} from "../api";
 import {Tags} from "./Tags";
-import {useNavigate} from "react-router-dom";
 
 type LazyLinksProps = {
     collectionName: string
@@ -14,7 +13,6 @@ export function LazyLinks(props: LazyLinksProps) {
     const [everClicked, setEverClicked] = useState(false);
     const [notes, setNotes] = useState<any[][]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
-    const navigate = useNavigate();
 
     function onToggle() {
         setEverClicked(true);
@@ -54,21 +52,25 @@ export function LazyLinks(props: LazyLinksProps) {
         listItems = notes.map(note =>
             <li key={note[0].id}>
                 <div className={"flex flex-wrap gap-1"}>
-                    <p className={"min-w-0 truncate underline cursor-pointer"}
-                       onClick={openLinkClosure(`/note/${note[0].id}?recursiveLoad=false`, true, navigate)}>
-                        {renderTitle(note[1].title)}
-                    </p>
-                    {note[2] && (<span className={"italic text-gray-500"}> (transitive)</span>)}
+                    {/* Keep the title and the transitive suffix on the same line, truncate title if needed */}
+                    <a className={"max-w-full"}
+                       href={`/note/${note[0].id}?recursiveLoad=false`}>
+                        <div className={"flex gap-1"}>
+                            <p className={"truncate underline"}>{renderTitle(note[1].title)}</p>
+                            {note[2] && (<p className={"italic text-gray-500"}>(transitive)</p>)}
+                        </div>
+                    </a>
+                    {/* If tags don't fit on the current line, wrap them to the next line */}
                     <Tags tags={note[0].metadata.tags} disableLink={false}></Tags>
                 </div>
             </li>);
     } else {
         listItems = props.noteIDs.map(noteID =>
             <li key={noteID}>
-                <p className={"truncate underline cursor-pointer"}
-                   onClick={openLinkClosure(`/note/${noteID}`, true, navigate)}>
+                <a className={"min-w-0 truncate underline"}
+                   href={`/note/${noteID}`}>
                     {noteID}
-                </p>
+                </a>
             </li>);
     }
     return (

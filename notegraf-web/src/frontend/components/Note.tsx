@@ -1,7 +1,7 @@
 import * as React from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
-import {Link, useNavigate} from "react-router-dom";
+import {Link} from "react-router-dom";
 import {deleteNote} from "../api";
 import {
     ArrowDownIcon,
@@ -18,7 +18,7 @@ import katex, {ParseError} from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
-import {openLinkClosure, renderTitle, showAgo} from "../utils";
+import {renderTitle, showAgo} from "../utils";
 import {Tags} from "./Tags";
 
 function escapeHtml(unsafe: string): string {
@@ -190,16 +190,17 @@ function NoteControls(props: NoteControlProps) {
 }
 
 export function Note(props: NoteProps) {
-    const navigate = useNavigate();
     let link = props.permaLink ? `/note/${props.note.id}/revision/${props.note.revision}` : `/note/${props.note.id}`;
     return (
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline mb-1.5"}>
                 <a href={`notegraf:/note/${props.note.id}`}><LinkIcon className={"h-6 w-6"}/></a>
-                <h1 className={"text-4xl underline text-ellipsis overflow-hidden min-w-0 cursor-pointer"}
-                    onClick={openLinkClosure(link, false, navigate)}>
-                    {renderTitle(props.note.title)}
-                </h1>
+                {/* The below break a very long title into multiple lines. If a single word is too long, we show ... */}
+                <a href={link} className={"underline min-w-0"}>
+                    <h1 className={"text-4xl text-ellipsis overflow-hidden"}>
+                        {renderTitle(props.note.title)}
+                    </h1>
+                </a>
             </div>
             <Tags tags={props.note.metadata.tags} disableLink={false}/>
             {props.showingRevision ||
