@@ -6,11 +6,11 @@ import {deleteNote} from "../api";
 import {
     ArrowDownIcon,
     ArrowUpIcon,
+    ArrowUturnLeftIcon,
     ClockIcon,
-    RectangleStackIcon,
     LinkIcon,
     PencilSquareIcon,
-    ArrowUturnLeftIcon,
+    RectangleStackIcon,
     ShareIcon,
     TrashIcon
 } from "@heroicons/react/24/outline";

@@ -1,6 +1,6 @@
 import {Link, NavLink} from "react-router-dom";
 import SearchBox from "./SearchBox";
-import {DocumentPlusIcon, ArrowRightOnRectangleIcon, Bars3Icon} from "@heroicons/react/24/outline";
+import {ArrowRightOnRectangleIcon, Bars3Icon, DocumentPlusIcon} from "@heroicons/react/24/outline";
 import * as React from "react";
 import {useEffect, useRef, useState} from "react";
 
