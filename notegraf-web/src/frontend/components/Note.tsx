@@ -89,6 +89,13 @@ const renderer = {
         }
         out += '</a>';
         return out;
+    },
+    // Workaround for https://github.com/markedjs/marked/issues/1486
+    listitem(itemBody: string, task: boolean, checked: boolean) {
+        if (!task) {
+            return false;
+        }
+        return `<li><label>${itemBody}</label></label></li>\n`;
     }
 }
 
