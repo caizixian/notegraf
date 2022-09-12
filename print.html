@@ -267,18 +267,22 @@ referenced by other notes.</li>
 <h2 id="unreleased"><a class="header" href="#unreleased">Unreleased</a></h2>
 <h3 id="added"><a class="header" href="#added">Added</a></h3>
 <h3 id="changed"><a class="header" href="#changed">Changed</a></h3>
+<h3 id="deprecated"><a class="header" href="#deprecated">Deprecated</a></h3>
+<h3 id="removed"><a class="header" href="#removed">Removed</a></h3>
+<h3 id="fixed"><a class="header" href="#fixed">Fixed</a></h3>
+<h3 id="security"><a class="header" href="#security">Security</a></h3>
+<h2 id="v011-2022-09-12"><a class="header" href="#v011-2022-09-12"><a href="https://github.com/caizixian/notegraf/releases/tag/v0.1.1">v0.1.1 (2022-09-12)</a></a></h2>
+<h3 id="changed-1"><a class="header" href="#changed-1">Changed</a></h3>
 <ul>
 <li>[Web UI] &quot;Hyperlinks&quot; in the note title and the backlinks/branches are now real hyperlinks, rather than clickable texts. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
 <li>[Web UI] Any occurrence of <code>&lt;URL origin&gt;/note/</code> in the note body will be treated as cross-links, and therefore be replaced by <code>notegraf:/note/</code>. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
 </ul>
-<h3 id="deprecated"><a class="header" href="#deprecated">Deprecated</a></h3>
-<h3 id="removed"><a class="header" href="#removed">Removed</a></h3>
-<h3 id="fixed"><a class="header" href="#fixed">Fixed</a></h3>
+<h3 id="fixed-1"><a class="header" href="#fixed-1">Fixed</a></h3>
 <ul>
 <li>[Web UI] When showing note titles for branches or backlinks, the <em>(transitive)</em> suffix (indicating that the title shown is actually the title of the closest ancestor) will be placed on the same line as the title. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
 <li>[Web UI] When a new editing session (editing an existing note, creating a new note, etc.) is created without user interaction, the current page is <strong>replaced by</strong>, instead of being navigated away from, the editor UI. This is so that when a user navigate back to the previous page, it expectedly shows the original page where the user clicked a button. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
+<li>[Web UI] When creating a task with a link (such as <code>- [x] [link](https://example.com)</code>) in Markdown lists, the checkbox is now aligned properly with the link. (<a href="https://github.com/caizixian/notegraf/pull/227">#227</a>)</li>
 </ul>
-<h3 id="security"><a class="header" href="#security">Security</a></h3>
 <h2 id="v010-2022-08-30"><a class="header" href="#v010-2022-08-30"><a href="https://github.com/caizixian/notegraf/releases/tag/v0.1.0">v0.1.0 (2022-08-30)</a></a></h2>
 <p>Initial release.</p>
 
