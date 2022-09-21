@@ -32,7 +32,7 @@ jobs:
           toolchain: stable
           override: true
           target: ${{ env.CARGO_BUILD_TARGET }}
-      - run: sudo apt-get install -u musl-tools musl-dev libpq-dev
+      - run: sudo apt-get install -u musl-tools musl-dev libpq-dev protobuf-compiler
       - run: npm install
         working-directory: ./notegraf-web
       - run: npm run build
