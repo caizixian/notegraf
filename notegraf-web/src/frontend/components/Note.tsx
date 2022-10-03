@@ -1,4 +1,5 @@
 import * as React from "react";
+import {useState} from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link} from "react-router-dom";
@@ -7,7 +8,9 @@ import {
     ArrowDownIcon,
     ArrowUpIcon,
     ArrowUturnLeftIcon,
-    ClockIcon, CodeBracketIcon, DocumentTextIcon,
+    ClockIcon,
+    CodeBracketIcon,
+    DocumentTextIcon,
     LinkIcon,
     PencilSquareIcon,
     RectangleStackIcon,
@@ -20,7 +23,6 @@ import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
 import {renderTitle, showAgo} from "../utils";
 import {Tags} from "./Tags";
-import {useState} from "react";
 
 function escapeHtml(unsafe: string): string {
     return unsafe
