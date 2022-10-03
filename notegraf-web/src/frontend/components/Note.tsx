@@ -1,4 +1,5 @@
 import * as React from "react";
+import {useState} from "react";
 import {marked} from "marked";
 import {sanitize} from "dompurify";
 import {Link} from "react-router-dom";
@@ -8,6 +9,8 @@ import {
     ArrowUpIcon,
     ArrowUturnLeftIcon,
     ClockIcon,
+    CodeBracketIcon,
+    DocumentTextIcon,
     LinkIcon,
     PencilSquareIcon,
     RectangleStackIcon,
@@ -108,17 +111,32 @@ function highlight(code: string, lang: string) {
 marked.use({renderer, highlight: highlight});
 
 type RenderMarkdownProps = {
-    note_inner: string
+    note_inner: string,
+    rendered: boolean
 }
 
 export function RenderMarkdown(props: RenderMarkdownProps) {
     // remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none
-    return (<article
-            className={"overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl"}
+    const proseClasses: string = "overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl";
+    if (props.rendered) {
+        return (<article
+            className={proseClasses}
             dangerouslySetInnerHTML={{
                 __html: sanitize(marked(props.note_inner))
-            }}/>
-    );
+            }}/>);
+    } else {
+        return (
+            <article className={proseClasses}>
+                <pre>
+                    <code className={"language-markdown"}
+                          dangerouslySetInnerHTML={{
+                              __html: sanitize(highlight(props.note_inner, "markdown"))
+                          }}>
+                    </code>
+                </pre>
+            </article>
+        );
+    }
 }
 
 type NoteProps = {
@@ -134,7 +152,9 @@ type NoteControlProps = {
     note: types.Note,
     setError: any,
     onDelete: () => void,
-    showPrevNext: boolean
+    showPrevNext: boolean,
+    rendered: boolean
+    toggleRendered: () => void
 }
 
 function NoteControls(props: NoteControlProps) {
@@ -184,6 +204,20 @@ function NoteControls(props: NoteControlProps) {
                 </button>
             </Link>}
             <div className={"w-1"}></div>
+            {props.rendered ?
+                <button className={"ng-button ng-button-primary"} title={"Show source"} onClick={(e) => {
+                    e.preventDefault();
+                    props.toggleRendered();
+                }}>
+                    <CodeBracketIcon className={"h-6 w-6"}/>
+                </button> :
+                <button className={"ng-button ng-button-primary"} title={"Show rendered"} onClick={(e) => {
+                    e.preventDefault();
+                    props.toggleRendered();
+                }}>
+                    <DocumentTextIcon className={"h-6 w-6"}/>
+                </button>
+            }
             <Link to={`/note/${props.note.id}/edit`}>
                 <button className={"ng-button ng-button-primary"} title={"Edit"}>
                     <PencilSquareIcon className={"h-6 w-6"}/>
@@ -198,6 +232,10 @@ function NoteControls(props: NoteControlProps) {
 
 export function Note(props: NoteProps) {
     let link = props.permaLink ? `/note/${props.note.id}/revision/${props.note.revision}` : `/note/${props.note.id}`;
+    const [rendered, setRendered] = useState(true); // Show rendered note or not
+    const toggleRendered = () => {
+        setRendered(!rendered);
+    };
     return (
         <div className="note border border-neutral-500 my-0.5 p-1">
             <div className={"flex items-baseline mb-1.5"}>
@@ -212,7 +250,7 @@ export function Note(props: NoteProps) {
             <Tags tags={props.note.metadata.tags} disableLink={false}/>
             {props.showingRevision ||
                 <NoteControls note={props.note} setError={props.setError} onDelete={props.onDelete}
-                              showPrevNext={props.showPrevNext}/>}
+                              showPrevNext={props.showPrevNext} rendered={rendered} toggleRendered={toggleRendered}/>}
             {props.showingRevision || <LazyLinks collectionName={"Backlinks"} noteIDs={props.note.references}/>}
             {props.showingRevision || <LazyLinks collectionName={"Branches"} noteIDs={props.note.branches}/>}
             <details className={"border-b border-neutral-500"}>
@@ -222,7 +260,7 @@ export function Note(props: NoteProps) {
                 <p>Custom metadata: {JSON.stringify(props.note.metadata.custom_metadata)}</p>
             </details>
             <div className={"flex justify-center"}>
-                <RenderMarkdown note_inner={props.note.note_inner}/>
+                <RenderMarkdown note_inner={props.note.note_inner} rendered={rendered}/>
             </div>
         </div>
     );

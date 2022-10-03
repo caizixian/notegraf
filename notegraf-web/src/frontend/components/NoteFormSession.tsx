@@ -98,7 +98,7 @@ export function NoteFormSession(props: NoteFormProps) {
                           hidden={preview}
                           spellCheck={true}
                           {...register("note_inner")}></textarea>
-                {preview && <RenderMarkdown note_inner={getValues("note_inner") || ""}/>}
+                {preview && <RenderMarkdown note_inner={getValues("note_inner") || ""} rendered={true}/>}
             </div>
         </form>
     );
