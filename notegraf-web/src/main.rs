@@ -9,8 +9,8 @@ use tracing_subscriber::layer::SubscriberExt;
 lazy_static! {
     static ref TRACING: () = {
         let subscriber =
-            get_subscriber(&*CONFIGURATION).with(tracing_subscriber::fmt::Layer::default());
-        if let Some(tracer) = get_otlp_tracer(&*CONFIGURATION) {
+            get_subscriber(&CONFIGURATION).with(tracing_subscriber::fmt::Layer::default());
+        if let Some(tracer) = get_otlp_tracer(&CONFIGURATION) {
             let subscriber = subscriber.with(tracing_opentelemetry::layer().with_tracer(tracer));
             init_tracing(subscriber);
         } else {
