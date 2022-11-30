@@ -34,7 +34,7 @@
     "marked": "^4.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.39.5",
+    "react-hook-form": "^7.40.0",
     "react-router-dom": "^6.4.3"
   },
   "devDependencies": {
