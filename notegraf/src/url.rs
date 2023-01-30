@@ -43,7 +43,7 @@ impl NotegrafURL {
 impl fmt::Display for NotegrafURL {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NotegrafURL::Note(id) => write!(f, "notegraf:/note/{}", id),
+            NotegrafURL::Note(id) => write!(f, "notegraf:/note/{id}"),
         }
     }
 }
@@ -55,11 +55,10 @@ mod tests {
     #[test]
     fn wrong_scheme() {
         let url = NotegrafURL::parse("http://host/note/note1");
-        assert!(url.is_err());
-        if let URLParseError::WrongScheme(s) = url.err().unwrap() {
+        let err = url.expect_err("The URL shouldn't parse because of wrong scheme");
+        assert!(matches!(err, URLParseError::WrongScheme(_)));
+        if let URLParseError::WrongScheme(s) = err {
             assert_eq!(s, "http");
-        } else {
-            assert!(false);
         }
     }
 }
