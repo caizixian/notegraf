@@ -42,7 +42,7 @@ impl Settings {
                         .await
                         .expect("Failed to connect to Postgres");
                     connection
-                        .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
+                        .execute(&*format!(r#"CREATE DATABASE "{db_name}";"#))
                         .await
                         .expect("Failed to create database.");
                     db_options.database(&db_name)

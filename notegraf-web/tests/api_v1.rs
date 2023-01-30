@@ -25,7 +25,7 @@ async fn post_note_helper(
     tags: &str,
 ) -> NoteLocator {
     client
-        .post(&format!("{}/api/v1/{}", address, endpoint))
+        .post(&format!("{address}/api/v1/{endpoint}"))
         .json(&json!({
             "title": title.to_owned(),
             "note_inner": note_inner.to_owned(),

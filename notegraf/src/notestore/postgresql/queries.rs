@@ -205,7 +205,7 @@ fn get_note_query(
         "ORDER BY ".to_owned() + &orders.join(", ")
     };
     let limit_clause = if let Some(l) = limit {
-        format!("LIMIT {}", l)
+        format!("LIMIT {l}")
     } else {
         "".to_string()
     };
@@ -229,7 +229,7 @@ fn get_note_query(
             revision.metadata_modified_at,
             revision.metadata_tags,
             revision.metadata_custom_metadata,
-            cr.current_revision IS NOT NULL AS is_current{}
+            cr.current_revision IS NOT NULL AS is_current{select_clause}
         FROM
             revision
         LEFT JOIN current_revision cr ON revision.revision = cr.current_revision
@@ -239,20 +239,13 @@ fn get_note_query(
         -- indexes are bound to operators, and the indexed expression must be to the left of
         -- the operator
         LEFT JOIN revision_only_current AS revision3 ON revision3.referents @> ARRAY[revision.id]
-        {}
-        {}
-        GROUP BY revision.revision, cr.current_revision{}
-        {}
-        {}
-        {}
-        "#,
-        select_clause,
-        join_clause,
-        where_clause,
-        groupby_clause,
-        having_clause,
-        orderby_clause,
-        limit_clause
+        {join_clause}
+        {where_clause}
+        GROUP BY revision.revision, cr.current_revision{groupby_clause}
+        {having_clause}
+        {orderby_clause}
+        {limit_clause}
+        "#
     )
 }
 

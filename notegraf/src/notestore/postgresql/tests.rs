@@ -35,7 +35,7 @@ async fn get_store() -> PostgreSQLStore<PlainNote> {
         .expect("Failed to connect to Postgres");
     let db_name = Uuid::new_v4().to_string();
     connection
-        .execute(&*format!(r#"CREATE DATABASE "{}";"#, db_name))
+        .execute(&*format!(r#"CREATE DATABASE "{db_name}";"#))
         .await
         .expect("Failed to create database.");
     PostgreSQLStoreBuilder::new(options.database(&db_name))

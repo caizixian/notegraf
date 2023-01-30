@@ -90,11 +90,11 @@ mod tests {
         assert!(note
             .get_referents()
             .unwrap()
-            .contains(&&NoteID::new("ID1".into())));
+            .contains(&NoteID::new("ID1".into())));
         assert!(note
             .get_referents()
             .unwrap()
-            .contains(&&NoteID::new("ID2".into())));
+            .contains(&NoteID::new("ID2".into())));
     }
 
     #[test]
@@ -107,11 +107,11 @@ mod tests {
         assert!(note
             .get_referents()
             .unwrap()
-            .contains(&&NoteID::new("ID3".into())));
+            .contains(&NoteID::new("ID3".into())));
         assert!(note
             .get_referents()
             .unwrap()
-            .contains(&&NoteID::new("ID2".into())));
+            .contains(&NoteID::new("ID2".into())));
     }
 
     #[test]

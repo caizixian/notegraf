@@ -374,7 +374,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
         let note_inner = T::from(s.note_inner);
         let referents = note_inner
             .get_referents()
-            .map_err(|e| NoteStoreError::ParseError(format!("{:?}", e)))?;
+            .map_err(|e| NoteStoreError::ParseError(format!("{e:?}")))?;
         let references = self.get_references(&s.id);
         let parent = self.get_parent(&s.id);
         let prev = self.get_prev(&s.id);
