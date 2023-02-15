@@ -46,7 +46,7 @@
     "@types/lodash": "^4.14.191",
     "@types/marked": "^4.0.8",
     "@types/react": "^18.0.28",
-    "@types/react-dom": "^18.0.10",
+    "@types/react-dom": "^18.0.11",
     "http-proxy-middleware": "^2.0.6",
     "parcel": "^2.8.3",
     "postcss": "^8.4.21",
