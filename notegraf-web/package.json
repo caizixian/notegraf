@@ -38,7 +38,7 @@
     "react-router-dom": "^6.8.1"
   },
   "devDependencies": {
-    "@heroicons/react": "^2.0.15",
+    "@heroicons/react": "^2.0.16",
     "@tailwindcss/forms": "^0.5.3",
     "@tailwindcss/typography": "^0.5.9",
     "@types/dompurify": "^2.4.0",
