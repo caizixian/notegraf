@@ -104,7 +104,6 @@ impl TryFrom<NotePostData> for NoteStoreEditArgument {
         let tags: HashSet<String> = HashSet::from_iter(
             note.metadata_tags
                 .split(',')
-                .into_iter()
                 .map(|tag| tag.trim().to_owned())
                 .filter(|tag| !tag.is_empty()),
         );
