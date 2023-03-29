@@ -41,7 +41,7 @@
     "@heroicons/react": "^2.0.16",
     "@tailwindcss/forms": "^0.5.3",
     "@tailwindcss/typography": "^0.5.9",
-    "@types/dompurify": "^2.4.0",
+    "@types/dompurify": "^3.0.0",
     "@types/katex": "^0.16.0",
     "@types/lodash": "^4.14.191",
     "@types/marked": "^4.0.8",
