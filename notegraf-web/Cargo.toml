@@ -24,14 +24,14 @@ actix-web = "4.3"
 actix-files = "0.6"
 config = { version = "0.13", default-features = false, features = ["yaml"] }
 tracing = { version = "0.1", features = ["log"] }
-tracing-opentelemetry = "0.18"
-tracing-actix-web = { version = "0.7.5", features = ["opentelemetry_0_18"] }
+tracing-opentelemetry = "0.19"
+tracing-actix-web = { version = "0.7.5", features = ["opentelemetry_0_19"] }
 tracing-futures = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-log = "0.1"
 lazy_static = "1.4"
 opentelemetry = { version = "0.19", features = ["rt-tokio-current-thread"] }
-opentelemetry-otlp = "0.11" # 0.12 depends on opentelemetry 0.19
+opentelemetry-otlp = "0.12"
 tokio = { version = "1.27", features = ["macros", "sync", "rt"] }
 notegraf = {version = "0.1.1", path = "../notegraf"}
 sqlx = { version = "0.6", features = ["postgres"] }
