@@ -2649,9 +2649,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-actix-web"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a230d51c76e70c5ff8edae9085d7d7161803a871880406a6772639def50d059c"
+checksum = "ce52ffaf2d544e317d3bef63f49a6a22022866505fa4840a4339b1756834a2a9"
 dependencies = [
  "actix-web",
  "opentelemetry",
