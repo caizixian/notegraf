@@ -2,6 +2,7 @@ import * as React from "react";
 import {useState} from "react";
 import {marked} from "marked";
 import {markedHighlight} from "marked-highlight";
+import {gfmHeadingId} from "marked-gfm-heading-id";
 import {sanitize} from "dompurify";
 import {Link} from "react-router-dom";
 import {deleteNote} from "../api";
@@ -109,7 +110,7 @@ function highlight(code: string, lang: string) {
 }
 
 // @ts-ignore
-marked.use({renderer}, markedHighlight({highlight}));
+marked.use({renderer}, markedHighlight({highlight}), {mangle: false}, gfmHeadingId());
 
 type RenderMarkdownProps = {
     note_inner: string,
