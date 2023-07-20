@@ -109,7 +109,7 @@ function highlight(code: string, lang: string) {
 }
 
 // @ts-ignore
-marked.use(renderer, markedHighlight({highlight}));
+marked.use({renderer}, markedHighlight({highlight}));
 
 type RenderMarkdownProps = {
     note_inner: string,
