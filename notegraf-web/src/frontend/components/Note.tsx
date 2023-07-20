@@ -1,6 +1,7 @@
 import * as React from "react";
 import {useState} from "react";
 import {marked} from "marked";
+import {markedHighlight} from "marked-highlight";
 import {sanitize} from "dompurify";
 import {Link} from "react-router-dom";
 import {deleteNote} from "../api";
@@ -108,7 +109,7 @@ function highlight(code: string, lang: string) {
 }
 
 // @ts-ignore
-marked.use({renderer, highlight: highlight});
+marked.use(renderer, markedHighlight({highlight}));
 
 type RenderMarkdownProps = {
     note_inner: string,
