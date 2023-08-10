@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT note.id, cr.current_revision AS \"current_revision?\"\n            FROM note\n            LEFT JOIN current_revision cr on cr.id = note.id\n            WHERE note.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "current_revision?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "0dba13e5ae77834be905ec25f12343345d09f8c425eaa7fd56e655d4a1399b19"
+}

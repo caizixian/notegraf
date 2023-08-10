@@ -7,6 +7,7 @@ use sqlx::postgres::PgConnectOptions;
 use sqlx::{query, PgPool, Postgres, Transaction};
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use std::ops::DerefMut;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -141,7 +142,7 @@ impl<T: NoteType> PostgreSQLStore<T> {
         let revision = get_new_revision();
         // reborrowing hack to prevent transaction from moving
         query!(r#"INSERT INTO note(id) VALUES ($1)"#, &id)
-            .execute(&mut *transaction)
+            .execute(&mut **transaction)
             .await?;
         let n = PostgreSQLNoteEditable {
             id,
@@ -290,7 +291,7 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
                 "#,
                 id
             )
-            .fetch_one(&mut transaction)
+            .fetch_one(transaction.deref_mut())
             .await;
             transaction.commit().await?;
             match res {

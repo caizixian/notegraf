@@ -19,7 +19,7 @@ import {
     ShareIcon,
     TrashIcon
 } from "@heroicons/react/24/outline";
-import katex, {ParseError} from "katex";
+import * as katex from "katex";
 import * as hljs from 'highlight.js';
 import * as types from "../types";
 import {LazyLinks} from "./LazyLinks";
@@ -41,7 +41,7 @@ function renderMath(escaped: string, displayMode: boolean): string | boolean {
     try {
         return katex.renderToString(parsed, {output: "html", displayMode: displayMode});
     } catch (e) {
-        if (e instanceof ParseError) {
+        if (e instanceof katex.ParseError) {
             if (displayMode) {
                 return `<pre><code class="text-red-500">${escapeHtml(e.toString())}</code><br/>` +
                     `<code>${escapeHtml(parsed)}</code></pre>`;

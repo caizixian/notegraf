@@ -35,7 +35,7 @@ impl Settings {
                 let database_settings = CONFIGURATION.database
                     .as_ref()
                     .expect("When notestoretype is set to PostgreSQL, you must configure the keys under database");
-                let mut db_options = if random_db {
+                let db_options = if random_db {
                     let db_name = Uuid::new_v4().to_string();
                     let db_options = database_settings.options_without_db();
                     let mut connection = PgConnection::connect_with(&db_options)
@@ -48,8 +48,8 @@ impl Settings {
                     db_options.database(&db_name)
                 } else {
                     database_settings.options()
-                };
-                db_options.log_statements(log_statement_filter);
+                }
+                .log_statements(log_statement_filter);
                 Box::new(PostgreSQLStoreBuilder::new(db_options).build().await)
             }
         };

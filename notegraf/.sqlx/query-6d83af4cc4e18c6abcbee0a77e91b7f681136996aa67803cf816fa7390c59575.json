@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO current_revision (id, current_revision)\n            VALUES ($1, $2)\n            ON CONFLICT (id) DO UPDATE\n            SET current_revision = EXCLUDED.current_revision\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d83af4cc4e18c6abcbee0a77e91b7f681136996aa67803cf816fa7390c59575"
+}

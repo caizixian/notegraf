@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{query, query_as, Executor, Postgres, Transaction};
 use std::collections::HashSet;
+use std::ops::DerefMut;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -266,7 +267,7 @@ async fn get_note_current(
         None,
     ))
     .bind(id)
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
@@ -294,7 +295,7 @@ async fn get_note_specific(
     ))
     .bind(id)
     .bind(revision)
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::RevisionNotExist(id.into(), revision.into()))
@@ -317,7 +318,7 @@ pub(super) async fn get_revisions(
         None,
     ))
     .bind(id)
-    .fetch_all(transaction)
+    .fetch_all(transaction.deref_mut())
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
@@ -372,7 +373,7 @@ pub(super) async fn search(
         terms.extend(prefixed);
         q = q.bind(terms.join(" & "));
     }
-    let res = q.fetch_all(transaction).await;
+    let res = q.fetch_all(transaction.deref_mut()).await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Ok(vec![])
     } else {
@@ -406,7 +407,7 @@ async fn get_row_current(
             "#,
         id,
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
@@ -442,7 +443,7 @@ async fn get_row_specific(
         id,
         revision
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     if let Err(sqlx::Error::RowNotFound) = res {
         Err(NoteStoreError::NoteNotExist(id.into()))
@@ -501,7 +502,7 @@ pub(super) async fn insert_revision<T: NoteType>(
         &row.metadata_tags,
         row.metadata_custom_metadata
     )
-    .execute(transaction)
+    .execute(transaction.deref_mut())
     .await
     .map_err(NoteStoreError::PostgreSQLError)?;
     Ok(NoteLocator::Specific(row.id.into(), row.revision.into()))
@@ -522,7 +523,7 @@ pub(super) async fn upsert_current_revision(
         id,
         revision
     )
-    .execute(transaction)
+    .execute(transaction.deref_mut())
     .await
 }
 
@@ -538,7 +539,7 @@ pub(super) async fn noteid_exist(
             "#,
         id
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     match res {
         Ok(_) => Ok(true),
@@ -569,7 +570,7 @@ pub(super) async fn is_current(
         id,
         revision.unwrap()
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     match res {
         Ok(_) => Ok(true),
@@ -595,12 +596,12 @@ pub(super) async fn delete_revision(
                 id,
                 r
             )
-            .execute(&mut transaction)
+            .execute(transaction.deref_mut())
             .await?
         }
         None => {
             query!(r#"DELETE FROM current_revision WHERE id = $1"#, id)
-                .execute(&mut transaction)
+                .execute(transaction.deref_mut())
                 .await?
         }
     };
@@ -639,7 +640,7 @@ async fn is_deleted(
             "#,
         id
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await;
     match res {
         Ok(row) => Ok(row.current_revision.is_none()),
@@ -722,7 +723,7 @@ pub(super) async fn get_tags(
         WHERE cr.current_revision IS NOT NULL
     "#
     )
-    .fetch_one(transaction)
+    .fetch_one(transaction.deref_mut())
     .await
     .map_err(NoteStoreError::PostgreSQLError)?;
     if let Some(t) = row.tags {
