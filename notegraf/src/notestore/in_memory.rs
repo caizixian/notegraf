@@ -574,7 +574,7 @@ impl<T: NoteType> InMemoryStoreInner<T> {
                 tags.insert(tag.clone());
             }
         }
-        Ok(Vec::from_iter(tags.into_iter()))
+        Ok(Vec::from_iter(tags))
     }
 
     fn backup<P: AsRef<Path>>(&self, path: P) -> Result<(), NoteStoreError> {

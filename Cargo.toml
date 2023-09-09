@@ -4,3 +4,5 @@ members = [
     "notegraf",
     "notegraf-web"
 ]
+
+resolver = "2"

@@ -20,7 +20,7 @@ pub async fn populate_test_data(store: &BoxedNoteStore<MarkdownNote>) {
             "## Code testing\n`inline code`\n```python\na = [1, 2, 3, 4]\nfor n in a:\n    print(n)\n```\n".into(),
             NoteMetadataEditable {
                 tags: Some(HashSet::from_iter(
-                    vec!["tag1".to_owned(), "tag2".to_owned()].iter().cloned(),
+                    ["tag1".to_owned(), "tag2".to_owned()].iter().cloned(),
                 )),
                 custom_metadata: None
             },
