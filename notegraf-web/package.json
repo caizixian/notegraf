@@ -32,8 +32,8 @@
     "katex": "^0.16.7",
     "lodash": "^4.17.21",
     "marked": "^8.0.1",
-    "marked-gfm-heading-id": "^3.0.6",
-    "marked-highlight": "^2.0.4",
+    "marked-gfm-heading-id": "^3.0.7",
+    "marked-highlight": "^2.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.43.9",
@@ -50,10 +50,11 @@
     "@types/react": "^18.2.21",
     "@types/react-dom": "^18.2.7",
     "http-proxy-middleware": "^2.0.6",
-    "parcel": "^2.8.3",
+    "parcel": "^2.9.3",
     "postcss": "^8.4.29",
     "process": "^0.11.10",
     "tailwindcss": "^3.3.2",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "cosmiconfig": "=8.2.0"
   }
 }
