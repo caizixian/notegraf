@@ -2,7 +2,7 @@ use crate::url::NotegrafURL;
 use crate::{NoteID, NoteType};
 use pulldown_cmark::Tag as PTag;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
-use pulldown_cmark_to_cmark::cmark;
+use pulldown_cmark_to_cmark::cmark_with_options;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
@@ -148,7 +148,12 @@ impl NoteType for MarkdownNote {
 
             _ => event,
         });
-        match cmark(parser, &mut buf) {
+        let pulldown_cmark_to_cmark_options = pulldown_cmark_to_cmark::Options {
+            increment_ordered_list_bullets: true,
+            ordered_list_token: '.',
+            ..Default::default()
+        };
+        match cmark_with_options(parser, &mut buf, pulldown_cmark_to_cmark_options) {
             Ok(_) => {
                 self.body = buf;
                 Ok(())
@@ -225,6 +230,33 @@ mod tests {
         let mut note = MarkdownNote::new(r#"<notegraf:/note/old>"#.into());
         note.update_referent(id_old, id_new).unwrap();
         assert_eq!(note.body, r#"<notegraf:/note/new>"#)
+    }
+
+    #[test]
+    fn increment_ordered_list_bullet() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let mut note = MarkdownNote::new("1. <notegraf:/note/old>\n2. foobar".into());
+        note.update_referent(id_old, id_new).unwrap();
+        assert_eq!(note.body, "1. <notegraf:/note/new>\n2. foobar".to_string())
+    }
+
+    #[test]
+    fn force_increment_ordered_list_bullet() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let mut note = MarkdownNote::new("1. <notegraf:/note/old>\n1. foobar".into());
+        note.update_referent(id_old, id_new).unwrap();
+        assert_eq!(note.body, "1. <notegraf:/note/new>\n2. foobar".to_string())
+    }
+
+    #[test]
+    fn force_ordered_list_token() {
+        let id_old = NoteID::new("old".into());
+        let id_new = NoteID::new("new".into());
+        let mut note = MarkdownNote::new("1) <notegraf:/note/old>\n2) foobar".into());
+        note.update_referent(id_old, id_new).unwrap();
+        assert_eq!(note.body, "1. <notegraf:/note/new>\n2. foobar".to_string())
     }
 
     #[test]
