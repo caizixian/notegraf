@@ -139,7 +139,7 @@ jobs:
       - uses: caizixian/tarpaulin@v0.1.4
         with:
           args: '--ignore-tests'
-          out-type: 'Html'
+          out-type: 'html'
       - uses: actions/upload-artifact@v3
         with:
           name: coverage-report-html-${{ matrix.notestore }}
