@@ -1414,7 +1414,7 @@ dependencies = [
  "tracing-actix-web",
  "tracing-futures",
  "tracing-log",
- "tracing-opentelemetry 0.21.0",
+ "tracing-opentelemetry",
  "tracing-subscriber",
  "uuid",
 ]
@@ -2758,15 +2758,15 @@ dependencies = [
 
 [[package]]
 name = "tracing-actix-web"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c0b08ce08cbde6a96fc1e4ebb8132053e53ec7a5cd27eef93ede6b73ebbda06"
+checksum = "94982c2ad939d5d0bfd71c2f9b7ed273c72348485c72bb87bb4db6bd69df10cb"
 dependencies = [
  "actix-web",
  "opentelemetry",
  "pin-project",
  "tracing",
- "tracing-opentelemetry 0.20.0",
+ "tracing-opentelemetry",
  "uuid",
 ]
 
@@ -2810,20 +2810,6 @@ dependencies = [
  "lazy_static",
  "log",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-opentelemetry"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc09e402904a5261e42cf27aea09ccb7d5318c6717a9eec3d8e2e65c56b18f19"
-dependencies = [
- "once_cell",
- "opentelemetry",
- "tracing",
- "tracing-core",
- "tracing-log",
- "tracing-subscriber",
 ]
 
 [[package]]
