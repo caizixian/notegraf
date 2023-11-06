@@ -209,10 +209,7 @@ pub(super) async fn delete_note_current(store: impl NoteStore<PlainNote>) {
         .unwrap();
     store.delete_note(&loc1.current()).await.unwrap();
     assert!(is_deleted(&store, &loc1).await.unwrap());
-    assert!(matches!(
-        store.get_current_revision(&loc1).await.ok().unwrap(),
-        None
-    ));
+    assert!(store.get_current_revision(&loc1).await.ok().unwrap().is_none());
 }
 
 pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) {
@@ -364,10 +361,7 @@ pub(super) async fn resurrect_note_in_sequence(store: impl NoteStore<PlainNote>)
         .await
         .unwrap();
     store.delete_note(&loc2.current()).await.unwrap();
-    assert!(matches!(
-        &store.get_current_revision(&loc2).await.ok().unwrap(),
-        None
-    ));
+    assert!(store.get_current_revision(&loc2).await.ok().unwrap().is_none());
 
     let revisions = store.get_revisions(&loc2).await.unwrap();
     let last_note = revisions.last().unwrap();

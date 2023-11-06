@@ -158,7 +158,7 @@ async fn get_revisions(
     let revisions: Vec<NoteSerializable<NoteType>> = res
         .unwrap()
         .into_iter()
-        .map(|x| NoteSerializable::all_fields(x))
+        .map(NoteSerializable::all_fields)
         .collect();
     HttpResponse::Ok().json(revisions)
 }
@@ -287,7 +287,7 @@ async fn search(
     let revisions: Vec<NoteSerializable<NoteType>> = res
         .unwrap()
         .into_iter()
-        .map(|x| NoteSerializable::all_fields(x))
+        .map(NoteSerializable::all_fields)
         .collect();
     HttpResponse::Ok().json(revisions)
 }

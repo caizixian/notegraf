@@ -783,7 +783,7 @@ mod tests {
         store.backup(Box::new(env::temp_dir())).await.unwrap();
         let store_restore: InMemoryStore<PlainNote> =
             InMemoryStore::restore(env::temp_dir()).unwrap();
-        for loc in vec![loc1, loc2].iter() {
+        for loc in [loc1, loc2].iter() {
             let note = store.get_note(loc).await.unwrap();
             let note_restore = store_restore.get_note(loc).await.unwrap();
             assert_eq!(
