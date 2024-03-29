@@ -90,7 +90,9 @@
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="search.html"><strong aria-hidden="true">3.</strong> Search Syntax</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">4.</strong> Changelog</a></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -194,14 +196,14 @@ services:
     image: ghcr.io/caizixian/notegraf:master
     restart: always
     depends_on:
-      - &quot;db&quot;
+      - "db"
     ports:
-      - &quot;8000:8000&quot;
+      - "8000:8000"
     environment:
-      NOTEGRAF_HOST: &quot;0.0.0.0&quot;
+      NOTEGRAF_HOST: "0.0.0.0"
       NOTEGRAF_PORT: 8000
-      NOTEGRAF_NOTESTORETYPE: &quot;PostgreSQL&quot;
-      NOTEGRAF_DATABASE_HOST: &quot;db&quot;
+      NOTEGRAF_NOTESTORETYPE: "PostgreSQL"
+      NOTEGRAF_DATABASE_HOST: "db"
       NOTEGRAF_DATABASE_PORT: 5432
       NOTEGRAF_DATABASE_USERNAME: postgres
       NOTEGRAF_DATABASE_PASSWORD: password
@@ -212,8 +214,8 @@ volumes:
 </code></pre>
 <p>Within the folder, run <code>docker-compose up -d</code>.
 Your Notegraf instance should be up and running.
-Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser and see for yourself. </p>
-<p>To update Notegraf, run <code>docker pull ghcr.io/caizixian/notegraf:master</code> and run <code>docker-compose up -d</code> again. </p>
+Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser and see for yourself.</p>
+<p>To update Notegraf, run <code>docker pull ghcr.io/caizixian/notegraf:master</code> and run <code>docker-compose up -d</code> again.</p>
 
                     </main>
 

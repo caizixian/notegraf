@@ -91,7 +91,9 @@
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="search.html"><strong aria-hidden="true">3.</strong> Search Syntax</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">4.</strong> Changelog</a></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -195,14 +197,14 @@ services:
     image: ghcr.io/caizixian/notegraf:master
     restart: always
     depends_on:
-      - &quot;db&quot;
+      - "db"
     ports:
-      - &quot;8000:8000&quot;
+      - "8000:8000"
     environment:
-      NOTEGRAF_HOST: &quot;0.0.0.0&quot;
+      NOTEGRAF_HOST: "0.0.0.0"
       NOTEGRAF_PORT: 8000
-      NOTEGRAF_NOTESTORETYPE: &quot;PostgreSQL&quot;
-      NOTEGRAF_DATABASE_HOST: &quot;db&quot;
+      NOTEGRAF_NOTESTORETYPE: "PostgreSQL"
+      NOTEGRAF_DATABASE_HOST: "db"
       NOTEGRAF_DATABASE_PORT: 5432
       NOTEGRAF_DATABASE_USERNAME: postgres
       NOTEGRAF_DATABASE_PASSWORD: password
@@ -213,8 +215,8 @@ volumes:
 </code></pre>
 <p>Within the folder, run <code>docker-compose up -d</code>.
 Your Notegraf instance should be up and running.
-Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser and see for yourself. </p>
-<p>To update Notegraf, run <code>docker pull ghcr.io/caizixian/notegraf:master</code> and run <code>docker-compose up -d</code> again. </p>
+Open <a href="http://localhost:8000">http://localhost:8000</a> in your browser and see for yourself.</p>
+<p>To update Notegraf, run <code>docker pull ghcr.io/caizixian/notegraf:master</code> and run <code>docker-compose up -d</code> again.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="developer-guide"><a class="header" href="#developer-guide">Developer Guide</a></h1>
 <h2 id="prerequisite"><a class="header" href="#prerequisite">Prerequisite</a></h2>
 <ul>
@@ -240,22 +242,22 @@ cargo build
     └── configuration.yml
 </code></pre>
 <pre><code class="language-javascript">// .proxyrc.js
-const {createProxyMiddleware} = require(&quot;http-proxy-middleware&quot;);
+const {createProxyMiddleware} = require("http-proxy-middleware");
 
 module.exports = function (app) {
     app.use(
-        createProxyMiddleware([&quot;/**&quot;, &quot;!/&quot;, &quot;!**/*.html&quot;, &quot;!**/*.js&quot;, &quot;!*.css&quot;, &quot;!**/*.css&quot;, &quot;!**/*.map&quot;, &quot;!**/*.ttf&quot;, &quot;!**/*.woff&quot;, &quot;!**/*.woff2&quot;], {
+        createProxyMiddleware(["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2"], {
             // localhost on macOS can also resolve to ::1
-            // python3 -c 'import socket; print(socket.getaddrinfo(&quot;localhost&quot;, 8000))'
+            // python3 -c 'import socket; print(socket.getaddrinfo("localhost", 8000))'
             // https://stackoverflow.com/questions/15227154/inexplicable-node-js-http-throwing-connect-econnrefused-ipv6
-            target: &quot;http://localhost:8000/&quot;,
+            target: "http://localhost:8000/",
         })
     );
 };
 </code></pre>
 <pre><code class="language-yaml"># configuration.yml
 port: 8000
-notestoretype: &quot;PostgreSQL&quot;
+notestoretype: "PostgreSQL"
 debug: true
 database:
   host: localhost
@@ -311,7 +313,7 @@ referenced by other notes.</li>
 <h2 id="v011-2022-09-12"><a class="header" href="#v011-2022-09-12"><a href="https://github.com/caizixian/notegraf/releases/tag/v0.1.1">v0.1.1 (2022-09-12)</a></a></h2>
 <h3 id="changed-1"><a class="header" href="#changed-1">Changed</a></h3>
 <ul>
-<li>[Web UI] &quot;Hyperlinks&quot; in the note title and the backlinks/branches are now real hyperlinks, rather than clickable texts. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
+<li>[Web UI] "Hyperlinks" in the note title and the backlinks/branches are now real hyperlinks, rather than clickable texts. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
 <li>[Web UI] Any occurrence of <code>&lt;URL origin&gt;/note/</code> in the note body will be treated as cross-links, and therefore be replaced by <code>notegraf:/note/</code>. (<a href="https://github.com/caizixian/notegraf/pull/206">#206</a>)</li>
 </ul>
 <h3 id="fixed-1"><a class="header" href="#fixed-1">Fixed</a></h3>

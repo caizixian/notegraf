@@ -90,7 +90,9 @@
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="developer.html" class="active"><strong aria-hidden="true">2.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="search.html"><strong aria-hidden="true">3.</strong> Search Syntax</a></li><li class="chapter-item expanded "><a href="changelog.html"><strong aria-hidden="true">4.</strong> Changelog</a></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -196,22 +198,22 @@ cargo build
     └── configuration.yml
 </code></pre>
 <pre><code class="language-javascript">// .proxyrc.js
-const {createProxyMiddleware} = require(&quot;http-proxy-middleware&quot;);
+const {createProxyMiddleware} = require("http-proxy-middleware");
 
 module.exports = function (app) {
     app.use(
-        createProxyMiddleware([&quot;/**&quot;, &quot;!/&quot;, &quot;!**/*.html&quot;, &quot;!**/*.js&quot;, &quot;!*.css&quot;, &quot;!**/*.css&quot;, &quot;!**/*.map&quot;, &quot;!**/*.ttf&quot;, &quot;!**/*.woff&quot;, &quot;!**/*.woff2&quot;], {
+        createProxyMiddleware(["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2"], {
             // localhost on macOS can also resolve to ::1
-            // python3 -c 'import socket; print(socket.getaddrinfo(&quot;localhost&quot;, 8000))'
+            // python3 -c 'import socket; print(socket.getaddrinfo("localhost", 8000))'
             // https://stackoverflow.com/questions/15227154/inexplicable-node-js-http-throwing-connect-econnrefused-ipv6
-            target: &quot;http://localhost:8000/&quot;,
+            target: "http://localhost:8000/",
         })
     );
 };
 </code></pre>
 <pre><code class="language-yaml"># configuration.yml
 port: 8000
-notestoretype: &quot;PostgreSQL&quot;
+notestoretype: "PostgreSQL"
 debug: true
 database:
   host: localhost
