@@ -202,11 +202,12 @@ const {createProxyMiddleware} = require("http-proxy-middleware");
 
 module.exports = function (app) {
     app.use(
-        createProxyMiddleware(["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2"], {
+        createProxyMiddleware({
             // localhost on macOS can also resolve to ::1
             // python3 -c 'import socket; print(socket.getaddrinfo("localhost", 8000))'
             // https://stackoverflow.com/questions/15227154/inexplicable-node-js-http-throwing-connect-econnrefused-ipv6
             target: "http://localhost:8000/",
+            pathFilter: ["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2", "!**/*.svg", "!**/*.png"],
         })
     );
 };
@@ -228,7 +229,7 @@ Your browser should automatically navigate to <a href="http://localhost:1234">ht
 <pre><code class="language-console">notegraf
 ├── ...
 ├── notegraf     &lt;- Notegraf core data types and persistence logics
-└── notegraf-web &lt;- Notegraf HTTP frontend and web UI 
+└── notegraf-web &lt;- Notegraf HTTP frontend and web UI
 </code></pre>
 <h2 id="pre-commit"><a class="header" href="#pre-commit">Pre-commit</a></h2>
 <p><code>cargo check &amp;&amp; cargo test &amp;&amp; cargo clippy &amp;&amp; cargo fmt</code>.</p>
