@@ -21,11 +21,11 @@ pulldown-cmark = "0.9"
 url = "2.4"
 pulldown-cmark-to-cmark = "11.0"
 futures = "0.3"
-tokio = { version = "1.33", features = ["sync"] }
+tokio = { version = "1.37", features = ["sync"] }
 # sqlx 0.7 separates runtime and TLS features. It also always enables offline.
 sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 
 [dev-dependencies]
-tokio = { version = "1.33", features = ["macros", "sync", "rt"] }
+tokio = { version = "1.37", features = ["macros", "sync", "rt"] }
