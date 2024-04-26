@@ -1,8 +1,8 @@
 use crate::configuration::Settings;
-use opentelemetry_sdk::trace::{self, Tracer};
-use opentelemetry_sdk::Resource;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace::{self, Tracer};
+use opentelemetry_sdk::Resource;
 use tracing::Subscriber;
 use tracing_log::LogTracer;
 use tracing_subscriber::registry::LookupSpan;
