@@ -37,11 +37,12 @@ const {createProxyMiddleware} = require("http-proxy-middleware");
 
 module.exports = function (app) {
     app.use(
-        createProxyMiddleware(["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2"], {
+        createProxyMiddleware({
             // localhost on macOS can also resolve to ::1
             // python3 -c 'import socket; print(socket.getaddrinfo("localhost", 8000))'
             // https://stackoverflow.com/questions/15227154/inexplicable-node-js-http-throwing-connect-econnrefused-ipv6
             target: "http://localhost:8000/",
+            pathFilter: ["/**", "!/", "!**/*.html", "!**/*.js", "!*.css", "!**/*.css", "!**/*.map", "!**/*.ttf", "!**/*.woff", "!**/*.woff2", "!**/*.svg", "!**/*.png"],
         })
     );
 };
@@ -70,7 +71,7 @@ The repo is set up as a cargo workspace with two crates.
 notegraf
 ├── ...
 ├── notegraf     <- Notegraf core data types and persistence logics
-└── notegraf-web <- Notegraf HTTP frontend and web UI 
+└── notegraf-web <- Notegraf HTTP frontend and web UI
 ```
 
 ## Pre-commit
