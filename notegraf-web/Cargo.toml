@@ -22,7 +22,7 @@ name = "notegraf-web"
 [dependencies]
 actix-web = "4.5"
 actix-files = "0.6"
-config = { version = "0.13", default-features = false, features = ["yaml"] }
+config = { version = "0.14", default-features = false, features = ["yaml"] }
 tracing = { version = "0.1", features = ["log"] }
 tracing-opentelemetry = "0.23"
 tracing-actix-web = { version = "0.7.8", features = ["opentelemetry_0_22"] }
