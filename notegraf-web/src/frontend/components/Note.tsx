@@ -124,7 +124,7 @@ export function RenderMarkdown(props: RenderMarkdownProps) {
         return (<article
             className={proseClasses}
             dangerouslySetInnerHTML={{
-                __html: sanitize(marked(props.note_inner))
+                __html: sanitize(marked(props.note_inner) as string)
             }}/>);
     } else {
         return (
