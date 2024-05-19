@@ -1407,7 +1407,7 @@ version = "0.1.1"
 dependencies = [
  "chrono",
  "futures",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.3",
  "pulldown-cmark-to-cmark",
  "serde",
  "serde_json",
@@ -1827,12 +1827,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "pulldown-cmark-to-cmark"
-version = "11.0.0"
+name = "pulldown-cmark"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3118a235a72ced8a51669699d9febd97c0d6e23b3bd3a1d9d0fdaa995082099"
+checksum = "76979bea66e7875e7509c4ec5300112b316af87fa7a252ca91c448b32dfe3993"
 dependencies = [
- "pulldown-cmark",
+ "bitflags 2.4.1",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark-to-cmark"
+version = "13.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f609795c8d835f79dcfcf768415b9fb57ef1b74891e99f86e73f43a7a257163b"
+dependencies = [
+ "pulldown-cmark 0.10.3",
 ]
 
 [[package]]
