@@ -1,6 +1,7 @@
 use crate::url::NotegrafURL;
 use crate::{NoteID, NoteType};
 use pulldown_cmark::Tag as PTag;
+use pulldown_cmark::TagEnd as PTagEnd;
 use pulldown_cmark::{Event, LinkType, Options, Parser};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use serde::{Deserialize, Serialize};
@@ -84,8 +85,8 @@ impl NoteType for MarkdownNote {
         let mut referents = HashSet::new();
         let parser = Parser::new_ext(&self.body, options);
         for event in parser {
-            if let Event::Start(PTag::Link(_linktype, destination, _title)) = event {
-                if let Some(id) = MarkdownNote::extract_note_id_from_url(&destination) {
+            if let Event::Start(PTag::Link { dest_url, .. }) = event {
+                if let Some(id) = MarkdownNote::extract_note_id_from_url(&dest_url) {
                     referents.insert(id);
                 }
             }
@@ -104,18 +105,33 @@ impl NoteType for MarkdownNote {
         let mut old_autolink = None;
         let mut new_autolink = None;
         let parser = Parser::new_ext(&self.body, options).map(|event| match event {
-            Event::Start(PTag::Link(linktype, destination, title)) => {
+            Event::Start(PTag::Link {
+                link_type,
+                dest_url,
+                title,
+                id,
+            }) => {
                 let new_destination =
-                    MarkdownNote::change_note_url(&destination, &old_referent, &new_referent);
+                    MarkdownNote::change_note_url(&dest_url, &old_referent, &new_referent);
                 if let Some(l) = new_destination {
-                    if linktype == LinkType::Autolink {
+                    if link_type == LinkType::Autolink {
                         change_autolink_text = true;
-                        old_autolink = Some(destination.clone().into_string());
+                        old_autolink = Some(dest_url.clone().into_string());
                         new_autolink = Some(l.clone());
                     }
-                    Event::Start(PTag::Link(linktype, l.into(), title))
+                    Event::Start(PTag::Link {
+                        link_type,
+                        dest_url: l.into(),
+                        title,
+                        id,
+                    })
                 } else {
-                    Event::Start(PTag::Link(linktype, destination, title))
+                    Event::Start(PTag::Link {
+                        link_type,
+                        dest_url,
+                        title,
+                        id,
+                    })
                 }
             }
             Event::Text(text) => {
@@ -131,19 +147,11 @@ impl NoteType for MarkdownNote {
                     Event::Text(text)
                 }
             }
-            Event::End(PTag::Link(linktype, destination, title)) => {
-                let new_destination =
-                    MarkdownNote::change_note_url(&destination, &old_referent, &new_referent);
-                if let Some(l) = new_destination {
-                    if linktype == LinkType::Autolink {
-                        change_autolink_text = false;
-                        old_autolink = None;
-                        new_autolink = None;
-                    }
-                    Event::End(PTag::Link(linktype, l.into(), title))
-                } else {
-                    Event::End(PTag::Link(linktype, destination, title))
-                }
+            Event::End(PTagEnd::Link) => {
+                change_autolink_text = false;
+                old_autolink = None;
+                new_autolink = None;
+                Event::End(PTagEnd::Link)
             }
 
             _ => event,
