@@ -62,7 +62,7 @@ export function NoteSequence() {
         return (<div>{error.toString()}</div>);
     }
 
-    return (<div className="p-2">
+    return (<div className="p-2 min-h-0 overflow-y-auto">
         <div>
             <input type="checkbox" id="recursiveLoad" name="recursiveLoad" checked={recursiveLoad}
                    onChange={handleCheckbox}/>

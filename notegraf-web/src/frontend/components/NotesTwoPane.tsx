@@ -26,8 +26,8 @@ export function NotesTwoPane(props: NotesTwoPaneProps) {
     const noteSelected = props.notes.find((note: types.Note) => note.revision === revisionSelected);
     const noteToShow = noteSelected ? noteSelected : props.notes[0];
 
-    return (<div className="p-2 flex">
-        <div className={"basis-1/3 sm:basis-1/4 md:basis-1/5 lg:basis-1/6 min-w-0 divide-y divide-neutral-500"}>
+    return (<div className="min-h-0 p-2 flex">
+        <div className={"basis-1/3 sm:basis-1/4 md:basis-1/5 lg:basis-1/6 min-w-0 divide-y divide-neutral-500 overflow-y-auto"}>
             {props.notes.map((note: types.Note) => (<div
                 key={note.revision}
                 onClick={() => setRevisionSelected(note.revision)}
@@ -39,7 +39,7 @@ export function NotesTwoPane(props: NotesTwoPaneProps) {
                 <Tags tags={note.metadata.tags} disableLink={true}/>
             </div>))}
         </div>
-        <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6"}>
+        <div className={"ml-1 overflow-hidden basis-2/3 sm:basis-3/4 md:basis-4/5 lg:basis-5/6 overflow-y-auto"}>
             <Note note={noteToShow}
                   showPrevNext={props.showPrevNext}
                   showingRevision={props.showingRevision}
