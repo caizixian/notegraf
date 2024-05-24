@@ -11,6 +11,7 @@
 ### Removed
 
 ### Fixed
+- [Web UI] Replace all occurrences of `<URL origin>/note/` in the note body (see v0.1.1 release) instead of just the first one.
 
 ### Security
 

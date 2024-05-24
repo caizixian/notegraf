@@ -44,7 +44,7 @@ export function NoteFormSession(props: NoteFormProps) {
     const onSubmit = async (data: any) => {
         try {
             let dataCloned = structuredClone(data); // Avoid mutating the original data
-            dataCloned.note_inner = dataCloned.note_inner.replace(`${window.origin}/note/`, "notegraf:/note/");
+            dataCloned.note_inner = dataCloned.note_inner.replaceAll(`${window.origin}/note/`, "notegraf:/note/");
             let res = await postNote(props.endpoint, dataCloned);
             localStorage.removeItem(autoSaveKey);
             incrementCounter();
