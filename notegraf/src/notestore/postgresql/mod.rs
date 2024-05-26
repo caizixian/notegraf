@@ -239,13 +239,23 @@ impl<T: NoteType> NoteStore<T> for PostgreSQLStore<T> {
             if !note.references.is_empty() {
                 return Err(NoteStoreError::HasReferences(id.clone()));
             }
-            if note.next.is_some() && note.prev.is_some() {
+            // This note was created by branching out from some other note
+            // It's not possible to be in the middle of a note sequence
+            // And vice versa
+            assert!(note.prev.is_none() || note.parent.is_none());
+            // Since only prev is stored, our prev note is not aware of us
+            // But we want to make sure our next note is consistent
+            // The next note basically inherits our prev and parent
+            if note.next.is_some() {
                 update_note_helper::<_, T>(
                     &mut transaction,
                     &NoteLocator::Current(note.next.unwrap()),
                     |old_note| {
                         let mut new_note = old_note.clone();
-                        new_note.prev = Some(note.prev.unwrap().to_uuid().unwrap());
+                        // Thw below two lines shouldn't both have effects
+                        // See the above assertion
+                        new_note.prev = note.prev.map(|x| x.to_uuid().unwrap());
+                        new_note.parent = note.parent.map(|x| x.to_uuid().unwrap());
                         Ok(new_note)
                     },
                 )

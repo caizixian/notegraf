@@ -247,6 +247,80 @@ pub(super) async fn delete_note_with_branches(store: impl NoteStore<PlainNote>) 
     ));
 }
 
+pub(super) async fn delete_child(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Parent".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc2 = store
+        .add_branch(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store.delete_note(&loc2.current()).await.unwrap();
+    assert!(is_deleted(&store, &loc2).await.unwrap());
+    assert!(!store
+        .get_note(&loc1.current())
+        .await
+        .unwrap()
+        .get_branches()
+        .contains(loc2.get_id()));
+}
+
+pub(super) async fn delete_child_sequence_top(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("Parent".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc2 = store
+        .add_branch(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Branch".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc3 = store
+        .append_note(
+            loc2.get_id(),
+            "".to_owned(),
+            PlainNote::new("Last".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store.delete_note(&loc2.current()).await.unwrap();
+    assert!(is_deleted(&store, &loc2).await.unwrap());
+    assert!(store
+        .get_note(&loc1.current())
+        .await
+        .unwrap()
+        .get_branches()
+        .contains(loc3.get_id()));
+    assert_eq!(
+        &store
+            .get_note(&loc3.current())
+            .await
+            .unwrap()
+            .get_parent()
+            .unwrap(),
+        loc1.get_id()
+    );
+}
+
 pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
     let loc1 = store
         .new_note(
@@ -288,6 +362,78 @@ pub(super) async fn resurrect_deleted_note(store: impl NoteStore<PlainNote>) {
             .get_note_inner(),
         PlainNote::new("Foo1".into())
     );
+}
+
+pub(super) async fn delete_first_note_sequence(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("First".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc2 = store
+        .append_note(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Last".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    store.delete_note(&loc1.current()).await.unwrap();
+    assert!(&store
+        .get_note(&loc2.current())
+        .await
+        .unwrap()
+        .get_prev()
+        .is_none());
+}
+
+pub(super) async fn delete_last_note_sequence(store: impl NoteStore<PlainNote>) {
+    let loc1 = store
+        .new_note(
+            "".to_owned(),
+            PlainNote::new("First".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    let loc2 = store
+        .append_note(
+            loc1.get_id(),
+            "".to_owned(),
+            PlainNote::new("Last".into()),
+            NoteMetadataEditable::unchanged(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        &store
+            .get_note(&loc1.current())
+            .await
+            .unwrap()
+            .get_next()
+            .unwrap(),
+        loc2.get_id()
+    );
+    assert_eq!(
+        &store
+            .get_note(&loc2.current())
+            .await
+            .unwrap()
+            .get_prev()
+            .unwrap(),
+        loc1.get_id()
+    );
+    store.delete_note(&loc2.current()).await.unwrap();
+    assert!(&store
+        .get_note(&loc1.current())
+        .await
+        .unwrap()
+        .get_next()
+        .is_none());
 }
 
 pub(super) async fn delete_middle_note_sequence(store: impl NoteStore<PlainNote>) {

@@ -84,8 +84,28 @@ async fn delete_note_with_branches() {
 }
 
 #[tokio::test]
+async fn delete_child() {
+    common_tests::delete_child(get_store().await).await;
+}
+
+#[tokio::test]
+async fn delete_child_sequence_top() {
+    common_tests::delete_child_sequence_top(get_store().await).await;
+}
+
+#[tokio::test]
 async fn resurrect_deleted_note() {
     common_tests::resurrect_deleted_note(get_store().await).await;
+}
+
+#[tokio::test]
+async fn delete_first_note_sequence() {
+    common_tests::delete_first_note_sequence(get_store().await).await;
+}
+
+#[tokio::test]
+async fn delete_last_note_sequence() {
+    common_tests::delete_last_note_sequence(get_store().await).await;
 }
 
 #[tokio::test]

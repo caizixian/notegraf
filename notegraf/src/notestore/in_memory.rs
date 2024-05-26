@@ -437,16 +437,30 @@ impl<T: NoteType> InMemoryStoreInner<T> {
             if !self.get_references(id).is_empty() {
                 return Err(NoteStoreError::HasReferences(id.clone()));
             }
-            if note.next.is_some() {
-                let prev = self.get_prev(id);
-                if let Some(prev_id) = prev {
-                    self.update_note_helper(&NoteLocator::Current(prev_id), |old_note| {
-                        let mut parent_note = old_note.clone();
-                        assert_eq!(parent_note.next.as_ref(), Some(id));
-                        parent_note.next = note.next;
-                        Ok(parent_note)
-                    })?;
-                }
+            // This note was created by branching out from some other note
+            // It's not possible to be in the middle of a note sequence
+            // And vice versa
+            assert!(self.get_parent(id).is_none() || self.get_prev(id).is_none());
+            // Since only next is stored, our next note is not aware of us
+            // But we want to make sure our prev note is consistent
+            if let Some(prev_id) = self.get_prev(id) {
+                self.update_note_helper(&NoteLocator::Current(prev_id), |old_note| {
+                    let mut parent_note = old_note.clone();
+                    assert_eq!(parent_note.next.as_ref(), Some(id));
+                    parent_note.next.clone_from(&note.next);
+                    Ok(parent_note)
+                })?;
+            }
+            if let Some(parent_id) = self.get_parent(id) {
+                self.update_note_helper(&NoteLocator::Current(parent_id), |old_note| {
+                    let mut parent_note = old_note.clone();
+                    assert!(parent_note.branches.contains(id));
+                    parent_note.branches.remove(id);
+                    if let Some(next_id) = &note.next {
+                        parent_note.branches.insert(next_id.clone());
+                    }
+                    Ok(parent_note)
+                })?;
             }
             // Mark the note as delete at last to avoid the previous steps from referring to
             // a delete note
@@ -819,8 +833,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn delete_child() {
+        common_tests::delete_child(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn delete_child_sequence_top() {
+        common_tests::delete_child_sequence_top(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
     async fn resurrect_deleted_note() {
         common_tests::resurrect_deleted_note(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn delete_first_note_sequence() {
+        common_tests::delete_first_note_sequence(InMemoryStore::new()).await;
+    }
+
+    #[tokio::test]
+    async fn delete_last_note_sequence() {
+        common_tests::delete_last_note_sequence(InMemoryStore::new()).await;
     }
 
     #[tokio::test]
