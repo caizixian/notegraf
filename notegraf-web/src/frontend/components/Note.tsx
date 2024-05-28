@@ -119,8 +119,9 @@ type RenderMarkdownProps = {
 }
 
 export function RenderMarkdown(props: RenderMarkdownProps) {
-    // remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none
-    const proseClasses: string = "overflow-hidden prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl";
+    // TODO: remove the backticks with these classes prose-code:before:content-none prose-code:after:content-none
+    // Add horizontal scrolling for words that are too long and cannot be broken
+    const proseClasses: string = "overflow-x-auto prose dark:prose-invert prose-github md:prose-lg lg:prose-xl xl:prose-2xl";
     if (props.rendered) {
         return (<article
             className={proseClasses}

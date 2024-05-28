@@ -63,7 +63,7 @@ export function NoteFormSession(props: NoteFormProps) {
     }
 
     return (
-        <form className={"p-2 flex flex-col flex-1"} onSubmit={handleSubmit(onSubmit)}>
+        <form className={"p-2 flex flex-col flex-1 min-h-0"} onSubmit={handleSubmit(onSubmit)}>
             <div className={"flex gap-2 m-1 items-center"}>
                 <label htmlFor={"title"}>Title</label>
                 <input className={"form-input bg-transparent w-full"} id={"title"} placeholder={"Title"}
@@ -92,7 +92,7 @@ export function NoteFormSession(props: NoteFormProps) {
                        spellCheck={true}
                        type={"text"} {...register("metadata_custom_metadata", {validate: isValidJSON})} />
             </div>
-            <div className={"flex-1 flex justify-center"}>
+            <div className={"flex-1 flex justify-center min-h-0 overflow-y-auto"}>
                 <textarea required={true} autoFocus={true} id={"note_inner"}
                           className={"form-textarea bg-transparent flex-1 font-mono"}
                           hidden={preview}
