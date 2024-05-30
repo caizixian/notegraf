@@ -1536,7 +1536,7 @@ dependencies = [
  "config",
  "lazy_static",
  "notegraf",
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "reqwest",
@@ -1696,6 +1696,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b69a91d4893e713e06f724597ad630f1fa76057a5e1026c0ca67054a9032a76"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+ "js-sys",
+ "once_cell",
+ "pin-project-lite",
+ "thiserror",
+]
+
+[[package]]
 name = "opentelemetry-otlp"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1704,7 +1718,7 @@ dependencies = [
  "async-trait",
  "futures-core",
  "http 0.2.9",
- "opentelemetry",
+ "opentelemetry 0.22.0",
  "opentelemetry-proto",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
@@ -1720,7 +1734,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a8fddc9b68f5b80dae9d6f510b88e02396f006ad48cac349411fbecc80caae4"
 dependencies = [
- "opentelemetry",
+ "opentelemetry 0.22.0",
  "opentelemetry_sdk",
  "prost",
  "tonic",
@@ -1745,7 +1759,7 @@ dependencies = [
  "futures-util",
  "glob",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.22.0",
  "ordered-float",
  "percent-encoding",
  "rand",
@@ -2934,7 +2948,7 @@ checksum = "fa069bd1503dd526ee793bb3fce408895136c95fc86d2edb2acf1c646d7f0684"
 dependencies = [
  "actix-web",
  "mutually_exclusive_features",
- "opentelemetry",
+ "opentelemetry 0.22.0",
  "pin-project",
  "tracing",
  "tracing-opentelemetry",
@@ -2991,7 +3005,7 @@ checksum = "a9be14ba1bbe4ab79e9229f7f89fab8d120b865859f10527f31c033e599d2284"
 dependencies = [
  "js-sys",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.22.0",
  "opentelemetry_sdk",
  "smallvec",
  "tracing",
