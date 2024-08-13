@@ -35,7 +35,7 @@ opentelemetry_sdk = { version = "0.23", features = ["rt-tokio-current-thread"] }
 opentelemetry-otlp = "0.16"
 tokio = { version = "1.37", features = ["macros", "sync", "rt-multi-thread"] }
 notegraf = {version = "0.1.1", path = "../notegraf"}
-sqlx = { version = "0.7", features = ["postgres"] }
+sqlx = { version = "0.8", features = ["postgres"] }
 serde = "1.0"
 serde_json = "1.0"
 uuid = { version = "1.4", features = ["serde", "v4"] }
