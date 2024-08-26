@@ -31,7 +31,7 @@
     "highlight.js": "^11.10.0",
     "katex": "^0.16.11",
     "lodash": "^4.17.21",
-    "marked": "^14.0",
+    "marked": "^14.1",
     "marked-gfm-heading-id": "^4.0.1",
     "marked-highlight": "^2.1.4",
     "marked-smartypants": "^1.1.8",
