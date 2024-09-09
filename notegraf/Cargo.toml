@@ -19,7 +19,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 pulldown-cmark = "0.11"
 url = "2.5"
-pulldown-cmark-to-cmark = "15.0"
+pulldown-cmark-to-cmark = "17.0"
 futures = "0.3"
 tokio = { version = "1.37", features = ["sync"] }
 # sqlx 0.7 separates runtime and TLS features. It also always enables offline.
