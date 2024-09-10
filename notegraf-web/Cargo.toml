@@ -31,7 +31,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-log = "0.2"
 lazy_static = "1.4"
 opentelemetry = "0.23"
-opentelemetry_sdk = { version = "0.23", features = ["rt-tokio-current-thread"] }
+opentelemetry_sdk = { version = "0.25", features = ["rt-tokio-current-thread"] }
 opentelemetry-otlp = "0.16"
 tokio = { version = "1.37", features = ["macros", "sync", "rt-multi-thread"] }
 notegraf = {version = "0.1.1", path = "../notegraf"}
