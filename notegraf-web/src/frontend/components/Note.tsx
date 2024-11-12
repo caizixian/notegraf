@@ -1,6 +1,6 @@
 import * as React from "react";
 import {useState} from "react";
-import {marked} from "marked";
+import {marked, RendererObject, Tokens} from "marked";
 import {markedHighlight} from "marked-highlight";
 import {markedSmartypants} from "marked-smartypants";
 import {gfmHeadingId} from "marked-gfm-heading-id";
@@ -36,7 +36,16 @@ function escapeHtml(unsafe: string): string {
         .replace(/'/g, "&#039;");
 }
 
-function renderMath(escaped: string, displayMode: boolean): string | boolean {
+function cleanUrl(href: string) {
+    try {
+        href = encodeURI(href).replace(/%25/g, '%');
+    } catch {
+        return null;
+    }
+    return href;
+}
+
+function renderMath(escaped: string, displayMode: boolean): string | false {
     const doc = new DOMParser().parseFromString(escaped, "text/html");
     const parsed = doc.documentElement.textContent!;
     try {
@@ -55,34 +64,33 @@ function renderMath(escaped: string, displayMode: boolean): string | boolean {
     }
 }
 
-const renderer = {
-    code(code: string, infoString: string | null, escaped: boolean) {
-        // @ts-ignore
-        const lang = (infoString || '').match(/\S*/)[0];
-        if (lang !== "math") {
+const renderer: RendererObject = {
+    code({text, lang, escaped}: Tokens.Code) {
+        const langString = (lang || '').match(/^\S*/)?.[0];
+        if (langString !== "math") {
             return false;
         }
-        return renderMath(code, true);
+        return renderMath(escaped ? text : escapeHtml(text), true);
     },
-    codespan(code: string) {
-        const match = code.match(/^\$\{(.*)}\$$/);
+    codespan({text}: Tokens.Codespan) {
+        const match = text.match(/^\$\{(.*)}\$$/);
         if (!match) {
             return false;
         }
         return renderMath(match[1], false);
     },
-    link(href: string, title: string, text: string) {
-        // The original implementation cleans the URL if marked option sanitize/base
-        // But these two options aren't used by Notegraf
-        // The rest of the original link implementation is copied verbatim with the notegraf protocol stripping
-        if (href === null) {
+    link({href, title, tokens}: Tokens.Link) {
+        const text = this.parser.parseInline(tokens);
+        const cleanHref = cleanUrl(href);
+        if (cleanHref === null) {
             return text;
         }
+        href = cleanHref;
         if (href.indexOf("notegraf:") === 0) {
             href = href.slice(9);
         }
         const isExternalURL = new URL(href, location.origin).origin !== location.origin;
-        let out = '<a href="' + escapeHtml(href) + '"';
+        let out = '<a href="' + href + '"';
         if (title) {
             out += ' title="' + title + '"';
         }
@@ -97,11 +105,35 @@ const renderer = {
         return out;
     },
     // Workaround for https://github.com/markedjs/marked/issues/1486
-    listitem(itemBody: string, task: boolean, checked: boolean) {
-        if (!task) {
-            return false;
+    listitem(item: Tokens.ListItem) {
+        let itemBody = '';
+        if (item.task) {
+            itemBody += "<label>"
+            const checkbox = this.checkbox({checked: !!item.checked});
+            if (item.loose) {
+                if (item.tokens.length > 0 && item.tokens[0].type === 'paragraph') {
+                    item.tokens[0].text = checkbox + ' ' + item.tokens[0].text;
+                    if (item.tokens[0].tokens && item.tokens[0].tokens.length > 0 && item.tokens[0].tokens[0].type === 'text') {
+                        item.tokens[0].tokens[0].text = checkbox + ' ' + item.tokens[0].tokens[0].text;
+                    }
+                } else {
+                    item.tokens.unshift({
+                        type: 'text',
+                        raw: checkbox + ' ',
+                        text: checkbox + ' ',
+                    });
+                }
+            } else {
+                itemBody += checkbox + ' ';
+            }
         }
-        return `<li><label>${itemBody}</label></label></li>\n`;
+
+        itemBody += this.parser.parse(item.tokens, !!item.loose);
+
+        if (item.task) {
+            itemBody += "</label>";
+        }
+        return `<li>${itemBody}</li>\n`;
     }
 }
 
