@@ -1,7 +1,8 @@
 use crate::configuration::Settings;
+use opentelemetry::trace::TracerProvider;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::trace::{self, Tracer};
+use opentelemetry_sdk::trace::{Config, Tracer};
 use opentelemetry_sdk::Resource;
 use tracing::Subscriber;
 use tracing_log::LogTracer;
@@ -13,11 +14,11 @@ pub fn get_otlp_tracer(configuration: &Settings) -> Option<Tracer> {
     let otlp_exporter = opentelemetry_otlp::new_exporter()
         .tonic()
         .with_endpoint(end_point);
-    let tracer = opentelemetry_otlp::new_pipeline()
+    let traceprovider = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(otlp_exporter)
         .with_trace_config(
-            trace::config().with_resource(Resource::new(vec![KeyValue::new(
+            Config::default().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",
                 format!(
                     "notegraf{}",
@@ -28,7 +29,7 @@ pub fn get_otlp_tracer(configuration: &Settings) -> Option<Tracer> {
         // https://github.com/open-telemetry/opentelemetry-rust/issues/536#issuecomment-840197611
         .install_batch(opentelemetry_sdk::runtime::TokioCurrentThread)
         .expect("Failed to create an opentelemetry_otlp tracer");
-    Some(tracer)
+    Some(traceprovider.tracer("tracing-otel-subscriber"))
 }
 
 pub fn get_subscriber(
