@@ -33,7 +33,7 @@ lazy_static = "1.4"
 opentelemetry = "0.26"
 opentelemetry_sdk = { version = "0.26", features = ["rt-tokio-current-thread"] }
 opentelemetry-otlp = "0.26"
-tokio = { version = "1.37", features = ["macros", "sync", "rt-multi-thread"] }
+tokio = { version = "1.45", features = ["macros", "sync", "rt-multi-thread"] }
 notegraf = {version = "0.1.1", path = "../notegraf"}
 sqlx = { version = "0.8", features = ["postgres"] }
 serde = "1.0"
